@@ -15,10 +15,11 @@ import {
   FaUserFriends,
   FaUtensils,
 } from "react-icons/fa";
+import { createPortal } from "react-dom";
 import API from "../../api";
-import { formatINR, todayISO } from "./reportUtils";
+import { formatINR, formatDay, todayISO } from "./reportUtils";
 
-// The 19 reports, each mapped to its /api/reports-suite/<key> endpoint.
+// Every report in the suite, each mapped to its /api/reports-suite/<key> endpoint.
 const REPORTS = [
   { key: "mis", label: "MIS Report", note: "Money across every department", icon: FaChartBar },
   { key: "invoice-register", label: "Invoice Register", note: "All invoices and booking charges", icon: FaFileAlt },
@@ -129,6 +130,65 @@ function ReportTable({ columns, rows, summary }) {
   );
 }
 
+// Normalises a cell for print / summary output: never prints NaN, undefined or empty.
+function formatCell(value) {
+  if (value === null || value === undefined || value === "") return "—";
+  if (typeof value === "number") {
+    return Number.isFinite(value) ? value.toLocaleString("en-IN", { maximumFractionDigits: 2 }) : "—";
+  }
+  if (typeof value === "boolean") return value ? "Yes" : "No";
+  const text = String(value).trim();
+  if (text === "" || text === "null" || text === "undefined" || text.toLowerCase() === "nan") return "—";
+  return text;
+}
+
+// Clean-print-only view, portalled to #reports-print-root so the app chrome never lands on paper.
+function PrintView({ data }) {
+  const { reports, from, to } = data;
+  return (
+    <div className="rp-document">
+      <div className="rp-header">
+        <div className="rp-hotel">Maa Baglamkhi Resort</div>
+        <div className="rp-sub">Reports Suite — All Reports ({reports.length})</div>
+        <div className="rp-period">Period: {from ? formatDay(from) : "start"} to {to ? formatDay(to) : "now"}</div>
+      </div>
+      {reports.map((rep) => (
+        <section key={rep.key} className="rp-section">
+          <h2>{rep.label}</h2>
+          {rep.summary && Object.keys(rep.summary).length > 0 ? (
+            <div className="rp-summary">
+              {Object.entries(rep.summary).map(([k, v]) => (
+                <span key={k} className="rp-chip">
+                  <b>{k.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase())}</b>{" "}
+                  {typeof v === "number" ? formatINR(v) : formatCell(v)}
+                </span>
+              ))}
+            </div>
+          ) : null}
+          {rep.error ? (
+            <p className="rp-err">{rep.error}</p>
+          ) : rep.rows.length === 0 ? (
+            <p className="rp-empty">No data in this window.</p>
+          ) : (
+            <table>
+              <thead>
+                <tr>{rep.columns.map((c) => <th key={c}>{String(c).replace(/_/g, " ")}</th>)}</tr>
+              </thead>
+              <tbody>
+                {rep.rows.map((row, i) => (
+                  <tr key={i}>
+                    {rep.columns.map((c) => <td key={c}>{formatCell(row[c])}</td>)}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+        </section>
+      ))}
+    </div>
+  );
+}
+
 export default function ReportsSuite() {
   const [from, setFrom] = useState(() => { const d = new Date(); d.setDate(d.getDate() - 29); return isoDate(d); });
   const [to, setTo] = useState(todayISO());
@@ -139,6 +199,8 @@ export default function ReportsSuite() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [downloading, setDownloading] = useState(false);
+  const [printAllData, setPrintAllData] = useState(null);
+  const [printAllBusy, setPrintAllBusy] = useState(false);
 
   const current = useMemo(() => REPORTS.find((r) => r.key === reportKey) || REPORTS[0], [reportKey]);
 
@@ -161,6 +223,57 @@ export default function ReportsSuite() {
   }, [reportKey, from, to]);
 
   useEffect(() => { load(); }, [load]);
+
+  // Fetches every report for the selected window, then prints the whole set.
+  const printAll = async () => {
+    setPrintAllBusy(true);
+    setError("");
+    try {
+      const params = {};
+      if (from) params.from = from;
+      if (to) params.to = to;
+      const settled = await Promise.allSettled(
+        REPORTS.map((r) => API.get(`/reports-suite/${r.key}`, { params }).then((res) => res.data || {}))
+      );
+      const reports = settled.map((res, i) => {
+        if (res.status === "fulfilled") {
+          const data = res.value;
+          return {
+            ...REPORTS[i],
+            columns: data.columns || [],
+            rows: data.rows || [],
+            summary: data.summary || null,
+            error: "",
+          };
+        }
+        return {
+          ...REPORTS[i],
+          columns: [],
+          rows: [],
+          summary: null,
+          error: res.reason?.response?.data?.message || "Report could not be loaded for this print.",
+        };
+      });
+      setPrintAllData({ reports, from, to });
+    } catch {
+      setError("Printing the full report set failed.");
+    }
+    setPrintAllBusy(false);
+  };
+
+  // Fires the browser print dialog once the print-only view is in the DOM.
+  useEffect(() => {
+    if (!printAllData) return undefined;
+    const timer = setTimeout(() => { window.print(); }, 120);
+    const clear = () => setPrintAllData(null);
+    window.addEventListener("afterprint", clear);
+    return () => {
+      clearTimeout(timer);
+      window.removeEventListener("afterprint", clear);
+    };
+  }, [printAllData]);
+
+  const printRoot = typeof document !== "undefined" ? document.getElementById("reports-print-root") : null;
 
   const downloadNow = async () => {
     setDownloading(true);
@@ -195,14 +308,24 @@ export default function ReportsSuite() {
             <h1 className="mt-1 text-xl font-bold text-slate-900">{current.label}</h1>
             <p className="text-sm text-slate-500">{current.note}</p>
           </div>
-          <button
-            type="button"
-            onClick={downloadNow}
-            disabled={loading || rows.length === 0}
-            className="flex items-center gap-2 rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm font-bold text-slate-700 hover:bg-slate-50 disabled:opacity-40"
-          >
-            <FaDownload size={13} /> Download CSV
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={printAll}
+              disabled={printAllBusy || loading}
+              className="flex items-center gap-2 rounded-xl bg-slate-900 px-4 py-2 text-sm font-bold text-white hover:bg-slate-700 disabled:opacity-40"
+            >
+              <FaPrint size={13} /> {printAllBusy ? `Preparing… ${REPORTS.length} reports` : `Print All ${REPORTS.length} Reports`}
+            </button>
+            <button
+              type="button"
+              onClick={downloadNow}
+              disabled={loading || rows.length === 0}
+              className="flex items-center gap-2 rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm font-bold text-slate-700 hover:bg-slate-50 disabled:opacity-40"
+            >
+              <FaDownload size={13} /> Download CSV
+            </button>
+          </div>
         </div>
 
         <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
@@ -234,6 +357,8 @@ export default function ReportsSuite() {
           <ReportTable columns={columns} rows={rows} summary={summary} />
         )}
       </div>
+
+      {printAllData && printRoot ? createPortal(<PrintView data={printAllData} />, printRoot) : null}
     </div>
   );
 }
