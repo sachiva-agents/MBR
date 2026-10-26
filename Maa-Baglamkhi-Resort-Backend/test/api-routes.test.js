@@ -22,6 +22,7 @@
  */
 
 const fs = require("fs");
+const os = require("os");
 const path = require("path");
 const http = require("http");
 
@@ -71,11 +72,19 @@ const SKIP_PATTERNS = [
   /\/logout/i,
   /\/login/i,
   /\/register/i,
+  // real side effects (a dump file, a DB restore) - covered by the backup
+  // functional section below instead of the read-only sweep
+  /\/backups\/run/i,
+  /\/backups\/restore/i,
 ];
 
 // Body sent with mutating methods. Empty object: required fields will be
 // missing, so validation returns 400 before any DB write.
 const EMPTY_BODY = {};
+
+// Dedicated, out-of-repo destination for the functional backup section so a
+// real dump never lands in the working tree.
+const BACKUP_DEST = path.join(os.tmpdir(), "mbr-backups-gate");
 
 // ---------------------------------------------------------------------------
 // Route extraction
@@ -272,6 +281,14 @@ async function main() {
     });
   }
 
+  const backupResults = await runBackupSection(say);
+  for (const b of backupResults) {
+    if (b.verdict === "SKIP") skipped++;
+    else if (b.verdict === "PASS") pass++;
+    else fail++;
+    results.push(b);
+  }
+
   say("-".repeat(72));
   say(
     ` RESULTS: ${pass} pass | ${fail} fail | ${skipped} skip | ${results.length} total`
@@ -301,6 +318,71 @@ async function main() {
   say("=".repeat(72) + "\n");
 
   process.exitCode = fail > 0 ? 1 : 0;
+}
+
+// Functional backup section: drives the real /api/backups endpoints against a
+// throwaway out-of-repo destDir. run/restore are skipped in the read-only
+// sweep above; here they are exercised for good.
+async function runBackupSection(say) {
+  const out = [];
+  const push = (method, full, code, verdict, body) => {
+    const rec = {
+      file: "backupRoutes",
+      raw: full.replace(/^\/api\/backups/, "").replace(/^\/|^$/, "/"),
+      testPath: full,
+      method,
+      code,
+      verdict,
+      body: (body || "").slice(0, 200),
+      section: "backup",
+    };
+    out.push(rec);
+    say(`  [backup] ${method} ${full} -> ${code} (${verdict})`);
+    return rec;
+  };
+
+  // point the suite at a private destDir; restore is exercised separately
+  fs.rmSync(BACKUP_DEST, { recursive: true, force: true });
+  fs.mkdirSync(BACKUP_DEST, { recursive: true });
+  await request("PUT", "/api/backups/settings", {
+    enabled: false,
+    scheduleType: "none",
+    dailyTime: "03:00",
+    weeklyDay: 0,
+    customCron: "",
+    destDir: BACKUP_DEST,
+  });
+
+  const badType = await request("PUT", "/api/backups/settings", { scheduleType: "hourly" });
+  push("PUT", "/api/backups/settings (bad scheduleType)", badType.status, badType.status === 400 ? "PASS" : "FAIL", badType.body);
+
+  const getSet = await request("GET", "/api/backups/settings");
+  const gs = safeParse(getSet.body) || {};
+  const getOk =
+    getSet.status === 200 &&
+    ["enabled", "scheduleType", "dailyTime", "weeklyDay", "customCron", "destDir", "lastRunAt", "lastRunStatus", "lastFile"]
+      .every((k) => k in gs) &&
+    gs.destDir === BACKUP_DEST;
+  push("GET", "/api/backups/settings", getSet.status, getOk ? "PASS" : "FAIL", getSet.body);
+
+  const run = await request("POST", "/api/backups/run");
+  const runOk = run.status === 200 && safeParse(run.body)?.file;
+  push("POST", "/api/backups/run", run.status, runOk ? "PASS" : "FAIL", run.body);
+
+  const list = await request("GET", "/api/backups/list");
+  const listOk = list.status === 200 && (safeParse(list.body)?.files || []).length >= 1;
+  push("GET", "/api/backups/list", list.status, listOk ? "PASS" : "FAIL", list.body);
+
+  const evil = await request("POST", "/api/backups/restore", { file: "../evil.sql" });
+  push("POST", "/api/backups/restore (traversal)", evil.status, evil.status === 400 ? "PASS" : "FAIL", evil.body);
+
+  // Missing-file path is fast and non-destructive; the full dump->restore
+  // round-trip (a multi-minute clobber of the live DB) is verified separately
+  // in a one-off e2e, not on every gate run.
+  const missing = await request("POST", "/api/backups/restore", { file: "definitely-not-here.sql" });
+  push("POST", "/api/backups/restore (missing file)", missing.status, missing.status === 404 ? "PASS" : "FAIL", missing.body);
+
+  return out;
 }
 
 function safeParse(s) {

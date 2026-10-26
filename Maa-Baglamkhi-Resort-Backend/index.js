@@ -24,6 +24,11 @@ initializeDatabase().then(() => {
   } catch (e) {
     console.error("Print queue init failed:", e.message);
   }
+  try {
+    require("./src/services/backupScheduler").start();
+  } catch (e) {
+    console.error("Backup scheduler init failed:", e.message);
+  }
 });
 
 process.once("SIGINT", () => shutdown("SIGINT"));
