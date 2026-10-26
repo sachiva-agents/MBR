@@ -1,6 +1,6 @@
 const machinesModel = require("../models/AttendanceMachinesModel");
 const { syncMachine } = require("../services/zkSyncService");
-const zk = require("../services/zkProtocol");
+const { zk } = require("../services/zkProtocol");
 
 const TIME_RE = /^\d{1,2}:\d{2}(:\d{2})?$/;
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;

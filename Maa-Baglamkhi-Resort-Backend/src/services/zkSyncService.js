@@ -1,5 +1,5 @@
 const db = require('../config/db')
-const zk = require('./zkProtocol')
+const { zk } = require('./zkProtocol')
 const { parseLogLines, groupByShift } = require('./zkLogParser')
 const machinesModel = require('../models/AttendanceMachinesModel')
 
