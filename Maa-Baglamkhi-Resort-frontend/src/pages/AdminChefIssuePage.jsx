@@ -42,6 +42,68 @@ function CardStat({ label, value, full = false }) {
   );
 }
 
+const RECORDS_PER_PAGE = 10;
+
+// Windowed page list: 1 … (around current) … last — like the User page.
+function buildPageItems(current, total) {
+  if (total <= 1) return total ? [1] : [];
+  const items = [1];
+  const start = Math.max(2, current - 1);
+  const end = Math.min(total - 1, current + 1);
+  if (start > 2) items.push("start-ellipsis");
+  for (let p = start; p <= end; p += 1) items.push(p);
+  if (end < total - 1) items.push("end-ellipsis");
+  if (total > 1) items.push(total);
+  return items;
+}
+
+function PaginationBar({ current, total, pages, onPageChange, shownFrom, shownTo, totalRecords }) {
+  if (!total) return null;
+  return (
+    <div className="flex flex-col items-center justify-between gap-3 border-t border-slate-100 pt-4 sm:flex-row">
+      <p className="text-[13px] font-medium text-slate-500 xl:text-[15px]">
+        Showing {shownFrom} to {shownTo} of {totalRecords} records
+      </p>
+      <div className="flex items-center gap-1.5">
+        <button
+          type="button"
+          disabled={current <= 1}
+          onClick={() => onPageChange(current - 1)}
+          className="rounded-full border border-slate-200 bg-white px-3 py-1.5 text-[13px] font-semibold text-slate-600 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40 xl:text-[15px]"
+        >
+          Previous
+        </button>
+        {pages.map((item, idx) =>
+          item === "start-ellipsis" || item === "end-ellipsis" ? (
+            <span key={item} className="px-1 text-[13px] text-slate-400">…</span>
+          ) : (
+            <button
+              key={item}
+              type="button"
+              onClick={() => onPageChange(item)}
+              className={`h-8 w-8 rounded-full text-[13px] font-bold transition xl:h-9 xl:w-9 xl:text-[15px] ${
+                item === current
+                  ? "bg-indigo-600 text-white shadow-[0_6px_14px_rgba(99,102,241,0.35)]"
+                  : "border border-slate-200 bg-white text-slate-600 hover:bg-slate-50"
+              }`}
+            >
+              {item}
+            </button>
+          )
+        )}
+        <button
+          type="button"
+          disabled={current >= total}
+          onClick={() => onPageChange(current + 1)}
+          className="rounded-full border border-slate-200 bg-white px-3 py-1.5 text-[13px] font-semibold text-slate-600 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40 xl:text-[15px]"
+        >
+          Next
+        </button>
+      </div>
+    </div>
+  );
+}
+
 export default function AdminChefIssuePage() {
   const user = getUserFromStorage() || {};
   const adminName = user?.username || user?.name || user?.fullName || "Admin";
@@ -64,6 +126,9 @@ export default function AdminChefIssuePage() {
   const [search, setSearch] = useState("");
   const [filterStatus, setFilterStatus] = useState("");
   const [filterChef, setFilterChef] = useState("");
+
+  // ── Pagination ─────────────────────────────────────────────────────────
+  const [page, setPage] = useState(1);
 
   // ── Return modal (admin can reconcile a return on behalf of any chef) ────
   const [returnModal, setReturnModal] = useState(null); // { id, itemName, chefName, max }
@@ -208,6 +273,22 @@ export default function AdminChefIssuePage() {
       (a, b) => new Date(b.issuedAt || 0).getTime() - new Date(a.issuedAt || 0).getTime(),
     );
   }, [issues, search, filterStatus, filterChef]);
+
+  // ── Derived: pagination over the filtered list ──────────────────────────
+  const totalPages = Math.max(1, Math.ceil(filteredIssues.length / RECORDS_PER_PAGE));
+  const safePage = Math.min(page, totalPages);
+  const pageRecords = useMemo(
+    () => filteredIssues.slice((safePage - 1) * RECORDS_PER_PAGE, safePage * RECORDS_PER_PAGE),
+    [filteredIssues, safePage],
+  );
+  const shownFrom = filteredIssues.length ? (safePage - 1) * RECORDS_PER_PAGE + 1 : 0;
+  const shownTo = Math.min(safePage * RECORDS_PER_PAGE, filteredIssues.length);
+  const pageItems = buildPageItems(safePage, totalPages);
+
+  // Reset to page 1 whenever the visible set of records changes.
+  useEffect(() => {
+    setPage(1);
+  }, [search, filterStatus, filterChef]);
 
   // ── Derived: fleet-wide stats ────────────────────────────────────────────
   const stats = useMemo(() => {
@@ -457,8 +538,8 @@ export default function AdminChefIssuePage() {
                       Loading…
                     </td>
                   </tr>
-                ) : filteredIssues.length ? (
-                  filteredIssues.map((row) => {
+                ) : pageRecords.length ? (
+                  pageRecords.map((row) => {
                     const remaining = Number(row.quantityIssued || 0) - Number(row.quantityReturned || 0);
                     return (
                       <tr key={row.id} className="border-t border-slate-100 hover:bg-indigo-50/40">
@@ -508,12 +589,26 @@ export default function AdminChefIssuePage() {
             </table>
           </div>
 
+          {totalPages > 1 && (
+            <div className="hidden md:block">
+              <PaginationBar
+                current={safePage}
+                total={totalPages}
+                pages={pageItems}
+                onPageChange={setPage}
+                shownFrom={shownFrom}
+                shownTo={shownTo}
+                totalRecords={filteredIssues.length}
+              />
+            </div>
+          )}
+
           {/* Mobile stacked cards (<768px) */}
           <div className="space-y-3 md:hidden">
             {loading ? (
               <div className="py-10 text-center text-[16px] text-slate-400">Loading…</div>
-            ) : filteredIssues.length ? (
-              filteredIssues.map((row) => {
+            ) : pageRecords.length ? (
+              pageRecords.map((row) => {
                 const remaining = Number(row.quantityIssued || 0) - Number(row.quantityReturned || 0);
                 return (
                   <div
@@ -582,6 +677,20 @@ export default function AdminChefIssuePage() {
               </div>
             )}
           </div>
+
+          {totalPages > 1 && (
+            <div className="md:hidden">
+              <PaginationBar
+                current={safePage}
+                total={totalPages}
+                pages={pageItems}
+                onPageChange={setPage}
+                shownFrom={shownFrom}
+                shownTo={shownTo}
+                totalRecords={filteredIssues.length}
+              />
+            </div>
+          )}
         </div>
       </div>
 

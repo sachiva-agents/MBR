@@ -24,6 +24,68 @@ const ROLES = [
   "staff",
 ];
 
+const RECORDS_PER_PAGE = 10;
+
+/* Windowed page list: 1 … (around current) … last */
+const buildPageItems = (current, total) => {
+  if (total <= 1) return total ? [1] : [];
+  const items = [1];
+  const start = Math.max(2, current - 1);
+  const end = Math.min(total - 1, current + 1);
+  if (start > 2) items.push("start-ellipsis");
+  for (let p = start; p <= end; p += 1) items.push(p);
+  if (end < total - 1) items.push("end-ellipsis");
+  items.push(total);
+  return items;
+};
+
+const PaginationBar = ({ current, total, pages, onPageChange, shownFrom, shownTo, totalRecords }) => {
+  if (!total) return null;
+  return (
+    <div className="flex flex-col items-center justify-between gap-3 border-t border-blue-100/60 px-4 py-4 sm:flex-row">
+      <p className="text-[13px] font-medium text-slate-500">
+        Showing {shownFrom} to {shownTo} of {totalRecords} employees
+      </p>
+      <div className="flex items-center gap-1.5">
+        <button
+          type="button"
+          disabled={current <= 1}
+          onClick={() => onPageChange(current - 1)}
+          className="rounded-full border border-slate-200 bg-white px-3.5 py-2 text-[13px] font-bold text-slate-600 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40"
+        >
+          Previous
+        </button>
+        {pages.map((item) =>
+          item === "start-ellipsis" || item === "end-ellipsis" ? (
+            <span key={item} className="px-1 text-[14px] text-slate-400">…</span>
+          ) : (
+            <button
+              key={item}
+              type="button"
+              onClick={() => onPageChange(item)}
+              className={`h-9 w-9 rounded-full text-[14px] font-bold transition ${
+                item === current
+                  ? "bg-gradient-to-br from-blue-600 to-sky-500 text-white shadow-md"
+                  : "border border-slate-200 bg-white text-slate-600 hover:bg-slate-50"
+              }`}
+            >
+              {item}
+            </button>
+          )
+        )}
+        <button
+          type="button"
+          disabled={current >= total}
+          onClick={() => onPageChange(current + 1)}
+          className="rounded-full border border-slate-200 bg-white px-3.5 py-2 text-[13px] font-bold text-slate-600 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40"
+        >
+          Next
+        </button>
+      </div>
+    </div>
+  );
+};
+
 const SalaryManagement = () => {
   const role = (localStorage.getItem("role") || "").toLowerCase();
   const isAdmin = role === "admin";
@@ -34,6 +96,24 @@ const SalaryManagement = () => {
   const [editForm, setEditForm] = useState({ salary: "", designation: "" });
   const [savingId, setSavingId] = useState(null);
   const [msg, setMsg] = useState({ type: "", text: "" });
+  const [page, setPage] = useState(1);
+
+  /* ================= PAGINATION ================= */
+
+  const totalPages = Math.max(1, Math.ceil(employees.length / RECORDS_PER_PAGE));
+  const safePage = Math.min(page, totalPages);
+  const pagedEmployees = employees.slice(
+    (safePage - 1) * RECORDS_PER_PAGE,
+    safePage * RECORDS_PER_PAGE
+  );
+  const shownFrom = employees.length ? (safePage - 1) * RECORDS_PER_PAGE + 1 : 0;
+  const shownTo = Math.min(safePage * RECORDS_PER_PAGE, employees.length);
+  const pageItems = buildPageItems(safePage, totalPages);
+
+  const goToPage = (next) => {
+    setPage(next);
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  };
 
   /* ================= FETCH ================= */
 
@@ -161,7 +241,7 @@ const SalaryManagement = () => {
                 </tr>
               </thead>
               <tbody>
-                {employees.map((emp, idx) => {
+                {pagedEmployees.map((emp, idx) => {
                   const monthly = parseFloat(emp.salary || 0);
                   const daysInMonth = new Date(
                     new Date().getFullYear(),
@@ -177,7 +257,7 @@ const SalaryManagement = () => {
                       className="border-b border-slate-100 transition-colors duration-200 last:border-b-0 hover:bg-blue-50/40"
                     >
                       <td className="p-4 text-[16px] font-semibold text-slate-400">
-                        {idx + 1}
+                        {(safePage - 1) * RECORDS_PER_PAGE + idx + 1}
                       </td>
 
                       {/* Employee */}
@@ -312,6 +392,18 @@ const SalaryManagement = () => {
               <span className="text-[17px] font-semibold text-slate-500">Loading employees...</span>
             </div>
           )}
+
+          {totalPages > 1 && (
+            <PaginationBar
+              current={safePage}
+              total={totalPages}
+              pages={pageItems}
+              onPageChange={goToPage}
+              shownFrom={shownFrom}
+              shownTo={shownTo}
+              totalRecords={employees.length}
+            />
+          )}
         </div>
 
         {/* ===================== MOBILE / TABLET / iPAD CARD LAYOUT (below lg) ===================== */}
@@ -336,8 +428,9 @@ const SalaryManagement = () => {
           )}
 
           {!loading && employees.length > 0 && (
-            <div className="w-full space-y-4">
-              {employees.map((emp, idx) => {
+            <div className="w-full rounded-3xl border border-blue-100/60 bg-white px-1 shadow-sm">
+              <div className="w-full space-y-4 p-3 sm:p-4">
+              {pagedEmployees.map((emp, idx) => {
                 const monthly = parseFloat(emp.salary || 0);
                 const daysInMonth = new Date(
                   new Date().getFullYear(),
@@ -360,7 +453,7 @@ const SalaryManagement = () => {
                         </div>
                         <div className="min-w-0">
                           <p className="truncate text-[16px] font-bold text-slate-900">
-                            {idx + 1}. {emp.name}
+                            {(safePage - 1) * RECORDS_PER_PAGE + idx + 1}. {emp.name}
                           </p>
                           <p className="break-words text-[13px] text-slate-500">{emp.email}</p>
                         </div>
@@ -465,6 +558,19 @@ const SalaryManagement = () => {
                   </div>
                 );
               })}
+              </div>
+
+              {totalPages > 1 && (
+                <PaginationBar
+                  current={safePage}
+                  total={totalPages}
+                  pages={pageItems}
+                  onPageChange={goToPage}
+                  shownFrom={shownFrom}
+                  shownTo={shownTo}
+                  totalRecords={employees.length}
+                />
+              )}
             </div>
           )}
         </div>
