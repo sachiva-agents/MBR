@@ -1,6 +1,8 @@
 const db = require("../config/db");
 const AttendanceRecordsModel = require("../models/AttendanceRecordsModel");
+const { getPayPercentages } = require("./settingsController");
 
+// Built-in fallback: used only when app_settings is unreachable.
 const DAY_STATUS_MULTIPLIER = {
   present: 1,
   absent: 0,
@@ -11,13 +13,14 @@ const DAY_STATUS_MULTIPLIER = {
   week_off: 1,
 };
 
-const calculateDaySalary = (monthlySalary, status, year, month) => {
+// Multipliers are read from app_settings (admin-editable on the Salary page)
+// and resolved by the caller, which awaits getPayPercentages() once per
+// request. Unknown statuses are paid at full rate and logged, never zero.
+const calculateDaySalary = (monthlySalary, status, year, month, multipliers = DAY_STATUS_MULTIPLIER) => {
   const daysInMonth = new Date(year, month, 0).getDate();
   const daily = Number(monthlySalary || 0) / daysInMonth;
   const key = String(status || "").toLowerCase();
-  let multiplier = DAY_STATUS_MULTIPLIER[key];
-  // An unrecognised status is paid at full rate and logged, never paid zero.
-  // Returning 0 here was how a typo could wipe a whole month of pay.
+  let multiplier = multipliers[key];
   if (multiplier === undefined) {
     console.warn(`salary: unknown attendance status "${status}" — paid at full rate`);
     multiplier = 1;
@@ -176,6 +179,7 @@ exports.getMyAttendanceWithSalary = async (req, res) => {
   try {
     const employee = await employeeForUser(id);
     const monthlySalary = Number(employee && employee.base_salary || 0);
+    const multipliers = await getPayPercentages();
 
     let records = [];
     if (employee) {
@@ -194,7 +198,7 @@ exports.getMyAttendanceWithSalary = async (req, res) => {
         status,
         checkIn: r.check_in,
         checkOut: r.check_out,
-        daySalary: calculateDaySalary(monthlySalary, status, year, month),
+        daySalary: calculateDaySalary(monthlySalary, status, year, month, multipliers),
         leaveType: r.leave_type,
         notes: r.notes,
       };
@@ -235,10 +239,11 @@ exports.recalculateAttendance = async (req, res) => {
       now.getMonth() + 1,
       now.getFullYear()
     );
+    const multipliers = await getPayPercentages();
 
     const updates = records.map((r) => {
       const [y, m] = String(r.date || "").slice(0, 7).split("-").map(Number);
-      return { id: r.id, date: r.date, status: r.status, amount: calculateDaySalary(employee.base_salary, r.status, y, m) };
+      return { id: r.id, date: r.date, status: r.status, amount: calculateDaySalary(employee.base_salary, r.status, y, m, multipliers) };
     });
 
     return res.json({

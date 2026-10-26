@@ -1,5 +1,6 @@
 const db = require("../config/db");
 const AttendanceRecordsModel = require("../models/AttendanceRecordsModel");
+const { getPayPercentages } = require("./settingsController");
 
 const STATUSES = ["present", "absent", "late", "half_day", "on_leave", "holiday", "week_off"];
 
@@ -25,10 +26,18 @@ const SALARY_STATUS_MULTIPLIER = {
   week_off: 1,
 };
 
-const calculateDaySalary = (monthlySalary, status, year, month) => {
+// Multipliers come from app_settings (admin-editable on the Salary page) via
+// getPayPercentages(); the built-in table below is only the unreachable-DB
+// fallback. Unknown statuses pay full (never zero, to protect pay).
+const calculateDaySalary = (monthlySalary, status, year, month, multipliers = SALARY_STATUS_MULTIPLIER) => {
   const daysInMonth = new Date(year, month, 0).getDate();
   const daily = Number(monthlySalary || 0) / daysInMonth;
-  const multiplier = SALARY_STATUS_MULTIPLIER[String(status || "").toLowerCase()] || 0;
+  const key = String(status || "").toLowerCase();
+  let multiplier = multipliers[key];
+  if (multiplier === undefined) {
+    console.warn(`attendance: unknown status "${status}" — paid at full rate`);
+    multiplier = 1;
+  }
   return Number((daily * multiplier).toFixed(2));
 };
 
@@ -101,7 +110,7 @@ const resolveEmployeeId = async (userId) => {
  * method, salary_amount). The current schema does not, so those fields are
  * derived here to keep older frontends readable.
  */
-const shapeRecord = (row, enrich = {}) => {
+const shapeRecord = (row, enrich = {}, multipliers = SALARY_STATUS_MULTIPLIER) => {
   const status = normalizeStatus(row.status);
   const date = toISODate(row.date);
   const d = new Date(`${date || "1970-01-01"}T00:00:00`);
@@ -117,7 +126,7 @@ const shapeRecord = (row, enrich = {}) => {
     userName: enrich.name || enrich.employee_name || null,
     email: enrich.email || enrich.employee_email || null,
     user_salary: monthlySalary,
-    salary_amount: calculateDaySalary(monthlySalary, status, year, month),
+    salary_amount: calculateDaySalary(monthlySalary, status, year, month, multipliers),
     department: enrich.department || enrich.department_name || null,
     departmentName: enrich.department || enrich.department_name || null,
     designation: enrich.designation || null,
@@ -241,8 +250,9 @@ exports.getAllAttendance = async (req, res) => {
       `${ENRICH_SELECT} ${where} ORDER BY DATE(ar.date) DESC, ar.id DESC`,
       params
     );
+    const multipliers = await getPayPercentages();
 
-    res.json((Array.isArray(records) ? records : []).map((r) => shapeRecord(r, r)));
+    res.json((Array.isArray(records) ? records : []).map((r) => shapeRecord(r, r, multipliers)));
   });
 };
 
@@ -270,7 +280,8 @@ exports.getMyAttendance = async (req, res) => {
       `${ENRICH_SELECT} ${where} ORDER BY DATE(ar.date) DESC, ar.id DESC`,
       params
     );
-    res.json((Array.isArray(records) ? records : []).map((r) => shapeRecord(r, r)));
+    const multipliers = await getPayPercentages();
+    res.json((Array.isArray(records) ? records : []).map((r) => shapeRecord(r, r, multipliers)));
   });
 };
 
@@ -442,8 +453,9 @@ exports.updateAttendanceRecord = async (req, res) => {
 
     const [rows] = await db.query(`${ENRICH_SELECT} WHERE ar.id = ?`, [recordId]);
     const row = Array.isArray(rows) ? rows[0] : null;
+    const multipliers = await getPayPercentages();
 
-    res.json({ message: "Attendance record updated", ...shapeRecord(row, row) });
+    res.json({ message: "Attendance record updated", ...shapeRecord(row, row, multipliers) });
   });
 };
 
@@ -554,6 +566,7 @@ exports.getAttendanceReport = async (req, res) => {
       `${ENRICH_SELECT} ${where} ORDER BY ar.employee_id, DATE(ar.date)`,
       params
     );
+    const multipliers = await getPayPercentages();
 
     const byEmployee = new Map();
     for (const r of Array.isArray(records) ? records : []) {
@@ -582,7 +595,7 @@ exports.getAttendanceReport = async (req, res) => {
         });
       }
       const group = byEmployee.get(key);
-      const shaped = shapeRecord(r, r);
+      const shaped = shapeRecord(r, r, multipliers);
       group.days.push(shaped);
       const status = normalizeStatus(r.status);
       group.totals[status] = (group.totals[status] || 0) + 1;
@@ -608,7 +621,7 @@ exports.getAttendanceReport = async (req, res) => {
       period: { from: start, to: end, month: rangeMonth },
       summary: { ...summary, earned: Number(summary.earned.toFixed(2)) },
       employees,
-      rows: records.map((r) => shapeRecord(r, r)),
+      rows: records.map((r) => shapeRecord(r, r, multipliers)),
     });
   });
 };
@@ -649,6 +662,7 @@ exports.getPayrollAttendance = async (req, res) => {
       "SELECT * FROM attendance_records WHERE date >= ? AND date < ?",
       [monthFrom, monthTo]
     );
+    const multipliers = await getPayPercentages();
     const byEmployee = new Map();
     for (const r of Array.isArray(records) ? records : []) {
       if (!byEmployee.has(r.employee_id)) byEmployee.set(r.employee_id, []);
@@ -667,7 +681,14 @@ exports.getPayrollAttendance = async (req, res) => {
         totals[s] = (totals[s] || 0) + 1;
       }
       const earned = monthRecords.reduce(
-        (sum, r) => sum + calculateDaySalary(monthlySalary, normalizeStatus(r.status), year, month),
+        (sum, r) => sum + calculateDaySalary(monthlySalary, normalizeStatus(r.status), year, month, multipliers),
+        0
+      );
+
+      // Paid days = each status's day-count weighted by its pay multiplier,
+      // so admin changes to the pay rules apply here too.
+      const paidDays = Object.keys(totals).reduce(
+        (acc, s) => acc + (totals[s] || 0) * (multipliers[s] ?? 0),
         0
       );
 
@@ -682,13 +703,11 @@ exports.getPayrollAttendance = async (req, res) => {
         monthlySalary,
         daysInMonth,
         daysRecorded: monthRecords.length,
-        paidDays: Number(
-          (totals.present + totals.holiday + totals.week_off + 0.5 * (totals.late + totals.half_day)).toFixed(2)
-        ),
+        paidDays: Number(paidDays.toFixed(2)),
         totals,
         earned: Number(earned.toFixed(2)),
         payoutPercent: monthlySalary > 0 ? Math.round((earned / monthlySalary) * 100) : 0,
-        attendanceRecords: monthRecords.map((r) => shapeRecord(r, { monthlySalary })),
+        attendanceRecords: monthRecords.map((r) => shapeRecord(r, { monthlySalary }, multipliers)),
       };
     });
 
@@ -760,6 +779,7 @@ exports.calculateMySalary = async (req, res) => {
     const records = employeeId
       ? await AttendanceRecordsModel.findByEmployeeAndMonth(employeeId, targetMonth, targetYear)
       : [];
+    const multipliers = await getPayPercentages();
 
     const totals = { present: 0, absent: 0, late: 0, half_day: 0, on_leave: 0, holiday: 0, week_off: 0 };
     for (const r of records) {
@@ -777,13 +797,19 @@ exports.calculateMySalary = async (req, res) => {
         checkIn: toTime(r.check_in),
         checkOut: toTime(r.check_out),
         leaveType: r.leave_type || null,
-        daySalary: calculateDaySalary(monthlySalary, status, targetYear, targetMonth),
+        daySalary: calculateDaySalary(monthlySalary, status, targetYear, targetMonth, multipliers),
       };
     });
 
     const totalPaid = attendanceRecords.reduce((sum, r) => sum + r.daySalary, 0);
     const daysInMonth = new Date(targetYear, targetMonth, 0).getDate();
     const monthLabel = `${targetYear}-${String(targetMonth).padStart(2, "0")}`;
+
+    // Paid days honour the admin-configured pay multipliers.
+    const paidDays = Object.keys(totals).reduce(
+      (acc, s) => acc + (totals[s] || 0) * (multipliers[s] ?? 0),
+      0
+    );
 
     res.json({
       employee: {
@@ -805,9 +831,7 @@ exports.calculateMySalary = async (req, res) => {
         totalAmountEarned: Number(totalPaid.toFixed(2)),
         totalEarned: Number(totalPaid.toFixed(2)),
         totalWorkingDays: daysInMonth,
-        paidDays: Number(
-          (totals.present + totals.holiday + totals.week_off + 0.5 * (totals.late + totals.half_day)).toFixed(2)
-        ),
+        paidDays: Number(paidDays.toFixed(2)),
         statusTotals: totals,
       },
       records: attendanceRecords,

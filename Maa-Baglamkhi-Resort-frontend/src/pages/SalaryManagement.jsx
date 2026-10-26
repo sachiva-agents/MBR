@@ -11,6 +11,7 @@ import {
   FaInfoCircle,
   FaUserSlash,
   FaSearch,
+  FaCogs,
 } from "react-icons/fa";
 import API from "../api";
 
@@ -102,6 +103,76 @@ const SalaryManagement = () => {
   const [filterRole, setFilterRole] = useState("");
   const [filterDesignation, setFilterDesignation] = useState("");
   const [sortBy, setSortBy] = useState("none");
+
+  /* ================= PAY RULES (admin settings) ================= */
+
+  const [payRules, setPayRules] = useState({
+    presentPay: 100, latePay: 50, halfDayPay: 50, absentPay: 0, leavePay: 0,
+  });
+  const [rulesForm, setRulesForm] = useState({
+    presentPay: 100, latePay: 50, halfDayPay: 50, absentPay: 0, leavePay: 0,
+  });
+  const [savingRules, setSavingRules] = useState(false);
+  const [rulesEditing, setRulesEditing] = useState(false);
+
+  const fetchPayRules = async () => {
+    try {
+      const res = await API.get("/settings");
+      const s = res.data || {};
+      setPayRules({
+        presentPay: s.presentPay ?? 100,
+        latePay: s.latePay ?? 50,
+        halfDayPay: s.halfDayPay ?? 50,
+        absentPay: s.absentPay ?? 0,
+        leavePay: s.leavePay ?? 0,
+      });
+    } catch (err) {
+      // Backend may not have the pay-rules columns yet; keep the defaults.
+      console.error("Error loading pay rules:", err);
+    }
+  };
+
+  useEffect(() => {
+    fetchPayRules();
+  }, []);
+
+  const openRulesEdit = () => {
+    setRulesForm({ ...payRules });
+    setRulesEditing(true);
+  };
+
+  const closeRulesEdit = () => {
+    setRulesForm(payRules);
+    setRulesEditing(false);
+  };
+
+  const setRule = (key, value) => {
+    const n = Number(value);
+    const clamped = Number.isNaN(n) ? 0 : Math.max(0, Math.min(100, n));
+    setRulesForm((prev) => ({ ...prev, [key]: clamped }));
+  };
+
+  const handleSaveRules = async () => {
+    setSavingRules(true);
+    try {
+      await API.put("/settings", {
+        presentPay: rulesForm.presentPay,
+        latePay: rulesForm.latePay,
+        halfDayPay: rulesForm.halfDayPay,
+        absentPay: rulesForm.absentPay,
+        leavePay: rulesForm.leavePay,
+      });
+      setPayRules({ ...rulesForm });
+      setRulesForm({ ...rulesForm });
+      setRulesEditing(false);
+      setMsg({ type: "success", text: "Pay rules updated for all attendance calculations." });
+    } catch (err) {
+      console.error("Error saving pay rules:", err);
+      setMsg({ type: "error", text: "Failed to save pay rules" });
+    } finally {
+      setSavingRules(false);
+    }
+  };
 
   /* ================= FILTERS ================= */
 
@@ -707,12 +778,89 @@ const SalaryManagement = () => {
           )}
         </div>
 
-        {/* Note */}
-        <div className="flex w-full items-start gap-3 rounded-2xl border border-blue-100 bg-blue-50 px-4 py-3 text-[14px] leading-relaxed text-slate-600 shadow-sm sm:px-5 sm:py-4 sm:text-[16px]">
-          <FaInfoCircle className="mt-0.5 flex-shrink-0 text-blue-500" />
-          <p className="break-words">
-            <strong className="font-bold text-slate-800">Note:</strong> Leave (100% deduction) and Absent (100% deduction) are configurable in the backend. Currently: Present = full day pay, Absent/Leave = ₹0, Late = 10% deduction, Half Day = 50% pay.
-          </p>
+        {/* ================= PAY RULES (admin-editable deduction settings) ================= */}
+        <div className="w-full rounded-3xl border border-blue-100/60 bg-white p-5 shadow-[0_8px_24px_-12px_rgba(30,64,175,0.15)] sm:p-6">
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex items-center gap-3">
+              <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-gradient-to-br from-blue-600 to-sky-500 text-white shadow-sm">
+                <FaCogs />
+              </div>
+              <div>
+                <h3 className="text-[18px] sm:text-[20px] font-extrabold text-slate-900">Pay Rules by Attendance</h3>
+                <p className="text-[13px] text-slate-500 sm:text-[14px]">
+                  Sets how much of a daily wage each status pays. Used by the Attendance, Payroll and Salary pages.
+                </p>
+              </div>
+            </div>
+            {!rulesEditing ? (
+              <button
+                type="button"
+                onClick={openRulesEdit}
+                className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-br from-blue-600 to-sky-500 px-4 py-2.5 text-[14px] font-bold text-white shadow-sm transition hover:shadow-md"
+              >
+                <FaEdit className="text-[13px]" /> Edit
+              </button>
+            ) : (
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  onClick={handleSaveRules}
+                  disabled={savingRules}
+                  className="inline-flex items-center gap-2 rounded-xl bg-emerald-600 px-4 py-2.5 text-[14px] font-bold text-white shadow-sm transition hover:bg-emerald-700 disabled:opacity-50"
+                >
+                  {savingRules ? <FaSpinner className="animate-spin" /> : <FaSave className="text-[13px]" />} Save
+                </button>
+                <button
+                  type="button"
+                  onClick={closeRulesEdit}
+                  disabled={savingRules}
+                  className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-[14px] font-bold text-slate-600 transition hover:bg-slate-50 disabled:opacity-50"
+                >
+                  <FaTimes className="text-[13px]" /> Cancel
+                </button>
+              </div>
+            )}
+          </div>
+
+          <div className="mt-5 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
+            {[
+              { key: "presentPay", label: "Present", hint: "Full day pay" },
+              { key: "latePay", label: "Late", hint: "Pay % of day" },
+              { key: "halfDayPay", label: "Half Day", hint: "Pay % of day" },
+              { key: "absentPay", label: "Absent", hint: "Pay % of day" },
+              { key: "leavePay", label: "On Leave", hint: "Pay % of day" },
+            ].map(({ key, label, hint }) => (
+              <div key={key} className="rounded-2xl border border-blue-100/70 bg-blue-50/40 p-3.5">
+                <p className="text-[12px] font-bold uppercase tracking-wider text-blue-700">{label}</p>
+                <p className="mb-2 text-[11px] text-slate-400">{hint}</p>
+                {rulesEditing ? (
+                  <div className="flex items-center gap-1.5">
+                    <input
+                      type="number"
+                      min="0"
+                      max="100"
+                      value={rulesForm[key]}
+                      onChange={(e) => setRule(key, e.target.value)}
+                      className="h-10 w-full min-w-0 rounded-lg border border-blue-200 bg-white px-2.5 text-[15px] font-bold text-slate-900 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+                    />
+                    <span className="text-[14px] font-bold text-slate-400">%</span>
+                  </div>
+                ) : (
+                  <p className="text-[22px] font-extrabold text-slate-900">
+                    {Number(payRules[key]).toFixed(0)}<span className="text-[14px] font-bold text-slate-400">%</span>
+                  </p>
+                )}
+              </div>
+            ))}
+          </div>
+
+          <div className="mt-4 flex items-start gap-2.5 rounded-2xl border border-blue-100 bg-blue-50 px-4 py-3 text-[13px] leading-relaxed text-slate-600 sm:text-[14px]">
+            <FaInfoCircle className="mt-0.5 flex-shrink-0 text-blue-500" />
+            <p>
+              Holiday &amp; Week Off always pay full. Values are a percentage of the employee's full daily wage
+              (monthly salary ÷ days in month). Changes apply to all attendance-based pay calculations.
+            </p>
+          </div>
         </div>
       </div>
     </div>
