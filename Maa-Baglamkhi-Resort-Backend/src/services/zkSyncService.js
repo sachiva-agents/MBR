@@ -17,6 +17,16 @@ const toTimeHms = (value) => {
   return null
 }
 
+const getAttendanceColumns = async (conn) => {
+  const [rows] = await conn.query(
+    `SELECT COLUMN_NAME
+       FROM information_schema.COLUMNS
+      WHERE TABLE_SCHEMA = DATABASE()
+        AND TABLE_NAME = 'attendance_records'`
+  )
+  return new Set(rows.map((row) => row.COLUMN_NAME))
+}
+
 /**
  * Pull one machine's logs, classify each punch into a shift window, and write
  * the result into attendance_records. Every device id is stored on the row
@@ -51,6 +61,8 @@ async function syncMachine(machine, { from, to, deleteAfter = false, actor = nul
     const conn = await db.getConnection()
     try {
       await conn.beginTransaction()
+      const columns = await getAttendanceColumns(conn)
+      const hasMethod = columns.has('method')
       const [existing] = await conn.query(
         'SELECT id, check_in, check_out FROM attendance_records WHERE employee_id = ? AND date = ? LIMIT 1 FOR UPDATE',
         [employeeId, date]
@@ -64,23 +76,26 @@ async function syncMachine(machine, { from, to, deleteAfter = false, actor = nul
         const keepIn = curIn ? (checkIn && checkIn < curIn ? checkIn : curIn) : checkIn
         const keepOut = curOut ? (checkOut && checkOut > curOut ? checkOut : curOut) : checkOut
 
+        const methodClause = hasMethod ? ", method = 'ZK fingerprint'" : ''
         await conn.query(
           `UPDATE attendance_records
-             SET check_in = COALESCE(?, check_in),
-                 check_out = COALESCE(?, check_out),
-                 status = 'present',
-                 method = 'ZK fingerprint',
-                 notes = CONCAT(IFNULL(notes, ''), IF(notes IS NOT NULL AND ? <> '', ' | ', ''), ?),
-                 updated_at = NOW()
-           WHERE id = ?`,
+              SET check_in = COALESCE(?, check_in),
+                  check_out = COALESCE(?, check_out),
+                  status = 'present'
+                  ${methodClause},
+                  notes = CONCAT(IFNULL(notes, ''), IF(notes IS NOT NULL AND ? <> '', ' | ', ''), ?),
+                  updated_at = NOW()
+            WHERE id = ?`,
           [keepIn, keepOut, notes, notes, record.id]
         )
         updated += 1
       } else {
+        const methodColumns = hasMethod ? ', method' : ''
+        const methodValues = hasMethod ? ", 'ZK fingerprint'" : ''
         const [result] = await conn.query(
           `INSERT INTO attendance_records
-             (employee_id, date, check_in, check_out, status, notes, method, created_at, updated_at)
-           VALUES (?, ?, ?, ?, 'present', ?, 'ZK fingerprint', NOW(), NOW())`,
+             (employee_id, date, check_in, check_out, status, notes${methodColumns}, created_at, updated_at)
+           VALUES (?, ?, ?, ?, 'present', ?${methodValues}, NOW(), NOW())`,
           [employeeId, date, checkIn, checkOut, notes]
         )
         if (result.affectedRows > 0) created += 1
