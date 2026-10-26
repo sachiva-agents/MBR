@@ -1,16 +1,38 @@
-// ZKTeco / ESSL attendance machines speak a line-based packet protocol over
-// TCP (default port 4380). Each packet:
+// ZKTeco / ESSL attendance machines use the binary ZK packet protocol over
+// TCP (usually port 4370; this application keeps the configured port, which
+// may be 4380 on some eSSL installations).
 //
-//   "CMD,<param1>,<param2>,<param3>" + String(checksum("CMD,<param1>,<param2>,<param3>"))
-//
-// where checksum(text) = (sum of every ASCII byte) & 0xFF. The device answers
-// with ACK / NAK followed by its own checksum, then a result line. All
-// commands below target the classic fingerprint machines (V380 / F18 / KQ series).
+// The low-level packet helpers below remain exported for protocol regressions;
+// live device operations use zkteco-js so the binary framing and chunked
+// attendance download match the machine firmware.
 
 const net = require('net')
+const Zkteco = require('zkteco-js')
 
 const ZK_PORT = 4380
 const SOCKET_TIMEOUT_MS = 15000
+
+const createDevice = (machine) =>
+  new Zkteco(
+    machine.machineIp || machine.ip,
+    Number(machine.machinePort || machine.port || ZK_PORT),
+    Number(machine.timeoutMs || SOCKET_TIMEOUT_MS),
+    0
+  )
+
+const toDeviceDate = (value) => {
+  const date = value instanceof Date ? value : new Date(value)
+  if (Number.isNaN(date.getTime())) throw new Error(`Unparseable device timestamp: "${value}"`)
+  const pad = (part) => String(part).padStart(2, '0')
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())} ` +
+    `${pad(date.getHours())}:${pad(date.getMinutes())}:${pad(date.getSeconds())}`
+}
+
+const toDate = (value) => {
+  const parsed = new Date(String(value).replace(' ', 'T'))
+  if (Number.isNaN(parsed.getTime())) throw new Error(`Invalid attendance window timestamp: "${value}"`)
+  return parsed
+}
 
 const pad2 = (value) => String(value).padStart(2, '0')
 
@@ -167,26 +189,53 @@ const zk = {
     return buildPacket('CLEARFP', from, to)
   },
 
-  /** Download attendance logs, optional follow-up delete on the device. */
+  /** Connect and verify that the device answers the binary ZK protocol. */
+  async testConnection(machine) {
+    const device = createDevice(machine)
+    const startedAt = Date.now()
+    try {
+      await device.createSocket()
+      const deviceTime = toDeviceDate(await device.getTime())
+      return {
+        connected: true,
+        deviceTime,
+        latencyMs: Date.now() - startedAt,
+        address: `${machine.machineIp || machine.ip}:${Number(machine.machinePort || machine.port || ZK_PORT)}`
+      }
+    } finally {
+      await device.disconnect().catch(() => {})
+    }
+  },
+
+  /** Download attendance logs, filter by window, and optionally delete them. */
   async pullLogs(machine, { from, to, deleteAfter = false } = {}) {
-    const commands = [
-      this.getTime(),
-      this.getAttendanceLog(from, to)
-    ]
-    if (deleteAfter) commands.push(this.clearLogs(from, to))
+    const device = createDevice(machine)
+    try {
+      await device.createSocket()
+      const machineTime = toDeviceDate(await device.getTime())
+      const response = await device.getAttendances()
+      const start = toDate(from)
+      const end = toDate(to)
+      const rawLogs = (response?.data || [])
+        .map((record) => {
+          const userId = String(record.user_id ?? '').trim()
+          const recordTime = toDeviceDate(record.record_time)
+          return `${userId},0,${record.type ?? 0},${record.state ?? 0},0,${recordTime}`
+        })
+        .filter((record) => {
+          const timestamp = toDate(record.split(',')[5])
+          return timestamp >= start && timestamp <= end
+        })
 
-    const lines = await runCommands({
-      host: machine.machineIp,
-      port: Number(machine.machinePort) || ZK_PORT,
-      commands,
-      timeoutMs: Number(machine.timeoutMs) || SOCKET_TIMEOUT_MS
-    })
-
-    // The first command's reply is the machine clock; the rest are log lines
-    // (or empty when the device holds no records in the window).
-    const machineTime = lines[0] || null
-    const rawLogs = lines.slice(1).filter(Boolean)
-    return { machineTime, rawLogs, machineTimeParsed: machineTime ? parseTimestamp(machineTime) : null }
+      if (deleteAfter) await device.clearAttendanceLog()
+      return {
+        machineTime,
+        rawLogs,
+        machineTimeParsed: parseTimestamp(machineTime)
+      }
+    } finally {
+      await device.disconnect().catch(() => {})
+    }
   },
 
   /**
@@ -194,28 +243,29 @@ const zk = {
    * driftSeconds } — an operator sets the shift split relative to this clock.
    */
   async verifyTime(machine) {
-    const lines = await runCommands({
-      host: machine.machineIp,
-      port: Number(machine.machinePort) || ZK_PORT,
-      commands: [this.getTime()]
-    })
-    const deviceText = lines[0]
-    if (!deviceText) return { deviceTime: null, driftSeconds: null }
-    const device = parseTimestamp(deviceText)
-    const now = new Date()
-    const server = {
-      year: now.getFullYear(),
-      month: now.getMonth() + 1,
-      day: now.getDate(),
-      hour: now.getHours(),
-      minute: now.getMinutes(),
-      second: now.getSeconds()
-    }
-    const toEpoch = (parts) => new Date(Date.UTC(parts.year, parts.month - 1, parts.day, parts.hour, parts.minute, parts.second)).getTime()
-    return {
-      deviceTime: deviceText,
-      serverTime: formatTimestamp(server),
-      driftSeconds: Math.round((toEpoch(device) - toEpoch(server)) / 1000)
+    const device = createDevice(machine)
+    try {
+      await device.createSocket()
+      const deviceText = toDeviceDate(await device.getTime())
+      if (!deviceText) return { deviceTime: null, driftSeconds: null }
+      const deviceParts = parseTimestamp(deviceText)
+      const now = new Date()
+      const server = {
+        year: now.getFullYear(),
+        month: now.getMonth() + 1,
+        day: now.getDate(),
+        hour: now.getHours(),
+        minute: now.getMinutes(),
+        second: now.getSeconds()
+      }
+      const toEpoch = (parts) => new Date(Date.UTC(parts.year, parts.month - 1, parts.day, parts.hour, parts.minute, parts.second)).getTime()
+      return {
+        deviceTime: deviceText,
+        serverTime: formatTimestamp(server),
+        driftSeconds: Math.round((toEpoch(deviceParts) - toEpoch(server)) / 1000)
+      }
+    } finally {
+      await device.disconnect().catch(() => {})
     }
   }
 }

@@ -175,6 +175,19 @@ async function verifyTime(req, res) {
   }
 }
 
+// POST /api/zk/machines/:id/test-connection
+async function testConnection(req, res) {
+  try {
+    await machinesModel.ensureSchema();
+    const machine = await machinesModel.getMachine(Number(req.params.id));
+    if (!machine) return res.status(404).json({ message: "Machine not found" });
+    const result = await zk.testConnection(machine);
+    res.json({ machine: machine.name, ...result });
+  } catch (error) {
+    res.status(error.statusCode || 502).json({ message: error.message, error });
+  }
+}
+
 // POST /api/zk/machines/:id/sync
 async function sync(req, res) {
   try {

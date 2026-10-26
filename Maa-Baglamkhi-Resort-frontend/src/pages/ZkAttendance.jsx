@@ -3,6 +3,7 @@ import {
   FaClock,
   FaFingerprint,
   FaPlus,
+  FaPlug,
   FaSync,
   FaTrash,
   FaTimes,
@@ -22,6 +23,7 @@ const DEFAULT_FORM = {
   port: 4380,
   machineIp: "",
   machinePort: "",
+  machinePassword: "00000000",
   status: "active",
   dayShiftStart: "09:00:00",
   dayShiftEnd: "18:00:00",
@@ -70,6 +72,7 @@ const ZkAttendance = () => {
       port: machine.port,
       machineIp: machine.machineIp,
       machinePort: machine.machinePort,
+      machinePassword: machine.machinePassword || "00000000",
       status: machine.status,
       dayShiftStart: String(machine.dayShiftStart || "09:00:00").slice(0, 5),
       dayShiftEnd: String(machine.dayShiftEnd || "18:00:00").slice(0, 5),
@@ -92,6 +95,7 @@ const ZkAttendance = () => {
       port: Number(form.port) || 4380,
       machineIp: form.machineIp || form.ip,
       machinePort: Number(form.machinePort) || Number(form.port) || 4380,
+      machinePassword: form.machinePassword || "00000000",
       dayShiftStart: form.dayShiftStart,
       dayShiftEnd: form.dayShiftEnd,
       nightShiftStart: form.nightShiftStart,
@@ -139,6 +143,22 @@ const ZkAttendance = () => {
       );
     } catch (err) {
       setError(`Time check failed for ${machine.name}: ${err.response?.data?.message || err.message}`);
+    } finally {
+      setVerifying(null);
+    }
+  };
+
+  const testConnection = async (machine) => {
+    setVerifying(machine.id);
+    setVerifyResult(null);
+    setError("");
+    try {
+      const res = await API.post(`/zk/machines/${machine.id}/test-connection`, {});
+      setVerifyResult(
+        `${machine.name} connected at ${res.data.address} — device clock ${res.data.deviceTime} (${res.data.latencyMs}ms)`
+      );
+    } catch (err) {
+      setError(`Connection failed for ${machine.name}: ${err.response?.data?.message || err.message}`);
     } finally {
       setVerifying(null);
     }
@@ -226,6 +246,9 @@ const ZkAttendance = () => {
             <label>Machine port (optional override)
               <input type="number" value={form.machinePort} onChange={setField("machinePort")} placeholder="defaults to port" style={inputStyle} />
             </label>
+            <label>Communication key
+              <input type="password" value={form.machinePassword} onChange={setField("machinePassword")} placeholder="00000000" style={inputStyle} />
+            </label>
             <label>Day shift start<input type="time" value={form.dayShiftStart} onChange={setField("dayShiftStart")} style={inputStyle} /></label>
             <label>Day shift end<input type="time" value={form.dayShiftEnd} onChange={setField("dayShiftEnd")} style={inputStyle} /></label>
             <label>Night shift start<input type="time" value={form.nightShiftStart} onChange={setField("nightShiftStart")} style={inputStyle} /></label>
@@ -282,6 +305,9 @@ const ZkAttendance = () => {
                     <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
                       <ActionBtn onClick={() => syncMachine(m)} disabled={syncing === m.id} accent>
                         <FaSync /> {syncing === m.id ? "Syncing…" : "Sync"}
+                      </ActionBtn>
+                      <ActionBtn onClick={() => testConnection(m)} disabled={verifying === m.id}>
+                        <FaPlug /> {verifying === m.id ? "Connecting…" : "Test connection"}
                       </ActionBtn>
                       <ActionBtn onClick={() => verifyTime(m)} disabled={verifying === m.id}>
                         <FaClock /> {verifying === m.id ? "Checking…" : "Check time"}
