@@ -101,7 +101,9 @@ function ReportTable({ columns, rows, summary }) {
           {Object.entries(summary).map(([k, v]) => (
             <div key={k} className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2">
               <div className="text-[11px] font-bold uppercase tracking-wide text-slate-400">{k.replace(/_/g, " ")}</div>
-              <div className="text-sm font-bold text-slate-800">{typeof v === "number" ? formatINR(v) : String(v)}</div>
+              <div className="text-sm font-bold text-slate-800">
+                {typeof v === "number" || isMoneyCol(k) ? formatINR(typeof v === "number" ? v : Number(v) || 0) : String(v)}
+              </div>
             </div>
           ))}
         </div>
@@ -118,7 +120,9 @@ function ReportTable({ columns, rows, summary }) {
               {rows.map((row, i) => (
                 <tr key={i} className="border-t border-slate-100">
                   {columns.map((c) => (
-                    <td key={c} className="px-3 py-2 text-slate-700">{row[c] === null || row[c] === undefined || row[c] === "" ? <span className="text-slate-300">—</span> : row[c]}</td>
+                    <td key={c} className="px-3 py-2 text-slate-700">
+                      {renderCell(row[c], c) === "—" ? <span className="text-slate-300">—</span> : renderCell(row[c], c)}
+                    </td>
                   ))}
                 </tr>
               ))}
@@ -130,13 +134,27 @@ function ReportTable({ columns, rows, summary }) {
   );
 }
 
-// Normalises a cell for print / summary output: never prints NaN, undefined or empty.
-function formatCell(value) {
+// A column whose name is a money field (total, amount, value, balance, ...) so it
+// can render as a real Rs. figure. Count/label-ish names are excluded on purpose.
+const MONEY_TOKENS = ["amount", "total", "paid", "balance", "debit", "credit", "due", "revenue", "cost", "refund", "value", "price", "cash", "card", "upi", "netbanking", "expense", "payroll", "income", "charges", "extra", "rate", "sales"];
+const NONMONEY_TOKENS = ["guest", "pax", "count", "qty", "quantity", "occupancy", "nights", "stays", "rating", "stock", "reorder", "inhouse"];
+function isMoneyCol(name) {
+  // Total-ness wins when it is not part of a count word (total_pax stays a count).
+  const n = String(name || "").toLowerCase().replace(/[_\-\s]/g, "").replace("totalpax", "pax");
+  if (NONMONEY_TOKENS.some((t) => n.includes(t))) return false;
+  return MONEY_TOKENS.some((t) => n.includes(t));
+}
+
+// Renders one cell for screen + print: money fields as Rs. en-IN, other numbers
+// with Indian grouping, booleans as Yes/No, empty/NaN as an em dash. Never a raw NaN.
+function renderCell(value, col) {
   if (value === null || value === undefined || value === "") return "—";
-  if (typeof value === "number") {
-    return Number.isFinite(value) ? value.toLocaleString("en-IN", { maximumFractionDigits: 2 }) : "—";
+  if (isMoneyCol(col)) {
+    const num = Number(value);
+    return Number.isFinite(num) ? formatINR(num) : "—";
   }
   if (typeof value === "boolean") return value ? "Yes" : "No";
+  if (typeof value === "number") return Number.isFinite(value) ? value.toLocaleString("en-IN", { maximumFractionDigits: 2 }) : "—";
   const text = String(value).trim();
   if (text === "" || text === "null" || text === "undefined" || text.toLowerCase() === "nan") return "—";
   return text;
@@ -160,7 +178,7 @@ function PrintView({ data }) {
               {Object.entries(rep.summary).map(([k, v]) => (
                 <span key={k} className="rp-chip">
                   <b>{k.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase())}</b>{" "}
-                  {typeof v === "number" ? formatINR(v) : formatCell(v)}
+                  {(typeof v === "number" || isMoneyCol(k)) ? formatINR(typeof v === "number" ? v : Number(v) || 0) : String(v)}
                 </span>
               ))}
             </div>
@@ -177,7 +195,7 @@ function PrintView({ data }) {
               <tbody>
                 {rep.rows.map((row, i) => (
                   <tr key={i}>
-                    {rep.columns.map((c) => <td key={c}>{formatCell(row[c])}</td>)}
+                    {rep.columns.map((c) => <td key={c}>{renderCell(row[c], c)}</td>)}
                   </tr>
                 ))}
               </tbody>
