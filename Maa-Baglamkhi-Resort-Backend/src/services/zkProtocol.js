@@ -12,13 +12,27 @@ const Zkteco = require('zkteco-js')
 const ZK_PORT = 4380
 const SOCKET_TIMEOUT_MS = 15000
 
-const createDevice = (machine) =>
-  new Zkteco(
-    machine.machineIp || machine.ip,
-    Number(machine.machinePort || machine.port || ZK_PORT),
-    Number(machine.timeoutMs || SOCKET_TIMEOUT_MS),
-    0
-  )
+const connectDevice = async (machine) => {
+  const configuredPort = Number(machine.machinePort || machine.port || ZK_PORT)
+  const ports = [...new Set([configuredPort, configuredPort === 4380 ? 4370 : null].filter(Boolean))]
+  let lastError = null
+  for (const port of ports) {
+    const device = new Zkteco(
+      machine.machineIp || machine.ip,
+      port,
+      Number(machine.timeoutMs || SOCKET_TIMEOUT_MS),
+      0
+    )
+    try {
+      await device.createSocket()
+      return { device, port }
+    } catch (error) {
+      lastError = error
+      await device.disconnect().catch(() => {})
+    }
+  }
+  throw lastError || new Error('device connection failed')
+}
 
 const toDeviceDate = (value) => {
   const date = value instanceof Date ? value : new Date(value)
@@ -191,16 +205,16 @@ const zk = {
 
   /** Connect and verify that the device answers the binary ZK protocol. */
   async testConnection(machine) {
-    const device = createDevice(machine)
     const startedAt = Date.now()
+    const connection = await connectDevice(machine)
+    const { device, port } = connection
     try {
-      await device.createSocket()
       const deviceTime = toDeviceDate(await device.getTime())
       return {
         connected: true,
         deviceTime,
         latencyMs: Date.now() - startedAt,
-        address: `${machine.machineIp || machine.ip}:${Number(machine.machinePort || machine.port || ZK_PORT)}`
+        address: `${machine.machineIp || machine.ip}:${port}`
       }
     } finally {
       await device.disconnect().catch(() => {})
@@ -209,9 +223,8 @@ const zk = {
 
   /** Download attendance logs, filter by window, and optionally delete them. */
   async pullLogs(machine, { from, to, deleteAfter = false } = {}) {
-    const device = createDevice(machine)
+    const { device } = await connectDevice(machine)
     try {
-      await device.createSocket()
       const machineTime = toDeviceDate(await device.getTime())
       const response = await device.getAttendances()
       const start = toDate(from)
@@ -243,9 +256,8 @@ const zk = {
    * driftSeconds } — an operator sets the shift split relative to this clock.
    */
   async verifyTime(machine) {
-    const device = createDevice(machine)
+    const { device } = await connectDevice(machine)
     try {
-      await device.createSocket()
       const deviceText = toDeviceDate(await device.getTime())
       if (!deviceText) return { deviceTime: null, driftSeconds: null }
       const deviceParts = parseTimestamp(deviceText)

@@ -158,7 +158,8 @@ const ZkAttendance = () => {
         `${machine.name} connected at ${res.data.address} — device clock ${res.data.deviceTime} (${res.data.latencyMs}ms)`
       );
     } catch (err) {
-      setError(`Connection failed for ${machine.name}: ${err.response?.data?.message || err.message}`);
+      const detail = err.response?.data?.message || err.message;
+      setError(`Connection failed for ${machine.name}: ${detail}`);
     } finally {
       setVerifying(null);
     }

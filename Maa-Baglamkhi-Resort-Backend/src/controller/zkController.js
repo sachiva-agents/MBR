@@ -177,14 +177,20 @@ async function verifyTime(req, res) {
 
 // POST /api/zk/machines/:id/test-connection
 async function testConnection(req, res) {
+  let machine = null;
   try {
     await machinesModel.ensureSchema();
-    const machine = await machinesModel.getMachine(Number(req.params.id));
+    machine = await machinesModel.getMachine(Number(req.params.id));
     if (!machine) return res.status(404).json({ message: "Machine not found" });
     const result = await zk.testConnection(machine);
     res.json({ machine: machine.name, ...result });
   } catch (error) {
-    res.status(error.statusCode || 502).json({ message: error.message, error });
+    const target = `${machine?.machine_ip || machine?.ip}:${machine?.machine_port || machine?.port || 4380}`;
+    console.error(`[zk test-connection] ${target}`, error);
+    res.status(error.statusCode || 502).json({
+      message: `Could not connect to ${target}: ${error.message || "device handshake failed"}`,
+      code: error.code || error.err?.code || null,
+    });
   }
 }
 
