@@ -228,6 +228,7 @@ module.exports = {
   listMachines,
   updateMachine,
   deleteMachine,
+  testConnection,
   verifyTime,
   sync,
   pulls,
