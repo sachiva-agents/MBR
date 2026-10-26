@@ -27,6 +27,27 @@ const getAttendanceColumns = async (conn) => {
   return new Set(rows.map((row) => row.COLUMN_NAME))
 }
 
+const resolveEmployeeId = async (conn, deviceUserId) => {
+  const deviceId = String(deviceUserId || '').trim()
+  if (!deviceId) return null
+
+  const [byCode] = await conn.query(
+    'SELECT id FROM employees WHERE employee_code = ? LIMIT 1',
+    [deviceId]
+  )
+  if (byCode[0]) return Number(byCode[0].id)
+
+  if (/^\d+$/.test(deviceId)) {
+    const [byId] = await conn.query(
+      'SELECT id FROM employees WHERE id = ? LIMIT 1',
+      [Number(deviceId)]
+    )
+    if (byId[0]) return Number(byId[0].id)
+  }
+
+  return null
+}
+
 /**
  * Pull one machine's logs, classify each punch into a shift window, and write
  * the result into attendance_records. Every device id is stored on the row
@@ -50,9 +71,10 @@ async function syncMachine(machine, { from, to, deleteAfter = false, actor = nul
 
   let created = 0
   let updated = 0
+  const skippedDeviceIds = new Set()
 
   for (const group of groups) {
-    const employeeId = Number(group.employeeId)
+    const deviceUserId = String(group.employeeId)
     const notes = `ZK ${machine.name} device ${group.employeeId} (${group.shift} shift)`
     const checkIn = toTimeCol(group.checkIn)
     const checkOut = toTimeCol(group.checkOut)
@@ -61,6 +83,12 @@ async function syncMachine(machine, { from, to, deleteAfter = false, actor = nul
     const conn = await db.getConnection()
     try {
       await conn.beginTransaction()
+      const employeeId = await resolveEmployeeId(conn, deviceUserId)
+      if (!employeeId) {
+        skippedDeviceIds.add(deviceUserId)
+        await conn.rollback()
+        continue
+      }
       const columns = await getAttendanceColumns(conn)
       const hasMethod = columns.has('method')
       const [existing] = await conn.query(
@@ -109,7 +137,7 @@ async function syncMachine(machine, { from, to, deleteAfter = false, actor = nul
     }
   }
 
-  const status = created + updated > 0 ? 'ok' : 'empty'
+  const status = created + updated > 0 ? (skippedDeviceIds.size ? 'partial' : 'ok') : (skippedDeviceIds.size ? 'unmatched' : 'empty')
   await machinesModel.markSynced(machine.id, status)
   await machinesModel.recordPull(machine.id, {
     rawLogs: rawLogs.slice(0, 500),
@@ -126,6 +154,8 @@ async function syncMachine(machine, { from, to, deleteAfter = false, actor = nul
     shiftsWritten: created + updated,
     recordsCreated: created,
     recordsUpdated: updated,
+    recordsSkipped: skippedDeviceIds.size,
+    skippedDeviceIds: [...skippedDeviceIds],
     window: { from, to },
     syncedAt: new Date().toISOString(),
     actor: actor || null

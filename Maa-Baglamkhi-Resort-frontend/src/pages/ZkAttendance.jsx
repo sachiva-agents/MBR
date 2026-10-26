@@ -174,7 +174,10 @@ const ZkAttendance = () => {
       setLastSync(res.data);
       setNotice(
         `Synced ${machine.name}: ${res.data.logsPulled} punches, ` +
-          `${res.data.recordsCreated} new records, ${res.data.recordsUpdated} updated.`
+          `${res.data.recordsCreated} new records, ${res.data.recordsUpdated} updated` +
+          (res.data.recordsSkipped
+            ? `. ${res.data.recordsSkipped} unmatched device users skipped (${(res.data.skippedDeviceIds || []).join(", ")}).`
+            : ".")
       );
       loadMachines();
     } catch (err) {
