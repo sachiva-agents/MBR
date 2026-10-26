@@ -225,34 +225,48 @@ export default function MenuRecipeManager() {
     }
   };
 
+  const cardCls =
+    "rounded-[20px] border border-[#E7EEFC] bg-white shadow-[0_18px_40px_-16px_rgba(11,30,77,0.18)]";
+  const headingCls = "text-[19px] sm:text-[21px] font-bold text-[#0B1E4D] m-0";
+  const subCls = "mt-1 text-[13.5px] sm:text-[14.5px] text-[#5B6B8C] m-0";
+  const fieldLabelCls =
+    "mb-1.5 block text-[12px] sm:text-[13px] font-semibold uppercase tracking-[0.04em] text-[#5B6B8C]";
+  const inputCls =
+    "w-full rounded-[14px] border border-[#DCE6FB] bg-white px-3.5 py-2.5 text-[14px] sm:text-[15px] font-medium text-[#0F1E3D] shadow-[0_1px_2px_rgba(15,27,51,0.04)] outline-none transition-all duration-250 focus:border-[#1D4ED8] focus:ring-4 focus:ring-[#1D4ED8]/12";
+  const primaryBtnCls =
+    "inline-flex items-center justify-center gap-2 rounded-[14px] px-5 py-3 text-[14px] sm:text-[15px] font-semibold text-white transition-all duration-250 active:scale-[0.97] disabled:opacity-60";
+  const primaryBtnStyle = { backgroundImage: "linear-gradient(135deg,#1D4ED8 0%,#2563EB 55%,#38BDF8 100%)" };
+  const ghostBtnCls =
+    "inline-flex items-center justify-center gap-2 rounded-[14px] border border-[#DCE6FB] bg-white px-5 py-3 text-[14px] sm:text-[15px] font-semibold text-[#33456B] transition-all duration-250 hover:bg-[#F0F5FF] hover:border-[#B9CDF7] disabled:opacity-60";
+
   if (loading) {
     return (
-      <div className="rounded-3xl border border-slate-200 bg-white p-6 text-sm text-slate-500 shadow-sm">
+      <div className={`${cardCls} p-6 text-[14px] sm:text-[15px] text-[#5B6B8C]`}>
         Loading menu recipe module...
       </div>
     );
   }
 
   return (
-    <div className="space-y-6">
-      <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
-        <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
+    <div className="space-y-5 sm:space-y-6">
+      <div className={`${cardCls} p-5 sm:p-6`}>
+        <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
           <div>
-            <h2 className="text-xl font-semibold text-slate-900">Menu Recipe Manager</h2>
-            <p className="mt-1 text-sm text-slate-500">
+            <h2 className={headingCls}>Menu Recipe Manager</h2>
+            <p className={subCls}>
               Inventory ingredients ko menu items ke saath map karke per-order consumption preview kar sakte hain.
             </p>
           </div>
 
-          <div className="grid gap-3 sm:grid-cols-[minmax(260px,1fr)_120px]">
+          <div className="grid w-full gap-3 sm:w-auto sm:grid-cols-[minmax(260px,1fr)_120px]">
             <label className="block">
-              <span className="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-500">
+              <span className={fieldLabelCls}>
                 Menu Item
               </span>
               <select
                 value={selectedMenuItemId}
                 onChange={(event) => setSelectedMenuItemId(event.target.value)}
-                className="w-full rounded-xl border border-slate-300 px-3 py-2.5 text-sm"
+                className={inputCls}
               >
                 <option value="">Select menu item</option>
                 {menuItems.map((item) => (
@@ -264,7 +278,7 @@ export default function MenuRecipeManager() {
             </label>
 
             <label className="block">
-              <span className="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-500">
+              <span className={fieldLabelCls}>
                 Order Qty
               </span>
               <input
@@ -272,21 +286,21 @@ export default function MenuRecipeManager() {
                 min="1"
                 value={orderQuantity}
                 onChange={(event) => setOrderQuantity(event.target.value)}
-                className="w-full rounded-xl border border-slate-300 px-3 py-2.5 text-sm"
+                className={inputCls}
               />
             </label>
           </div>
         </div>
 
         {selectedMenuItem ? (
-          <div className="mt-4 flex flex-wrap gap-3 text-sm text-slate-600">
-            <span className="rounded-full bg-slate-100 px-3 py-1.5">
+          <div className="mt-4 flex flex-wrap gap-2.5 text-[13px] sm:text-[14px] text-[#33456B]">
+            <span className="rounded-full border border-[#CFE0FC] bg-[#EAF2FE] px-3.5 py-1.5 font-semibold text-[#1D4ED8]">
               Category: {selectedMenuItem.category || "Uncategorized"}
             </span>
-            <span className="rounded-full bg-slate-100 px-3 py-1.5">
+            <span className="rounded-full border border-[#CFE0FC] bg-[#EAF2FE] px-3.5 py-1.5 font-semibold text-[#1D4ED8]">
               Price: Rs. {formatNumber(selectedMenuItem.price, 2)}
             </span>
-            <span className="rounded-full bg-slate-100 px-3 py-1.5">
+            <span className="rounded-full border border-[#CFE0FC] bg-[#EAF2FE] px-3.5 py-1.5 font-semibold text-[#1D4ED8]">
               Status: {selectedMenuItem.status || "Available"}
             </span>
           </div>
@@ -294,23 +308,23 @@ export default function MenuRecipeManager() {
       </div>
 
       {notice ? (
-        <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700">
+        <div className="rounded-[14px] border border-emerald-200 bg-emerald-50 px-4 py-3 text-[14px] font-medium text-emerald-700">
           {notice}
         </div>
       ) : null}
       {error ? (
-        <div className="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
+        <div className="rounded-[14px] border border-red-200 bg-red-50 px-4 py-3 text-[14px] font-medium text-red-700">
           {error}
         </div>
       ) : null}
 
-      <div className="grid gap-6 xl:grid-cols-[minmax(0,1.4fr)_380px]">
-        <div className="space-y-6">
-          <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
+      <div className="grid gap-5 sm:gap-6 lg:grid-cols-[minmax(0,1.4fr)_380px]">
+        <div className="space-y-5 sm:space-y-6">
+          <div className={`${cardCls} p-5 sm:p-6`}>
             <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
               <div>
-                <h3 className="text-lg font-semibold text-slate-900">Recipe Rows</h3>
-                <p className="mt-1 text-sm text-slate-500">
+                <h3 className={headingCls}>Recipe Rows</h3>
+                <p className={subCls}>
                   Quantity per serving define karo. Save karne par puri recipe replace hogi.
                 </p>
               </div>
@@ -318,7 +332,7 @@ export default function MenuRecipeManager() {
               <button
                 type="button"
                 onClick={addRecipeRow}
-                className="rounded-full border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700"
+                className={ghostBtnCls}
               >
                 Add Row
               </button>
@@ -331,11 +345,11 @@ export default function MenuRecipeManager() {
                 return (
                   <div
                     key={`${row.id || "new"}-${index}`}
-                    className="rounded-2xl border border-slate-200 bg-slate-50 p-4"
+                    className="rounded-[16px] border border-[#EEF3FD] bg-[#F8FAFE] p-4"
                   >
-                    <div className="grid gap-3 lg:grid-cols-[minmax(180px,1.5fr)_110px_110px_120px]">
+                    <div className="grid gap-3 sm:grid-cols-[minmax(180px,1.5fr)_110px_110px_120px]">
                       <label>
-                        <span className="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-500">
+                        <span className={fieldLabelCls}>
                           Ingredient
                         </span>
                         <select
@@ -343,7 +357,7 @@ export default function MenuRecipeManager() {
                           onChange={(event) =>
                             handleRowChange(index, "inventoryItemId", event.target.value)
                           }
-                          className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm"
+                          className={inputCls}
                         >
                           <option value="">Select ingredient</option>
                           {inventoryItems.map((item) => (
@@ -355,7 +369,7 @@ export default function MenuRecipeManager() {
                       </label>
 
                       <label>
-                        <span className="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-500">
+                        <span className={fieldLabelCls}>
                           Quantity
                         </span>
                         <input
@@ -364,24 +378,24 @@ export default function MenuRecipeManager() {
                           step="0.001"
                           value={row.quantity}
                           onChange={(event) => handleRowChange(index, "quantity", event.target.value)}
-                          className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm"
+                          className={inputCls}
                         />
                       </label>
 
                       <label>
-                        <span className="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-500">
+                        <span className={fieldLabelCls}>
                           Unit
                         </span>
                         <input
                           type="text"
                           value={row.unit}
                           onChange={(event) => handleRowChange(index, "unit", event.target.value)}
-                          className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm"
+                          className={inputCls}
                         />
                       </label>
 
                       <label>
-                        <span className="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-500">
+                        <span className={fieldLabelCls}>
                           Wastage %
                         </span>
                         <input
@@ -392,47 +406,48 @@ export default function MenuRecipeManager() {
                           onChange={(event) =>
                             handleRowChange(index, "wastagePercent", event.target.value)
                           }
-                          className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm"
+                          className={inputCls}
                         />
                       </label>
                     </div>
 
-                    <div className="mt-3 grid gap-3 lg:grid-cols-[minmax(0,1fr)_180px_auto]">
+                    <div className="mt-3 grid gap-3 sm:grid-cols-[minmax(0,1fr)_180px_auto]">
                       <label>
-                        <span className="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-500">
+                        <span className={fieldLabelCls}>
                           Notes
                         </span>
                         <input
                           type="text"
                           value={row.notes}
                           onChange={(event) => handleRowChange(index, "notes", event.target.value)}
-                          className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm"
+                          className={inputCls}
                           placeholder="Optional prep note"
                         />
                       </label>
 
-                      <label className="flex items-end gap-2 rounded-2xl border border-slate-200 bg-white px-4 py-3">
+                      <label className="flex items-end gap-2 rounded-[14px] border border-[#DCE6FB] bg-white px-4 py-3">
                         <input
                           type="checkbox"
                           checked={row.isOptional}
                           onChange={(event) =>
                             handleRowChange(index, "isOptional", event.target.checked)
                           }
+                          className="accent-[#1D4ED8]"
                         />
-                        <span className="text-sm font-medium text-slate-700">Optional item</span>
+                        <span className="text-[13.5px] sm:text-[14px] font-semibold text-[#33456B]">Optional item</span>
                       </label>
 
                       <button
                         type="button"
                         onClick={() => removeRecipeRow(index)}
-                        className="rounded-xl border border-rose-200 bg-rose-50 px-4 py-2.5 text-sm font-medium text-rose-700"
+                        className="rounded-[10px] border border-red-200 bg-red-50 px-4 py-2.5 text-[12.5px] sm:text-[13.5px] font-semibold text-red-600 transition-all duration-250 hover:bg-red-100"
                       >
                         Remove
                       </button>
                     </div>
 
                     {linkedInventory ? (
-                      <div className="mt-3 text-xs text-slate-500">
+                      <div className="mt-3 text-[12px] sm:text-[13px] text-[#5B6B8C]">
                         Current stock: {formatNumber(linkedInventory.stock)} {linkedInventory.unit || row.unit || "unit"}
                         {linkedInventory.branch ? ` | Branch: ${linkedInventory.branch}` : ""}
                       </div>
@@ -447,7 +462,8 @@ export default function MenuRecipeManager() {
                 type="button"
                 onClick={handleSave}
                 disabled={saving}
-                className="rounded-full bg-slate-900 px-5 py-2.5 text-sm font-medium text-white disabled:opacity-60"
+                className={primaryBtnCls}
+                style={primaryBtnStyle}
               >
                 {saving ? "Saving..." : "Save Recipe"}
               </button>
@@ -455,23 +471,23 @@ export default function MenuRecipeManager() {
                 type="button"
                 onClick={handlePreview}
                 disabled={previewLoading}
-                className="rounded-full border border-sky-200 bg-sky-50 px-5 py-2.5 text-sm font-medium text-sky-700 disabled:opacity-60"
+                className={ghostBtnCls}
               >
                 {previewLoading ? "Previewing..." : "Preview Consumption"}
               </button>
             </div>
           </div>
 
-          <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
+          <div className={`${cardCls} p-5 sm:p-6`}>
             <div className="mb-4">
-              <h3 className="text-lg font-semibold text-slate-900">Consumption Preview</h3>
-              <p className="mt-1 text-sm text-slate-500">
+              <h3 className={headingCls}>Consumption Preview</h3>
+              <p className={subCls}>
                 Selected order quantity ke hisaab se kitna stock consume hoga.
               </p>
             </div>
 
             {!previewRows.length ? (
-              <div className="rounded-2xl border border-dashed border-slate-300 px-4 py-8 text-center text-sm text-slate-400">
+              <div className="rounded-[14px] border border-dashed border-[#B9CDF7] bg-[#F5F9FF] px-4 py-8 text-center text-[13.5px] sm:text-[14.5px] text-[#8B98B8]">
                 Preview run karne par stock impact yahan dikhega.
               </div>
             ) : (
@@ -479,27 +495,27 @@ export default function MenuRecipeManager() {
                 {previewRows.map((row) => (
                   <div
                     key={`${row.recipeRowId}-${row.inventoryItemId}`}
-                    className="rounded-2xl border border-slate-200 bg-slate-50 p-4"
+                    className="rounded-[16px] border border-[#EEF3FD] bg-[#F8FAFE] p-4"
                   >
                     <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                       <div>
-                        <div className="font-semibold text-slate-900">{row.inventoryItemName}</div>
-                        <div className="mt-1 text-xs text-slate-500">
+                        <div className="text-[14px] sm:text-[15px] font-bold text-[#0B1E4D]">{row.inventoryItemName}</div>
+                        <div className="mt-1 text-[12px] sm:text-[13px] text-[#5B6B8C]">
                           Required {formatNumber(row.requiredQuantity)} {row.unit || "unit"} | Current{" "}
                           {formatNumber(row.currentStock)} {row.unit || "unit"}
                         </div>
                       </div>
                       <div
-                        className={`rounded-full px-3 py-1 text-xs font-semibold ${
+                        className={`rounded-full px-3 py-1 text-[12px] sm:text-[13px] font-bold ${
                           row.enoughStock
                             ? "bg-emerald-100 text-emerald-700"
-                            : "bg-rose-100 text-rose-700"
+                            : "bg-red-100 text-red-700"
                         }`}
                       >
                         {row.enoughStock ? "Enough stock" : "Low stock"}
                       </div>
                     </div>
-                    <div className="mt-2 text-xs text-slate-500">
+                    <div className="mt-2 text-[12px] sm:text-[13px] text-[#5B6B8C]">
                       Remaining after use: {formatNumber(row.remainingStock)} {row.unit || "unit"}
                       {row.notes ? ` | ${row.notes}` : ""}
                     </div>
@@ -510,11 +526,11 @@ export default function MenuRecipeManager() {
           </div>
         </div>
 
-        <div className="space-y-6">
-          <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
+        <div className="space-y-5 sm:space-y-6">
+          <div className={`${cardCls} p-5 sm:p-6`}>
             <div className="mb-4">
-              <h3 className="text-lg font-semibold text-slate-900">Recipe Catalogue</h3>
-              <p className="mt-1 text-sm text-slate-500">
+              <h3 className={headingCls}>Recipe Catalogue</h3>
+              <p className={subCls}>
                 Existing saved recipes ka quick overview.
               </p>
             </div>
@@ -529,21 +545,22 @@ export default function MenuRecipeManager() {
                       key={item.id}
                       type="button"
                       onClick={() => setSelectedMenuItemId(String(item.id))}
-                      className={`flex w-full items-center justify-between rounded-2xl border px-4 py-3 text-left transition ${
+                      className={`flex w-full items-center justify-between rounded-[16px] border px-4 py-3 text-left transition-all duration-200 ${
                         isSelected
-                          ? "border-slate-900 bg-slate-900 text-white"
-                          : "border-slate-200 bg-slate-50 text-slate-700"
+                          ? "border-transparent text-white shadow-[0_10px_24px_-8px_rgba(29,78,216,0.55)]"
+                          : "border-[#E7EEFC] bg-[#F8FAFE] text-[#33456B] hover:border-[#B9CDF7] hover:bg-[#F0F5FF]"
                       }`}
+                      style={isSelected ? { backgroundImage: "linear-gradient(135deg,#1D4ED8 0%,#2563EB 55%,#38BDF8 100%)" } : undefined}
                     >
                       <div className="min-w-0">
-                        <div className="truncate text-sm font-semibold">{item.name}</div>
-                        <div className={`mt-1 text-xs ${isSelected ? "text-slate-200" : "text-slate-500"}`}>
+                        <div className="truncate text-[14px] sm:text-[15px] font-bold">{item.name}</div>
+                        <div className={`mt-1 text-[12px] sm:text-[13px] ${isSelected ? "text-white/80" : "text-[#5B6B8C]"}`}>
                           {item.category || "Uncategorized"}
                         </div>
                       </div>
                       <div
-                        className={`rounded-full px-3 py-1 text-xs font-semibold ${
-                          isSelected ? "bg-white/15 text-white" : "bg-white text-slate-600"
+                        className={`shrink-0 rounded-full px-3 py-1 text-[12px] sm:text-[13px] font-bold ${
+                          isSelected ? "bg-white/20 text-white" : "bg-white text-[#1D4ED8] ring-1 ring-[#CFE0FC]"
                         }`}
                       >
                         {rowCount} rows
@@ -552,17 +569,17 @@ export default function MenuRecipeManager() {
                   );
                 })
               ) : (
-                <div className="rounded-2xl border border-dashed border-slate-300 px-4 py-8 text-center text-sm text-slate-400">
+                <div className="rounded-[14px] border border-dashed border-[#B9CDF7] bg-[#F5F9FF] px-4 py-8 text-center text-[13.5px] sm:text-[14.5px] text-[#8B98B8]">
                   No menu items found.
                 </div>
               )}
             </div>
           </div>
 
-          <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
+          <div className={`${cardCls} p-5 sm:p-6`}>
             <div className="mb-4">
-              <h3 className="text-lg font-semibold text-slate-900">Recent Consumption</h3>
-              <p className="mt-1 text-sm text-slate-500">
+              <h3 className={headingCls}>Recent Consumption</h3>
+              <p className={subCls}>
                 Last 10 inventory consumption logs.
               </p>
             </div>
@@ -570,19 +587,19 @@ export default function MenuRecipeManager() {
             <div className="space-y-3">
               {consumptionLog.length ? (
                 consumptionLog.map((row) => (
-                  <div key={row.id} className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
-                    <div className="text-sm font-semibold text-slate-900">{row.menuItemName}</div>
-                    <div className="mt-1 text-xs text-slate-500">
+                  <div key={row.id} className="rounded-[16px] border border-[#EEF3FD] bg-[#F8FAFE] p-4">
+                    <div className="text-[14px] sm:text-[15px] font-bold text-[#0B1E4D]">{row.menuItemName}</div>
+                    <div className="mt-1 text-[12px] sm:text-[13px] text-[#5B6B8C]">
                       {row.inventoryItemName} consumed {formatNumber(row.consumedQuantity)} {row.unit || "unit"}
                     </div>
-                    <div className="mt-1 text-xs text-slate-500">
+                    <div className="mt-1 text-[12px] sm:text-[13px] text-[#5B6B8C]">
                       Ref: {row.referenceType || "manual"}
                       {row.referenceId ? ` / ${row.referenceId}` : ""}
                     </div>
                   </div>
                 ))
               ) : (
-                <div className="rounded-2xl border border-dashed border-slate-300 px-4 py-8 text-center text-sm text-slate-400">
+                <div className="rounded-[14px] border border-dashed border-[#B9CDF7] bg-[#F5F9FF] px-4 py-8 text-center text-[13.5px] sm:text-[14.5px] text-[#8B98B8]">
                   Consumption log empty hai.
                 </div>
               )}
