@@ -39,6 +39,7 @@ import ReconciliationDataPage from "./pages/ReconciliationDataPage";
 import AccountsCustomerInvoices from "./pages/AccountsCustomerInvoices";
 import AccountsDashboard from "./pages/AccountsDashboard";
 import AuditLogs from "./pages/AuditLogs";
+import BackupSettings from "./pages/BackupSettings";
 import Assignment from "./pages/Assignments";
 import AssignmentNotification from "./pages/assignmentnotification";
 import Attendance from "./pages/Attendance";
@@ -337,6 +338,7 @@ function AppRoutes({ isAuthenticated, setIsAuthenticated, protect }) {
           <Route path="/waiter-delivery" element={protect(<WaiterDeliveryQueue />, ROLES.RESTAURANT)} />
           <Route path="/user" element={protect(<User />, ROLES.ADMIN_ONLY)} />
           <Route path="/print" element={protect(<PrintManagement />, ["admin"])} />
+          <Route path="/backup-settings" element={protect(<BackupSettings />, ROLES.ADMIN_ONLY)} />
           <Route path="/invoice/:customerId" element={protect(<CustomerInvoicePage />, ROLES.ALL)} />
 
           <Route path="/reports/suite" element={protect(<ReportsSuite />, ROLES.REPORTS)} />
