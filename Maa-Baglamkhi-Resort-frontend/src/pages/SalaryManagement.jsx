@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import {
   FaMoneyBillWave,
   FaEdit,
@@ -10,6 +10,7 @@ import {
   FaUsers,
   FaInfoCircle,
   FaUserSlash,
+  FaSearch,
 } from "react-icons/fa";
 import API from "../api";
 
@@ -97,18 +98,70 @@ const SalaryManagement = () => {
   const [savingId, setSavingId] = useState(null);
   const [msg, setMsg] = useState({ type: "", text: "" });
   const [page, setPage] = useState(1);
+  const [search, setSearch] = useState("");
+  const [filterRole, setFilterRole] = useState("");
+  const [filterDesignation, setFilterDesignation] = useState("");
+  const [sortBy, setSortBy] = useState("none");
 
-  /* ================= PAGINATION ================= */
+  /* ================= FILTERS ================= */
 
-  const totalPages = Math.max(1, Math.ceil(employees.length / RECORDS_PER_PAGE));
+  const designations = useMemo(() => {
+    const set = new Set(
+      employees.map((emp) => emp.designation).filter(Boolean)
+    );
+    return Array.from(set).sort((a, b) => a.localeCompare(b));
+  }, [employees]);
+
+  const filteredEmployees = useMemo(() => {
+    let rows = employees;
+
+    const q = search.trim().toLowerCase();
+    if (q) {
+      rows = rows.filter((emp) =>
+        [emp.name, emp.email, emp.designation, emp.role]
+          .filter(Boolean)
+          .some((v) => String(v).toLowerCase().includes(q))
+      );
+    }
+    if (filterRole) {
+      rows = rows.filter((emp) => String(emp.role || "").toLowerCase() === filterRole);
+    }
+    if (filterDesignation) {
+      rows = rows.filter((emp) => emp.designation === filterDesignation);
+    }
+    if (sortBy === "name") {
+      rows = [...rows].sort((a, b) => String(a.name || "").localeCompare(String(b.name || "")));
+    } else if (sortBy === "salary_asc") {
+      rows = [...rows].sort((a, b) => parseFloat(a.salary || 0) - parseFloat(b.salary || 0));
+    } else if (sortBy === "salary_desc") {
+      rows = [...rows].sort((a, b) => parseFloat(b.salary || 0) - parseFloat(a.salary || 0));
+    }
+    return rows;
+  }, [employees, search, filterRole, filterDesignation, sortBy]);
+
+  const hasActiveFilters = Boolean(search || filterRole || filterDesignation) || sortBy !== "none";
+
+  const clearAllFilters = () => {
+    setSearch("");
+    setFilterRole("");
+    setFilterDesignation("");
+    setSortBy("none");
+  };
+
+  const totalPages = Math.max(1, Math.ceil(filteredEmployees.length / RECORDS_PER_PAGE));
   const safePage = Math.min(page, totalPages);
-  const pagedEmployees = employees.slice(
+  const pagedEmployees = filteredEmployees.slice(
     (safePage - 1) * RECORDS_PER_PAGE,
     safePage * RECORDS_PER_PAGE
   );
-  const shownFrom = employees.length ? (safePage - 1) * RECORDS_PER_PAGE + 1 : 0;
-  const shownTo = Math.min(safePage * RECORDS_PER_PAGE, employees.length);
+  const shownFrom = filteredEmployees.length ? (safePage - 1) * RECORDS_PER_PAGE + 1 : 0;
+  const shownTo = Math.min(safePage * RECORDS_PER_PAGE, filteredEmployees.length);
   const pageItems = buildPageItems(safePage, totalPages);
+
+  // Reset to page 1 whenever any filter or search changes.
+  useEffect(() => {
+    setPage(1);
+  }, [search, filterRole, filterDesignation, sortBy]);
 
   const goToPage = (next) => {
     setPage(next);
@@ -197,18 +250,89 @@ const SalaryManagement = () => {
             </p>
           </div>
 
-          <div className="flex w-full items-center gap-4 rounded-2xl border border-blue-100/70 bg-white px-5 py-4 shadow-[0_8px_24px_-8px_rgba(37,99,235,0.18)] transition-transform duration-300 hover:-translate-y-0.5 sm:w-auto sm:px-6 sm:py-5 lg:self-auto">
-            <div className="flex h-14 w-14 flex-shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-blue-600 to-sky-500 text-white shadow-md">
-              <FaUsers className="text-2xl" />
+          <div className="flex w-full flex-col gap-4 rounded-2xl border border-blue-100/70 bg-white px-5 py-4 shadow-[0_8px_24px_-8px_rgba(37,99,235,0.18)] transition-transform duration-300 hover:-translate-y-0.5 sm:flex-row sm:items-center sm:px-6 sm:py-5 lg:self-auto">
+            <div className="flex items-center gap-4 sm:w-auto">
+              <div className="flex h-14 w-14 flex-shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-blue-600 to-sky-500 text-white shadow-md">
+                <FaUsers className="text-2xl" />
+              </div>
+              <div>
+                <p className="text-[13px] font-bold uppercase tracking-wider text-slate-400">
+                  Employees
+                </p>
+                <p className="text-[28px] sm:text-[40px] font-extrabold leading-none text-slate-900">
+                  {hasActiveFilters ? `${filteredEmployees.length} of ${employees.length}` : employees.length}
+                </p>
+              </div>
             </div>
-            <div>
-              <p className="text-[13px] font-bold uppercase tracking-wider text-slate-400">
-                Total Employees
-              </p>
-              <p className="text-[28px] sm:text-[40px] font-extrabold leading-none text-slate-900">
-                {employees.length}
-              </p>
+
+            {/* Search */}
+            <div className="flex min-w-0 flex-1 items-center gap-2.5 rounded-xl border border-blue-100 bg-blue-50/50 px-4 py-3 focus-within:border-blue-400 focus-within:ring-4 focus-within:ring-blue-100 sm:min-w-[240px]">
+              <FaSearch className="shrink-0 text-[15px] text-blue-400" />
+              <input
+                type="text"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder="Search by name, email, role or designation…"
+                className="w-full min-w-0 bg-transparent text-[14px] font-semibold text-slate-800 outline-none placeholder:font-medium placeholder:text-slate-400 sm:text-[15px]"
+              />
+              {search && (
+                <button
+                  type="button"
+                  onClick={() => setSearch("")}
+                  className="shrink-0 rounded-full p-1 text-slate-400 transition hover:bg-blue-100 hover:text-slate-600"
+                  aria-label="Clear search"
+                >
+                  <FaTimes className="text-[12px]" />
+                </button>
+              )}
             </div>
+
+            {/* Filters */}
+            <div className="grid flex-1 grid-cols-1 gap-2.5 sm:grid-cols-3 sm:gap-2">
+              <select
+                value={filterRole}
+                onChange={(e) => setFilterRole(e.target.value)}
+                aria-label="Filter by role"
+                className="h-full w-full cursor-pointer rounded-xl border border-blue-100 bg-blue-50/50 px-3.5 py-3 text-[13px] font-semibold text-slate-700 outline-none transition focus:border-blue-400 focus:ring-4 focus:ring-blue-100 sm:text-[14px]"
+              >
+                <option value="">All Roles</option>
+                {ROLES.map((r) => (
+                  <option key={r} value={r} className="capitalize">{r}</option>
+                ))}
+              </select>
+              <select
+                value={filterDesignation}
+                onChange={(e) => setFilterDesignation(e.target.value)}
+                aria-label="Filter by designation"
+                className="h-full w-full cursor-pointer rounded-xl border border-blue-100 bg-blue-50/50 px-3.5 py-3 text-[13px] font-semibold text-slate-700 outline-none transition focus:border-blue-400 focus:ring-4 focus:ring-blue-100 sm:text-[14px]"
+              >
+                <option value="">All Designations</option>
+                {designations.map((d) => (
+                  <option key={d} value={d}>{d}</option>
+                ))}
+              </select>
+              <select
+                value={sortBy}
+                onChange={(e) => setSortBy(e.target.value)}
+                aria-label="Sort employees"
+                className="h-full w-full cursor-pointer rounded-xl border border-blue-100 bg-blue-50/50 px-3.5 py-3 text-[13px] font-semibold text-slate-700 outline-none transition focus:border-blue-400 focus:ring-4 focus:ring-blue-100 sm:text-[14px]"
+              >
+                <option value="none">Default Order</option>
+                <option value="name">Sort: Name A→Z</option>
+                <option value="salary_desc">Sort: Salary High→Low</option>
+                <option value="salary_asc">Sort: Salary Low→High</option>
+              </select>
+            </div>
+
+            {hasActiveFilters && (
+              <button
+                type="button"
+                onClick={clearAllFilters}
+                className="inline-flex items-center justify-center gap-1.5 rounded-xl border border-red-100 bg-red-50 px-4 py-3 text-[13px] font-bold text-red-600 transition hover:bg-red-100 sm:py-3"
+              >
+                <FaTimes className="text-[11px]" /> Clear
+              </button>
+            )}
           </div>
         </div>
 
@@ -367,16 +491,20 @@ const SalaryManagement = () => {
                   );
                 })}
 
-                {employees.length === 0 && !loading && (
+                {filteredEmployees.length === 0 && !loading && (
                   <tr>
                     <td colSpan={7} className="p-0">
                       <div className="flex flex-col items-center justify-center gap-3 py-16 px-6 text-center">
                         <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-blue-50 text-blue-400">
-                          <FaUserSlash className="text-3xl" />
+                          {hasActiveFilters ? <FaSearch className="text-3xl" /> : <FaUserSlash className="text-3xl" />}
                         </div>
-                        <p className="text-[21px] font-bold text-slate-800">No employees found</p>
+                        <p className="text-[21px] font-bold text-slate-800">
+                          {hasActiveFilters ? "No matching employees" : "No employees found"}
+                        </p>
                         <p className="max-w-sm text-[17px] text-slate-500">
-                          Employees will appear here once they are added to the system.
+                          {hasActiveFilters
+                            ? "No results for the current search or filters. Try clearing them."
+                            : "Employees will appear here once they are added to the system."}
                         </p>
                       </div>
                     </td>
@@ -401,7 +529,7 @@ const SalaryManagement = () => {
               onPageChange={goToPage}
               shownFrom={shownFrom}
               shownTo={shownTo}
-              totalRecords={employees.length}
+              totalRecords={filteredEmployees.length}
             />
           )}
         </div>
@@ -415,19 +543,23 @@ const SalaryManagement = () => {
             </div>
           )}
 
-          {!loading && employees.length === 0 && (
+          {!loading && filteredEmployees.length === 0 && (
             <div className="flex w-full flex-col items-center justify-center gap-3 rounded-3xl border border-blue-100/60 bg-white px-6 py-14 text-center shadow-sm">
               <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-blue-50 text-blue-400">
-                <FaUserSlash className="text-3xl" />
+                {search ? <FaSearch className="text-3xl" /> : <FaUserSlash className="text-3xl" />}
               </div>
-              <p className="text-[18px] font-bold text-slate-800">No employees found</p>
+              <p className="text-[18px] font-bold text-slate-800">
+                {hasActiveFilters ? "No matching employees" : "No employees found"}
+              </p>
               <p className="max-w-sm text-[15px] text-slate-500">
-                Employees will appear here once they are added to the system.
+                {hasActiveFilters
+                  ? "No results for the current search or filters. Try clearing them."
+                  : "Employees will appear here once they are added to the system."}
               </p>
             </div>
           )}
 
-          {!loading && employees.length > 0 && (
+          {!loading && filteredEmployees.length > 0 && (
             <div className="w-full rounded-3xl border border-blue-100/60 bg-white px-1 shadow-sm">
               <div className="w-full space-y-4 p-3 sm:p-4">
               {pagedEmployees.map((emp, idx) => {
@@ -568,7 +700,7 @@ const SalaryManagement = () => {
                   onPageChange={goToPage}
                   shownFrom={shownFrom}
                   shownTo={shownTo}
-                  totalRecords={employees.length}
+                  totalRecords={filteredEmployees.length}
                 />
               )}
             </div>
