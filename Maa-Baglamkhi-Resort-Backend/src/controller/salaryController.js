@@ -77,11 +77,16 @@ exports.setEmployeeSalary = async (req, res) => {
   }
 };
 
+// Shape each raw STAFF_QUERY row for the frontend: it expects `name`
+// (not `full_name`) and `salary` (not `base_salary`). Without this the
+// Salary page rendered an empty name cell and every salary as 0.00.
+const shapeStaffRow = (row) => ({ ...row, salary: row.base_salary, name: row.full_name });
+
 // ADMIN: Get all employees with their salaries. GET /api/salary
 exports.getAllEmployeesWithSalary = async (req, res) => {
   try {
     const [rows] = await db.query(`${STAFF_QUERY} ORDER BY u.name`);
-    return res.json(rows || []);
+    return res.json((rows || []).map(shapeStaffRow));
   } catch (err) {
     console.error("getAllEmployeesWithSalary error:", err.message || err);
     return res.status(500).json({ message: "Failed to fetch salaries", error: err.message });
