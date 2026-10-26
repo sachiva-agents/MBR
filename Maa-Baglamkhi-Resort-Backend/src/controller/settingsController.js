@@ -168,6 +168,11 @@ const updateSettings = async (patch = {}) => {
 let payPctCache = { at: 0, value: null };
 const PAY_PCT_CACHE_MS = 30_000;
 
+// Test hook: force the next getPayPercentages() to re-read settings.
+exports.__resetPayPctCache = () => {
+  payPctCache = { at: 0, value: null };
+};
+
 exports.getPayPercentages = async () => {
   // Fractions of the full daily wage, matching DEFAULT_SETTINGS above.
   const defaults = {
