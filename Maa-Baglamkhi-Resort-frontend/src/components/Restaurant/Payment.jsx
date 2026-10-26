@@ -1848,6 +1848,7 @@ const recalculateInvoiceTotals = (items) => {
           sourceBillId: paymentResponse.billId || null,
           entityType,
           entityRef: invoice.table,
+          table: invoice.table,
           outlet: invoice.outlet || "Main Kitchen",
           branch: invoice.branch || "Main Branch",
           subtotal: Number(invoice.subtotal || 0),

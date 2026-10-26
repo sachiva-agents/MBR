@@ -1427,7 +1427,9 @@ exports.payBill = async (req, res) => {
   try {
     const actor = getRequestActor(req);
     const billId = req.body?.billId || req.params?.id || null;
-    if (!billId) {
+    const tokenId = Number(req.body?.tokenId || 0) || null;
+    const tableNumber = String(req.body?.tableNumber || req.body?.table || "").trim();
+    if (!billId && !tokenId && !tableNumber) {
       return res.status(400).json({ message: "billId is required" });
     }
 
