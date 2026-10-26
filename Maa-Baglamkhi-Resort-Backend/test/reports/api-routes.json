@@ -97,7 +97,7 @@
     "testPath": "/api/accounts/restaurant-billing",
     "code": 200,
     "verdict": "PASS",
-    "body": "[{\"0\":{\"id\":263,\"reference\":\"BILL-263\",\"table_number\":\"WP-1792925225482\",\"tableNumber\":\"WP-1792925225482\",\"customer_name\":null,\"customerName\":null,\"phone\":null,\"subtotal\":\"0.00\",\"tax_amount\":\"0.00\",\"d"
+    "body": "[{\"0\":{\"id\":264,\"reference\":\"BILL-264\",\"table_number\":\"WP-1792999634665\",\"tableNumber\":\"WP-1792999634665\",\"customer_name\":null,\"customerName\":null,\"phone\":null,\"subtotal\":\"0.00\",\"tax_amount\":\"0.00\",\"d"
   },
   {
     "method": "POST",
@@ -127,7 +127,7 @@
     "testPath": "/api/accounts/extended-summary",
     "code": 200,
     "verdict": "PASS",
-    "body": "{\"pendingBankReconciliation\":5,\"pettyCashBalance\":13618,\"gstPendingPayable\":100,\"vendorOutstanding\":0,\"openPurchaseOrders\":79,\"payrollTotal\":290000,\"profitCenters\":[{\"centerName\":\"Hotel\",\"net\":0},{\"ce"
+    "body": "{\"pendingBankReconciliation\":5,\"pettyCashBalance\":13618,\"gstPendingPayable\":100,\"vendorOutstanding\":0,\"openPurchaseOrders\":80,\"payrollTotal\":290000,\"profitCenters\":[{\"centerName\":\"Hotel\",\"net\":0},{\"ce"
   },
   {
     "method": "GET",
@@ -137,7 +137,7 @@
     "testPath": "/api/accounts/reconciliation/summary",
     "code": 200,
     "verdict": "PASS",
-    "body": "{\"totalBankIn\":52846,\"totalBankOut\":0,\"matchedAmount\":0,\"unmatchedAmount\":4903,\"partialAmount\":0,\"reconciledAmount\":0,\"totalItems\":114,\"unmatchedItems\":114,\"partialItems\":0,\"matchedItems\":0}"
+    "body": "{\"totalBankIn\":52846,\"totalBankOut\":0,\"matchedAmount\":0,\"unmatchedAmount\":4903,\"partialAmount\":0,\"reconciledAmount\":0,\"totalItems\":115,\"unmatchedItems\":115,\"partialItems\":0,\"matchedItems\":0}"
   },
   {
     "method": "GET",
@@ -227,7 +227,7 @@
     "testPath": "/api/accounts/petty-cash",
     "code": 200,
     "verdict": "PASS",
-    "body": "[{\"0\":{\"id\":796,\"entry_date\":\"2026-10-25\",\"entry_type\":\"In\",\"payment_type\":\"payment\",\"category\":\"cash\",\"description\":\"Cash payment #796\",\"amount\":\"0.00\",\"approved_by\":null,\"notes\":null},\"1\":{\"id\":794,"
+    "body": "[{\"0\":{\"id\":798,\"entry_date\":\"2026-10-26\",\"entry_type\":\"In\",\"payment_type\":\"payment\",\"category\":\"cash\",\"description\":\"Cash payment #798\",\"amount\":\"0.00\",\"approved_by\":null,\"notes\":null},\"1\":{\"id\":796,"
   },
   {
     "method": "POST",
@@ -347,7 +347,7 @@
     "testPath": "/api/accounts/purchase-orders",
     "code": 200,
     "verdict": "PASS",
-    "body": "[{\"0\":{\"id\":227,\"po_number\":\"PO-WP-1792925227152\",\"vendor_name\":\"Write Probe Vendor\",\"order_date\":\"2026-10-24T18:30:00.000Z\",\"expected_date\":null,\"total_amount\":\"125.00\",\"status\":\"Draft\",\"notes\":\"Writ"
+    "body": "[{\"0\":{\"id\":229,\"po_number\":\"PO-WP-1792999635217\",\"vendor_name\":\"Write Probe Vendor\",\"order_date\":\"2026-10-25T18:30:00.000Z\",\"expected_date\":null,\"total_amount\":\"125.00\",\"status\":\"Draft\",\"notes\":\"Writ"
   },
   {
     "method": "POST",
@@ -697,7 +697,7 @@
     "testPath": "/api/audit-logs",
     "code": 200,
     "verdict": "PASS",
-    "body": "[{\"id\":120606,\"user_id\":94,\"user_name\":null,\"user_role\":null,\"action\":\"update\",\"module\":\"unknown\",\"endpoint\":\"/api/attendance/999999999\",\"http_method\":\"PATCH\",\"request_data\":\"{\\\"params\\\":{\\\"id\\\":\\\"999"
+    "body": "[{\"id\":121170,\"user_id\":94,\"user_name\":null,\"user_role\":null,\"action\":\"update\",\"module\":\"unknown\",\"endpoint\":\"/api/attendance/999999999\",\"http_method\":\"PATCH\",\"request_data\":\"{\\\"params\\\":{\\\"id\\\":\\\"999"
   },
   {
     "method": "POST",
@@ -735,7 +735,7 @@
     "testPath": "/api/backups/settings",
     "code": 200,
     "verdict": "PASS",
-    "body": "{\"enabled\":false,\"scheduleType\":\"none\",\"dailyTime\":\"03:00\",\"weeklyDay\":0,\"customCron\":\"\",\"destDir\":\"/var/folders/lj/tq1b22_577d0lw2b8507_bph0000gn/T/mbr-backups-gate\",\"lastRunAt\":\"2026-10-26T06:47:57."
+    "body": "{\"enabled\":false,\"scheduleType\":\"none\",\"dailyTime\":\"03:00\",\"weeklyDay\":0,\"customCron\":\"\",\"destDir\":\"/var/folders/lj/tq1b22_577d0lw2b8507_bph0000gn/T/mbr-backups-gate\",\"lastRunAt\":\"2026-10-26T07:26:28."
   },
   {
     "method": "PUT",
@@ -764,7 +764,7 @@
     "testPath": "/api/backups/list",
     "code": 200,
     "verdict": "PASS",
-    "body": "{\"destDir\":\"/var/folders/lj/tq1b22_577d0lw2b8507_bph0000gn/T/mbr-backups-gate\",\"files\":[]}"
+    "body": "{\"destDir\":\"/var/folders/lj/tq1b22_577d0lw2b8507_bph0000gn/T/mbr-backups-gate\",\"files\":[{\"name\":\"backup_20261026_125624.sql\",\"sizeBytes\":272371441,\"mtimeISO\":\"2026-10-26T07:26:28.846Z\"}]}"
   },
   {
     "method": "POST",
@@ -1802,7 +1802,7 @@
     "testPath": "/api/chef",
     "code": 200,
     "verdict": "PASS",
-    "body": "[{\"id\":161,\"table_number\":\"WP-1792925225482\",\"waiter_name\":\"Write Probe\",\"entity_type\":\"Table\",\"items\":[{\"name\":\"Write Probe Dish\",\"qty\":2,\"rate\":100}],\"status\":\"Ready\",\"token_status\":\"Active\",\"kot_no"
+    "body": "[{\"id\":162,\"table_number\":\"WP-1792999634665\",\"waiter_name\":\"Write Probe\",\"entity_type\":\"Table\",\"items\":[{\"name\":\"Write Probe Dish\",\"qty\":2,\"rate\":100}],\"status\":\"Ready\",\"token_status\":\"Active\",\"kot_no"
   },
   {
     "method": "GET",
@@ -1812,7 +1812,7 @@
     "testPath": "/api/chef/orders",
     "code": 200,
     "verdict": "PASS",
-    "body": "[{\"id\":161,\"table_number\":\"WP-1792925225482\",\"waiter_name\":\"Write Probe\",\"entity_type\":\"Table\",\"items\":[{\"name\":\"Write Probe Dish\",\"qty\":2,\"rate\":100}],\"status\":\"Ready\",\"token_status\":\"Active\",\"kot_no"
+    "body": "[{\"id\":162,\"table_number\":\"WP-1792999634665\",\"waiter_name\":\"Write Probe\",\"entity_type\":\"Table\",\"items\":[{\"name\":\"Write Probe Dish\",\"qty\":2,\"rate\":100}],\"status\":\"Ready\",\"token_status\":\"Active\",\"kot_no"
   },
   {
     "method": "PUT",
@@ -1862,7 +1862,7 @@
     "testPath": "/api/chef/notifications",
     "code": 200,
     "verdict": "PASS",
-    "body": "[{\"id\":894,\"user_id\":null,\"user_role\":null,\"type\":\"general\",\"title\":\"\",\"message\":\"\",\"data\":null,\"is_read\":0,\"read_at\":null,\"created_at\":\"2026-10-26T06:51:00.000Z\",\"updated_at\":\"2026-10-26T06:51:00.000"
+    "body": "[{\"id\":901,\"user_id\":null,\"user_role\":\"housekeeping\",\"type\":\"assignment_new\",\"title\":\"Assigned Task assigned · Room ANG500\",\"message\":\"Write probe cleaningRoom ANG500. Priority: normal.\",\"data\":\"{\\\"as"
   },
   {
     "method": "POST",
@@ -1892,7 +1892,7 @@
     "testPath": "/api/chef/notifications",
     "code": 200,
     "verdict": "PASS",
-    "body": "{\"success\":true,\"id\":896}"
+    "body": "{\"success\":true,\"id\":904}"
   },
   {
     "method": "DELETE",
@@ -2272,7 +2272,7 @@
     "testPath": "/api/housekeeping/logs",
     "code": 200,
     "verdict": "PASS",
-    "body": "[{\"id\":322,\"room_id\":null,\"roomNo\":\"999999999\",\"assignment_id\":null,\"assignee\":\"No Housekeeper\",\"guest_status\":null,\"oldStatus\":null,\"final_status\":\"Vacant Dirty\",\"newStatus\":\"Vacant Dirty\",\"verified_"
+    "body": "[{\"id\":324,\"room_id\":null,\"roomNo\":\"ANG500\",\"assignment_id\":null,\"assignee\":\"Tarun HK\",\"guest_status\":\"Dirty\",\"oldStatus\":\"Dirty\",\"final_status\":\"Dirty\",\"newStatus\":\"Dirty\",\"verified_by_user_id\":null,"
   },
   {
     "method": "GET",
@@ -2282,7 +2282,7 @@
     "testPath": "/api/housekeeping/notifications",
     "code": 200,
     "verdict": "PASS",
-    "body": "[{\"id\":65,\"roomId\":null,\"roomNo\":\"ANG500\",\"assignedTo\":null,\"receptionist\":\"Admin User\",\"message\":\"Write probe message\",\"taskLabel\":\"Room Cleaning\",\"dueAt\":null,\"status\":\"New\",\"completedAt\":null,\"sent"
+    "body": "[{\"id\":66,\"roomId\":null,\"roomNo\":\"ANG500\",\"assignedTo\":null,\"receptionist\":\"Admin User\",\"message\":\"Write probe message\",\"taskLabel\":\"Room Cleaning\",\"dueAt\":null,\"status\":\"New\",\"completedAt\":null,\"sent"
   },
   {
     "method": "POST",
@@ -2382,7 +2382,7 @@
     "testPath": "/api/housekeeping/amenities",
     "code": 200,
     "verdict": "PASS",
-    "body": "[{\"id\":313,\"room_id\":null,\"room_no\":null,\"category\":\"General\",\"item_name\":\"Item\",\"quantity\":1,\"unit_cost\":\"0.00\",\"total_cost\":\"0.00\",\"notes\":null,\"logged_by\":\"Staff\",\"created_at\":\"2026-10-26T06:50:57."
+    "body": "[{\"id\":315,\"room_id\":null,\"room_no\":\"ANG500\",\"category\":\"General\",\"item_name\":\"Item\",\"quantity\":1,\"unit_cost\":\"0.00\",\"total_cost\":\"0.00\",\"notes\":null,\"logged_by\":\"Staff\",\"created_at\":\"2026-10-26T07:27"
   },
   {
     "method": "POST",
@@ -2392,7 +2392,7 @@
     "testPath": "/api/housekeeping/amenities",
     "code": 200,
     "verdict": "PASS",
-    "body": "{\"message\":\"Amenity logged\",\"id\":314}"
+    "body": "{\"message\":\"Amenity logged\",\"id\":316}"
   },
   {
     "method": "DELETE",
@@ -2502,7 +2502,7 @@
     "testPath": "/api/housekeeping/costing",
     "code": 200,
     "verdict": "PASS",
-    "body": "[{\"id\":174,\"room_id\":null,\"room_no\":null,\"staff_cost\":\"0.00\",\"linen_cost\":\"0.00\",\"toiletrie_cost\":\"0.00\",\"misc_cost\":\"0.00\",\"total_cost\":\"0.00\",\"logged_by\":\"Staff\",\"created_at\":\"2026-10-26T06:50:58.00"
+    "body": "[{\"id\":175,\"room_id\":null,\"room_no\":null,\"staff_cost\":\"0.00\",\"linen_cost\":\"0.00\",\"toiletrie_cost\":\"0.00\",\"misc_cost\":\"0.00\",\"total_cost\":\"0.00\",\"logged_by\":\"Staff\",\"created_at\":\"2026-10-26T07:26:17.00"
   },
   {
     "method": "POST",
@@ -2512,7 +2512,7 @@
     "testPath": "/api/housekeeping/costing",
     "code": 200,
     "verdict": "PASS",
-    "body": "{\"message\":\"Cost logged\",\"id\":175}"
+    "body": "{\"message\":\"Cost logged\",\"id\":176}"
   },
   {
     "method": "GET",
@@ -2662,7 +2662,7 @@
     "testPath": "/api/inventory/reports",
     "code": 200,
     "verdict": "PASS",
-    "body": "[{\"id\":69,\"itemId\":900149,\"itemName\":\"WriteProbeItem 1792925227152\",\"referenceType\":\"chef_issue\",\"referenceId\":69,\"direction\":\"OUT\",\"quantity\":\"1.00\",\"unit\":\"pcs\",\"vendorName\":null,\"locationName\":\"Wri"
+    "body": "[{\"id\":70,\"itemId\":900150,\"itemName\":\"WriteProbeItem 1792999635217\",\"referenceType\":\"chef_issue\",\"referenceId\":70,\"direction\":\"OUT\",\"quantity\":\"1.00\",\"unit\":\"pcs\",\"vendorName\":null,\"locationName\":\"Wri"
   },
   {
     "method": "GET",
@@ -2692,7 +2692,7 @@
     "testPath": "/api/inventory/waste",
     "code": 200,
     "verdict": "PASS",
-    "body": "[{\"id\":137,\"itemId\":900149,\"itemName\":\"WriteProbeItem 1792925227152\",\"quantity\":\"2.00\",\"unit\":\"pcs\",\"reason\":\"write probe\",\"store\":null,\"remarks\":null,\"date\":null,\"createdBy\":\"system\",\"createdAt\":\"202"
+    "body": "[{\"id\":138,\"itemId\":900150,\"itemName\":\"WriteProbeItem 1792999635217\",\"quantity\":\"2.00\",\"unit\":\"pcs\",\"reason\":\"write probe\",\"store\":null,\"remarks\":null,\"date\":null,\"createdBy\":\"system\",\"createdAt\":\"202"
   },
   {
     "method": "POST",
@@ -2732,7 +2732,7 @@
     "testPath": "/api/inventory/purchase-orders",
     "code": 200,
     "verdict": "PASS",
-    "body": "[{\"id\":148,\"poNumber\":\"PO-WP-1792925227152\",\"vendor\":\"Write Probe Vendor\",\"itemName\":\"WriteProbeItem 1792925227152\",\"quantity\":\"5.00\",\"unit\":null,\"rate\":\"25.00\",\"expectedDate\":null,\"status\":\"Draft\",\"c"
+    "body": "[{\"id\":149,\"poNumber\":\"PO-WP-1792999635217\",\"vendor\":\"Write Probe Vendor\",\"itemName\":\"WriteProbeItem 1792999635217\",\"quantity\":\"5.00\",\"unit\":null,\"rate\":\"25.00\",\"expectedDate\":null,\"status\":\"Draft\",\"c"
   },
   {
     "method": "GET",
@@ -2862,7 +2862,7 @@
     "testPath": "/api/inventory/stock-ledger",
     "code": 200,
     "verdict": "PASS",
-    "body": "[{\"id\":69,\"itemId\":900149,\"itemName\":\"WriteProbeItem 1792925227152\",\"referenceType\":\"chef_issue\",\"referenceId\":69,\"direction\":\"OUT\",\"quantity\":\"1.00\",\"unit\":\"pcs\",\"vendorName\":null,\"locationName\":\"Wri"
+    "body": "[{\"id\":70,\"itemId\":900150,\"itemName\":\"WriteProbeItem 1792999635217\",\"referenceType\":\"chef_issue\",\"referenceId\":70,\"direction\":\"OUT\",\"quantity\":\"1.00\",\"unit\":\"pcs\",\"vendorName\":null,\"locationName\":\"Wri"
   },
   {
     "method": "GET",
@@ -2912,7 +2912,7 @@
     "testPath": "/api/inventory/transfers",
     "code": 200,
     "verdict": "PASS",
-    "body": "[{\"id\":153,\"itemId\":null,\"itemName\":\"WriteProbeItem 1792925227152\",\"fromStore\":\"Write Probe A\",\"toStore\":\"Write Probe B\",\"quantity\":\"1.00\",\"unit\":\"pcs\",\"approvedBy\":null,\"date\":null,\"notes\":null},{\"id"
+    "body": "[{\"id\":154,\"itemId\":null,\"itemName\":\"WriteProbeItem 1792999635217\",\"fromStore\":\"Write Probe A\",\"toStore\":\"Write Probe B\",\"quantity\":\"1.00\",\"unit\":\"pcs\",\"approvedBy\":null,\"date\":null,\"notes\":null},{\"id"
   },
   {
     "method": "POST",
@@ -2952,7 +2952,7 @@
     "testPath": "/api/inventory/chef-issues",
     "code": 200,
     "verdict": "PASS",
-    "body": "[{\"id\":69,\"itemId\":900149,\"itemName\":\"WriteProbeItem 1792925227152\",\"quantityIssued\":\"1.00\",\"quantityReturned\":\"0.00\",\"unit\":\"pcs\",\"chefName\":\"Write Probe Chef\",\"chefId\":null,\"purpose\":null,\"status\":\""
+    "body": "[{\"id\":70,\"itemId\":900150,\"itemName\":\"WriteProbeItem 1792999635217\",\"quantityIssued\":\"1.00\",\"quantityReturned\":\"0.00\",\"unit\":\"pcs\",\"chefName\":\"Write Probe Chef\",\"chefId\":null,\"purpose\":null,\"status\":\""
   },
   {
     "method": "POST",
@@ -3182,7 +3182,7 @@
     "testPath": "/api/kitchen",
     "code": 200,
     "verdict": "PASS",
-    "body": "[{\"id\":161,\"table_number\":\"WP-1792925225482\",\"waiter_name\":\"Write Probe\",\"entity_type\":\"Table\",\"items\":[{\"name\":\"Write Probe Dish\",\"qty\":2,\"rate\":100}],\"status\":\"Ready\",\"token_status\":\"Active\",\"kot_no"
+    "body": "[{\"id\":162,\"table_number\":\"WP-1792999634665\",\"waiter_name\":\"Write Probe\",\"entity_type\":\"Table\",\"items\":[{\"name\":\"Write Probe Dish\",\"qty\":2,\"rate\":100}],\"status\":\"Ready\",\"token_status\":\"Active\",\"kot_no"
   },
   {
     "method": "GET",
@@ -3192,7 +3192,7 @@
     "testPath": "/api/kitchen/orders",
     "code": 200,
     "verdict": "PASS",
-    "body": "[{\"id\":161,\"table_number\":\"WP-1792925225482\",\"waiter_name\":\"Write Probe\",\"entity_type\":\"Table\",\"items\":[{\"name\":\"Write Probe Dish\",\"qty\":2,\"rate\":100}],\"status\":\"Ready\",\"token_status\":\"Active\",\"kot_no"
+    "body": "[{\"id\":162,\"table_number\":\"WP-1792999634665\",\"waiter_name\":\"Write Probe\",\"entity_type\":\"Table\",\"items\":[{\"name\":\"Write Probe Dish\",\"qty\":2,\"rate\":100}],\"status\":\"Ready\",\"token_status\":\"Active\",\"kot_no"
   },
   {
     "method": "PUT",
@@ -3342,7 +3342,7 @@
     "testPath": "/api/notifications",
     "code": 200,
     "verdict": "PASS",
-    "body": "[{\"id\":896,\"user_id\":null,\"user_role\":null,\"type\":\"general\",\"title\":\"\",\"message\":\"\",\"data\":null,\"is_read\":0,\"read_at\":null,\"created_at\":\"2026-10-26T07:26:15.000Z\",\"updated_at\":\"2026-10-26T07:26:15.000"
+    "body": "[{\"id\":904,\"user_id\":null,\"user_role\":null,\"type\":\"general\",\"title\":\"\",\"message\":\"\",\"data\":null,\"is_read\":0,\"read_at\":null,\"created_at\":\"2026-10-26T07:33:47.000Z\",\"updated_at\":\"2026-10-26T07:33:47.000"
   },
   {
     "method": "GET",
@@ -3352,7 +3352,7 @@
     "testPath": "/api/notification",
     "code": 200,
     "verdict": "PASS",
-    "body": "[{\"id\":896,\"user_id\":null,\"user_role\":null,\"type\":\"general\",\"title\":\"\",\"message\":\"\",\"data\":null,\"is_read\":0,\"read_at\":null,\"created_at\":\"2026-10-26T07:26:15.000Z\",\"updated_at\":\"2026-10-26T07:26:15.000"
+    "body": "[{\"id\":904,\"user_id\":null,\"user_role\":null,\"type\":\"general\",\"title\":\"\",\"message\":\"\",\"data\":null,\"is_read\":0,\"read_at\":null,\"created_at\":\"2026-10-26T07:33:47.000Z\",\"updated_at\":\"2026-10-26T07:33:47.000"
   },
   {
     "method": "POST",
@@ -3402,7 +3402,7 @@
     "testPath": "/api/notifications",
     "code": 200,
     "verdict": "PASS",
-    "body": "{\"success\":true,\"id\":897}"
+    "body": "{\"success\":true,\"id\":905}"
   },
   {
     "method": "POST",
@@ -3412,7 +3412,7 @@
     "testPath": "/api/notification",
     "code": 200,
     "verdict": "PASS",
-    "body": "{\"success\":true,\"id\":898}"
+    "body": "{\"success\":true,\"id\":906}"
   },
   {
     "method": "DELETE",
@@ -3452,7 +3452,7 @@
     "testPath": "/api/payment",
     "code": 200,
     "verdict": "PASS",
-    "body": "[{\"id\":796,\"booking_id\":null,\"bill_id\":263,\"invoice_id\":null,\"banquet_booking_id\":null,\"amount\":\"0.00\",\"payment_method_id\":2,\"payment_type\":\"payment\",\"reference_no\":null,\"transaction_details\":null,\"re"
+    "body": "[{\"id\":798,\"booking_id\":null,\"bill_id\":264,\"invoice_id\":null,\"banquet_booking_id\":null,\"amount\":\"0.00\",\"payment_method_id\":2,\"payment_type\":\"payment\",\"reference_no\":null,\"transaction_details\":null,\"re"
   },
   {
     "method": "GET",
@@ -3614,7 +3614,7 @@
     "testPath": "/api/reports",
     "code": 200,
     "verdict": "PASS",
-    "body": "{\"totalRooms\":0,\"hotelBookings\":167,\"accountsTransactions\":115,\"banquetBookings\":3,\"restaurantBills\":21,\"attendanceRecords\":20}"
+    "body": "{\"totalRooms\":0,\"hotelBookings\":167,\"accountsTransactions\":116,\"banquetBookings\":3,\"restaurantBills\":21,\"attendanceRecords\":20}"
   },
   {
     "method": "GET",
@@ -3624,7 +3624,7 @@
     "testPath": "/api/reports/summary",
     "code": 200,
     "verdict": "PASS",
-    "body": "{\"totalRooms\":0,\"hotelBookings\":167,\"accountsTransactions\":115,\"banquetBookings\":3,\"restaurantBills\":21,\"attendanceRecords\":20}"
+    "body": "{\"totalRooms\":0,\"hotelBookings\":167,\"accountsTransactions\":116,\"banquetBookings\":3,\"restaurantBills\":21,\"attendanceRecords\":20}"
   },
   {
     "method": "GET",
@@ -3664,7 +3664,7 @@
     "testPath": "/api/reports-suite/service-wise",
     "code": 200,
     "verdict": "PASS",
-    "body": "{\"report\":\"service-wise\",\"columns\":[\"service\",\"count\",\"total\",\"note\"],\"rows\":[{\"service\":\"Hotel Rooms\",\"count\":18,\"total\":2000,\"note\":\"\"},{\"service\":\"Restaurant\",\"count\":110,\"total\":2803,\"note\":\"\"},{\""
+    "body": "{\"report\":\"service-wise\",\"columns\":[\"service\",\"count\",\"total\",\"note\"],\"rows\":[{\"service\":\"Hotel Rooms\",\"count\":18,\"total\":2000,\"note\":\"\"},{\"service\":\"Restaurant\",\"count\":111,\"total\":2803,\"note\":\"\"},{\""
   },
   {
     "method": "GET",
@@ -3704,7 +3704,7 @@
     "testPath": "/api/reports-suite/rooms-checkout",
     "code": 200,
     "verdict": "PASS",
-    "body": "{\"report\":\"rooms-checkout\",\"columns\":[\"checkout_date\",\"booking_code\",\"status\",\"total_amount\",\"paid\",\"balance\",\"rooms\"],\"rows\":[{\"checkout_date\":\"2026-10-26\",\"booking_code\":\"BK-20261025-9493\",\"status\":"
+    "body": "{\"report\":\"rooms-checkout\",\"columns\":[\"checkout_date\",\"booking_code\",\"status\",\"total_amount\",\"paid\",\"balance\",\"rooms\"],\"rows\":[],\"summary\":{\"from\":\"2026-09-27\",\"to\":\"2026-10-26\",\"count\":0,\"by_status\":"
   },
   {
     "method": "GET",
@@ -3784,7 +3784,7 @@
     "testPath": "/api/reports-suite/cashbook-summary",
     "code": 200,
     "verdict": "PASS",
-    "body": "{\"report\":\"cashbook-summary\",\"columns\":[\"date\",\"channel\",\"payment_type\",\"status\",\"amount\",\"count\"],\"rows\":[{\"date\":\"2026-10-25\",\"channel\":\"cash\",\"payment_type\":\"advance\",\"status\":\"completed\",\"amount\":"
+    "body": "{\"report\":\"cashbook-summary\",\"columns\":[\"date\",\"channel\",\"payment_type\",\"status\",\"amount\",\"count\"],\"rows\":[{\"date\":\"2026-10-26\",\"channel\":\"cash\",\"payment_type\":\"payment\",\"status\":\"completed\",\"amount\":"
   },
   {
     "method": "GET",
@@ -3834,7 +3834,7 @@
     "testPath": "/api/reports-suite/collection-report",
     "code": 200,
     "verdict": "PASS",
-    "body": "{\"report\":\"collection-report\",\"columns\":[\"date\",\"channel\",\"payment_type\",\"count\",\"total\"],\"rows\":[{\"date\":\"2026-10-24T18:30:00.000Z\",\"channel\":\"cash\",\"payment_type\":\"advance\",\"count\":10,\"total\":\"8000."
+    "body": "{\"report\":\"collection-report\",\"columns\":[\"date\",\"channel\",\"payment_type\",\"count\",\"total\"],\"rows\":[{\"date\":\"2026-10-25T18:30:00.000Z\",\"channel\":\"cash\",\"payment_type\":\"payment\",\"count\":1,\"total\":\"0.00\"}"
   },
   {
     "method": "GET",
@@ -3874,7 +3874,7 @@
     "testPath": "/api/reports-suite/sales-by-order-type",
     "code": 200,
     "verdict": "PASS",
-    "body": "{\"report\":\"sales-by-order-type\",\"columns\":[\"order_type\",\"count\",\"value\"],\"rows\":[{\"order_type\":\"Table\",\"count\":110,\"value\":2803},{\"order_type\":\"Table\",\"count\":10,\"value\":4869}],\"summary\":{\"from\":\"2026"
+    "body": "{\"report\":\"sales-by-order-type\",\"columns\":[\"order_type\",\"count\",\"value\"],\"rows\":[{\"order_type\":\"Table\",\"count\":111,\"value\":2803},{\"order_type\":\"Table\",\"count\":10,\"value\":4869}],\"summary\":{\"from\":\"2026"
   },
   {
     "method": "GET",
@@ -4014,7 +4014,7 @@
     "testPath": "/api/restaurant/waiter-performance",
     "code": 200,
     "verdict": "PASS",
-    "body": "[{\"waiterName\":\"Waiter\",\"billsHandled\":110,\"salesTotal\":\"2803.00\",\"avgBillValue\":\"25.481818\"}]"
+    "body": "[{\"waiterName\":\"Waiter\",\"billsHandled\":111,\"salesTotal\":\"2803.00\",\"avgBillValue\":\"25.252252\"}]"
   },
   {
     "method": "GET",
@@ -4174,7 +4174,7 @@
     "testPath": "/api/restaurant",
     "code": 200,
     "verdict": "PASS",
-    "body": "[{\"id\":263,\"table_number\":\"WP-1792925225482\",\"tokenId\":null,\"entity_type\":\"Table\",\"waiter_name\":\"Waiter\",\"customer_name\":null,\"phone\":null,\"subtotal\":\"0.00\",\"service_charge\":\"0.00\",\"gst\":\"0.00\",\"total"
+    "body": "[{\"id\":264,\"table_number\":\"WP-1792999634665\",\"tokenId\":null,\"entity_type\":\"Table\",\"waiter_name\":\"Waiter\",\"customer_name\":null,\"phone\":null,\"subtotal\":\"0.00\",\"service_charge\":\"0.00\",\"gst\":\"0.00\",\"total"
   },
   {
     "method": "GET",
@@ -4184,7 +4184,7 @@
     "testPath": "/api/restaurant/payment",
     "code": 200,
     "verdict": "PASS",
-    "body": "[{\"id\":263,\"table_number\":\"WP-1792925225482\",\"tokenId\":null,\"entity_type\":\"Table\",\"waiter_name\":\"Waiter\",\"customer_name\":null,\"phone\":null,\"subtotal\":\"0.00\",\"service_charge\":\"0.00\",\"gst\":\"0.00\",\"total"
+    "body": "[{\"id\":264,\"table_number\":\"WP-1792999634665\",\"tokenId\":null,\"entity_type\":\"Table\",\"waiter_name\":\"Waiter\",\"customer_name\":null,\"phone\":null,\"subtotal\":\"0.00\",\"service_charge\":\"0.00\",\"gst\":\"0.00\",\"total"
   },
   {
     "method": "GET",
@@ -4194,7 +4194,7 @@
     "testPath": "/api/restaurant/payment-bills",
     "code": 200,
     "verdict": "PASS",
-    "body": "[{\"id\":263,\"table_number\":\"WP-1792925225482\",\"tokenId\":null,\"entity_type\":\"Table\",\"waiter_name\":\"Waiter\",\"customer_name\":null,\"phone\":null,\"subtotal\":\"0.00\",\"service_charge\":\"0.00\",\"gst\":\"0.00\",\"total"
+    "body": "[{\"id\":264,\"table_number\":\"WP-1792999634665\",\"tokenId\":null,\"entity_type\":\"Table\",\"waiter_name\":\"Waiter\",\"customer_name\":null,\"phone\":null,\"subtotal\":\"0.00\",\"service_charge\":\"0.00\",\"gst\":\"0.00\",\"total"
   },
   {
     "method": "GET",
@@ -4214,7 +4214,7 @@
     "testPath": "/api/restaurant/bill",
     "code": 200,
     "verdict": "PASS",
-    "body": "[{\"id\":263,\"table_number\":\"WP-1792925225482\",\"tokenId\":null,\"entity_type\":\"Table\",\"waiter_name\":\"Waiter\",\"customer_name\":null,\"phone\":null,\"subtotal\":\"0.00\",\"service_charge\":\"0.00\",\"gst\":\"0.00\",\"total"
+    "body": "[{\"id\":264,\"table_number\":\"WP-1792999634665\",\"tokenId\":null,\"entity_type\":\"Table\",\"waiter_name\":\"Waiter\",\"customer_name\":null,\"phone\":null,\"subtotal\":\"0.00\",\"service_charge\":\"0.00\",\"gst\":\"0.00\",\"total"
   },
   {
     "method": "GET",
@@ -4224,7 +4224,7 @@
     "testPath": "/api/restaurant/split-bills",
     "code": 200,
     "verdict": "PASS",
-    "body": "[{\"id\":263,\"table_number\":\"WP-1792925225482\",\"tokenId\":null,\"entity_type\":\"Table\",\"waiter_name\":\"Waiter\",\"customer_name\":null,\"phone\":null,\"subtotal\":\"0.00\",\"service_charge\":\"0.00\",\"gst\":\"0.00\",\"total"
+    "body": "[{\"id\":264,\"table_number\":\"WP-1792999634665\",\"tokenId\":null,\"entity_type\":\"Table\",\"waiter_name\":\"Waiter\",\"customer_name\":null,\"phone\":null,\"subtotal\":\"0.00\",\"service_charge\":\"0.00\",\"gst\":\"0.00\",\"total"
   },
   {
     "method": "POST",
@@ -4304,7 +4304,7 @@
     "testPath": "/api/restaurant/bills",
     "code": 200,
     "verdict": "PASS",
-    "body": "[{\"id\":263,\"table_number\":\"WP-1792925225482\",\"tokenId\":null,\"entity_type\":\"Table\",\"waiter_name\":\"Waiter\",\"customer_name\":null,\"phone\":null,\"subtotal\":\"0.00\",\"service_charge\":\"0.00\",\"gst\":\"0.00\",\"total"
+    "body": "[{\"id\":264,\"table_number\":\"WP-1792999634665\",\"tokenId\":null,\"entity_type\":\"Table\",\"waiter_name\":\"Waiter\",\"customer_name\":null,\"phone\":null,\"subtotal\":\"0.00\",\"service_charge\":\"0.00\",\"gst\":\"0.00\",\"total"
   },
   {
     "method": "POST",
@@ -4983,7 +4983,7 @@
     "testPath": "/api/waiter/live-board",
     "code": 200,
     "verdict": "PASS",
-    "body": "[{\"id\":161,\"tableNumber\":\"WP-1792925225482\",\"table\":\"WP-1792925225482\",\"tokenId\":161,\"waiter\":\"Write Probe\",\"entityType\":\"Table\",\"items\":[{\"name\":\"Write Probe Dish\",\"qty\":2,\"rate\":100}],\"orderStatus\":"
+    "body": "[{\"id\":162,\"tableNumber\":\"WP-1792999634665\",\"table\":\"WP-1792999634665\",\"tokenId\":162,\"waiter\":\"Write Probe\",\"entityType\":\"Table\",\"items\":[{\"name\":\"Write Probe Dish\",\"qty\":2,\"rate\":100}],\"orderStatus\":"
   },
   {
     "method": "POST",
@@ -5082,7 +5082,7 @@
     "method": "GET",
     "code": 200,
     "verdict": "PASS",
-    "body": "{\"enabled\":false,\"scheduleType\":\"none\",\"dailyTime\":\"03:00\",\"weeklyDay\":0,\"customCron\":\"\",\"destDir\":\"/var/folders/lj/tq1b22_577d0lw2b8507_bph0000gn/T/mbr-backups-gate\",\"lastRunAt\":\"2026-10-26T06:47:57.",
+    "body": "{\"enabled\":false,\"scheduleType\":\"none\",\"dailyTime\":\"03:00\",\"weeklyDay\":0,\"customCron\":\"\",\"destDir\":\"/var/folders/lj/tq1b22_577d0lw2b8507_bph0000gn/T/mbr-backups-gate\",\"lastRunAt\":\"2026-10-26T07:26:28.",
     "section": "backup"
   },
   {
@@ -5092,7 +5092,7 @@
     "method": "POST",
     "code": 200,
     "verdict": "PASS",
-    "body": "{\"file\":\"backup_20261026_125624.sql\",\"sizeBytes\":272371441}",
+    "body": "{\"file\":\"backup_20261026_130351.sql\",\"sizeBytes\":273614723}",
     "section": "backup"
   },
   {
@@ -5102,7 +5102,7 @@
     "method": "GET",
     "code": 200,
     "verdict": "PASS",
-    "body": "{\"destDir\":\"/var/folders/lj/tq1b22_577d0lw2b8507_bph0000gn/T/mbr-backups-gate\",\"files\":[{\"name\":\"backup_20261026_125624.sql\",\"sizeBytes\":272371441,\"mtimeISO\":\"2026-10-26T07:26:28.846Z\"}]}",
+    "body": "{\"destDir\":\"/var/folders/lj/tq1b22_577d0lw2b8507_bph0000gn/T/mbr-backups-gate\",\"files\":[{\"name\":\"backup_20261026_130351.sql\",\"sizeBytes\":273614723,\"mtimeISO\":\"2026-10-26T07:33:54.537Z\"}]}",
     "section": "backup"
   },
   {

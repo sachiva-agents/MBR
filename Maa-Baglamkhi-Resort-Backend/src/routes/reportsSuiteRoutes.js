@@ -323,6 +323,10 @@ router.get("/rooms-all", async (req, res) => {
 });
 
 // ── 6. Check-in room summary ──────────────────────────────────────────────
+// Only bookings that genuinely reached check-in (or further): a confirmed or
+// cancelled booking whose check-in date falls in the window must not appear.
+// v4 stores snake_case statuses but legacy free-text rows exist, so the
+// filter is case-insensitive with a 'confirmed' fallback (HAG-78).
 
 router.get("/rooms-checkin", async (req, res) => {
   const { from, to } = dateRange(req);
@@ -332,26 +336,38 @@ router.get("/rooms-checkin", async (req, res) => {
         `SELECT
            DATE_FORMAT(b.check_in, '%Y-%m-%d') AS checkin_date,
            b.booking_code,
-           b.status,
+           LOWER(IFNULL(b.status, 'confirmed')) AS status,
            b.total_guests AS guests,
            b.total_amount,
            b.advance_amount,
            (SELECT GROUP_CONCAT(r.room_number SEPARATOR ', ') FROM booking_rooms br JOIN rooms r ON r.id = br.room_id WHERE br.booking_id = b.id) AS rooms
          FROM bookings b
-         WHERE b.check_in >= ? AND b.check_in <= ?
+         WHERE LOWER(IFNULL(b.status, 'confirmed')) IN ('checked_in', 'checked_out')
+           AND b.check_in >= ? AND b.check_in <= ?
          ORDER BY b.check_in DESC, b.id DESC`,
-        [from, to],
+        [from + " 00:00:00", to + " 23:59:59"],
       )
     : [];
+  const byStatus = {};
+  rows.forEach((r) => (byStatus[r.status || "unknown"] = (byStatus[r.status || "unknown"] || 0) + 1));
   await sendReport(req, res, {
     reportKey: "rooms-checkin",
     columns: ["checkin_date", "booking_code", "status", "guests", "total_amount", "advance_amount", "rooms"],
     rows,
-    summary: { from, to, count: rows.length, total_amount: round2(rows.reduce((a, r) => a + Number(r.total_amount || 0), 0)) },
+    summary: {
+      from,
+      to,
+      count: rows.length,
+      by_status: JSON.stringify(byStatus),
+      total_amount: round2(rows.reduce((a, r) => a + Number(r.total_amount || 0), 0)),
+    },
   });
 });
 
 // ── 7. Check-out room summary ─────────────────────────────────────────────
+// Only bookings actually checked out in the window: an active/confirmed or
+// cancelled booking whose check_out date falls in the window must not appear
+// (HAG-78).
 
 router.get("/rooms-checkout", async (req, res) => {
   const { from, to } = dateRange(req);
@@ -361,22 +377,31 @@ router.get("/rooms-checkout", async (req, res) => {
         `SELECT
            DATE_FORMAT(b.check_out, '%Y-%m-%d') AS checkout_date,
            b.booking_code,
-           b.status,
+           LOWER(IFNULL(b.status, 'confirmed')) AS status,
            b.total_amount,
            (SELECT COALESCE(SUM(p.amount),0) FROM payments p WHERE p.booking_id = b.id AND p.status='completed') AS paid,
            b.balance_amount AS balance,
            (SELECT GROUP_CONCAT(r.room_number SEPARATOR ', ') FROM booking_rooms br JOIN rooms r ON r.id = br.room_id WHERE br.booking_id = b.id) AS rooms
          FROM bookings b
-         WHERE b.check_out >= ? AND b.check_out <= ?
+         WHERE LOWER(IFNULL(b.status, 'confirmed')) = 'checked_out'
+           AND b.check_out >= ? AND b.check_out <= ?
          ORDER BY b.check_out DESC, b.id DESC`,
         [from + " 00:00:00", to + " 23:59:59"],
       )
     : [];
+  const byStatus = {};
+  rows.forEach((r) => (byStatus[r.status || "unknown"] = (byStatus[r.status || "unknown"] || 0) + 1));
   await sendReport(req, res, {
     reportKey: "rooms-checkout",
     columns: ["checkout_date", "booking_code", "status", "total_amount", "paid", "balance", "rooms"],
     rows,
-    summary: { from, to, count: rows.length, outstanding: round2(rows.reduce((a, r) => a + Number(r.balance || 0), 0)) },
+    summary: {
+      from,
+      to,
+      count: rows.length,
+      by_status: JSON.stringify(byStatus),
+      outstanding: round2(rows.reduce((a, r) => a + Number(r.balance || 0), 0)),
+    },
   });
 });
 
