@@ -56,17 +56,43 @@ exports.setEmployeeSalary = async (req, res) => {
   if (!userId || salary === undefined || salary === null) {
     return res.status(400).json({ message: "userId and salary required" });
   }
-  if (Number(salary) < 0) {
-    return res.status(400).json({ message: "Salary must be >= 0" });
+  const salaryNum = Number(salary);
+  if (!Number.isFinite(salaryNum) || salaryNum < 0) {
+    return res.status(400).json({ message: "Salary must be a number >= 0" });
   }
 
   try {
     const employee = await employeeForUser(userId);
     if (!employee) return res.status(404).json({ message: "Employee not found" });
 
-    await db.query(
+    // `designation` arrives as a free-text NAME from the admin UI, but
+    // employees.designation_id is a foreign key to designations.id. Bind a real
+    // integer (or null) here — never the raw name. The old Number(name) path
+    // produced NaN, which db.query inlined into the SQL and crashed with
+    // "Unknown column 'NaN' in 'field list'".
+    let designationId = null;
+    const designationName = String(designation ?? "").trim();
+    if (designationName) {
+      const [existing] = await db.query(
+        "SELECT id FROM designations WHERE name = ? ORDER BY id LIMIT 1",
+        [designationName]
+      );
+      if (existing && existing[0]) {
+        designationId = existing[0].id;
+      } else {
+        // Insert only the name column: some deployments' designations table
+        // has no department_id column (first CREATE TABLE IF NOT EXISTS wins).
+        const [header] = await db.execute(
+          "INSERT INTO designations (name) VALUES (?)",
+          [designationName]
+        );
+        designationId = header.insertId;
+      }
+    }
+
+    await db.execute(
       "UPDATE employees SET base_salary = ?, designation_id = ?, updated_at = NOW() WHERE id = ?",
-      [Number(salary), designation ? Number(designation) : null, employee.id]
+      [salaryNum, designationId, employee.id]
     );
 
     const [rows] = await db.query(`${STAFF_QUERY} WHERE u.id = ? LIMIT 1`, [userId]);
