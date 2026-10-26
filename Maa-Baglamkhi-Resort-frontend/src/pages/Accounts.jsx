@@ -265,6 +265,7 @@ const AccountsModuleCard = ({
   }, {});
   const [form, setForm] = useState(initialState);
   const [saving, setSaving] = useState(false);
+  const [fieldErrors, setFieldErrors] = useState({});
   const [editingId, setEditingId] = useState(null);
   const [page, setPage] = useState(1);
   const totalPages = Math.max(1, Math.ceil((rows || []).length / ACCOUNTS_MODULE_PAGE_SIZE));
@@ -292,14 +293,45 @@ const AccountsModuleCard = ({
   const handleChange = (event) => {
     const { name, value } = event.target;
     setForm((prev) => ({ ...prev, [name]: value }));
+    if (fieldErrors[name]) {
+      setFieldErrors((prev) => {
+        const next = { ...prev };
+        delete next[name];
+        return next;
+      });
+    }
+  };
+
+  const validateForm = () => {
+    const nextErrors = {};
+    fields.forEach((field) => {
+      const value = form[field.name];
+      const isEmpty = value === "" || value === null || value === undefined;
+      if (field.required && isEmpty) {
+        nextErrors[field.name] = `${field.label} is required.`;
+        return;
+      }
+      if (field.type === "number" && !isEmpty) {
+        const num = Number(value);
+        if (!Number.isFinite(num)) {
+          nextErrors[field.name] = `${field.label} must be a number.`;
+        } else if (field.name === "amount" && num <= 0) {
+          nextErrors[field.name] = "Amount must be greater than zero.";
+        }
+      }
+    });
+    setFieldErrors(nextErrors);
+    return Object.keys(nextErrors).length === 0;
   };
 
   const handleSubmit = async (event) => {
     event.preventDefault();
+    if (!validateForm()) return;
     setSaving(true);
     const success = editingId ? await onUpdate(editingId, form) : await onSubmit(form);
     if (success) {
       setForm(initialState);
+      setFieldErrors({});
       setEditingId(null);
     }
     setSaving(false);
@@ -362,7 +394,7 @@ const AccountsModuleCard = ({
                     value={form[field.name]}
                     onChange={handleChange}
                     className={fieldClass}
-                    required={field.required}
+                    aria-invalid={Boolean(fieldErrors[field.name])}
                   >
                     {field.options.map((option) => (
                       <option key={option} value={option}>
@@ -377,7 +409,7 @@ const AccountsModuleCard = ({
                     onChange={handleChange}
                     rows={2}
                     className={fieldClass}
-                    required={field.required}
+                    aria-invalid={Boolean(fieldErrors[field.name])}
                   />
                 ) : (
                   <input
@@ -386,8 +418,11 @@ const AccountsModuleCard = ({
                     value={form[field.name]}
                     onChange={handleChange}
                     className={fieldClass}
-                    required={field.required}
+                    aria-invalid={Boolean(fieldErrors[field.name])}
                   />
+                )}
+                {fieldErrors[field.name] && (
+                  <p className="mt-1 text-[11px] font-semibold text-rose-600">{fieldErrors[field.name]}</p>
                 )}
               </label>
             );

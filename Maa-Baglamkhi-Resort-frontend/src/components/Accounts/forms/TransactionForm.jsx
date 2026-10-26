@@ -38,6 +38,7 @@ const TransactionForm = ({ type, onSubmit, onCancel, initialData = {} }) => {
     department:
       initialData.department || (type === "Income" ? "Room" : "Other"),
   });
+  const [errors, setErrors] = useState({});
 
   const isEdit = Boolean(initialData.description || initialData.amount);
   const isIncome = type === "Income";
@@ -52,22 +53,29 @@ const TransactionForm = ({ type, onSubmit, onCancel, initialData = {} }) => {
   const handleChange = (e) => {
     const { name, value } = e.target;
     setForm((prev) => ({ ...prev, [name]: value }));
+    if (errors[name]) setErrors((prev) => ({ ...prev, [name]: undefined }));
   };
 
   const handleSubmit = (e) => {
     e.preventDefault();
 
     const amountNumber = Number(form.amount);
+    const nextErrors = {};
 
     if (!form.description.trim()) {
-      alert("Please enter description");
-      return;
+      nextErrors.description = "Description / party name is required.";
     }
 
     if (!Number.isFinite(amountNumber) || amountNumber <= 0) {
-      alert("Please enter a valid amount");
+      nextErrors.amount = "Enter an amount greater than zero.";
+    }
+
+    if (Object.keys(nextErrors).length > 0) {
+      setErrors(nextErrors);
       return;
     }
+
+    setErrors({});
 
     onSubmit({
       type,
@@ -214,7 +222,11 @@ const TransactionForm = ({ type, onSubmit, onCancel, initialData = {} }) => {
             placeholder="e.g. Room booking payment, Laundry, Vendor supply"
             list={`transaction-description-${type.toLowerCase()}`}
             required
+            aria-invalid={Boolean(errors.description)}
           />
+          {errors.description && (
+            <p className="mt-1 text-[11px] font-semibold text-rose-600">{errors.description}</p>
+          )}
           <datalist id={`transaction-description-${type.toLowerCase()}`}>
             {suggestions.map((suggestion) => (
               <option key={suggestion} value={suggestion} />
@@ -243,8 +255,12 @@ const TransactionForm = ({ type, onSubmit, onCancel, initialData = {} }) => {
                 min="1"
                 step="any"
                 required
+                aria-invalid={Boolean(errors.amount)}
               />
             </div>
+            {errors.amount && (
+              <p className="mt-1 text-[11px] font-semibold text-rose-600">{errors.amount}</p>
+            )}
           </div>
 
           <div>
