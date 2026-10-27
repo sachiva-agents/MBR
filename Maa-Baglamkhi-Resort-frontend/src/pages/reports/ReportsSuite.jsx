@@ -161,13 +161,18 @@ function renderCell(value, col) {
 }
 
 // Clean-print-only view, portalled to #reports-print-root so the app chrome never lands on paper.
+// data.reports holds one report (single-report print) or the whole set (print-all).
 function PrintView({ data }) {
   const { reports, from, to } = data;
+  const subLine =
+    reports.length === 1
+      ? `Reports Suite — ${reports[0].label}`
+      : `Reports Suite — All Reports (${reports.length})`;
   return (
     <div className="rp-document">
       <div className="rp-header">
         <div className="rp-hotel">Maa Baglamkhi Resort</div>
-        <div className="rp-sub">Reports Suite — All Reports ({reports.length})</div>
+        <div className="rp-sub">{subLine}</div>
         <div className="rp-period">Period: {from ? formatDay(from) : "start"} to {to ? formatDay(to) : "now"}</div>
       </div>
       {reports.map((rep) => (
@@ -279,6 +284,37 @@ export default function ReportsSuite() {
     setPrintAllBusy(false);
   };
 
+  // Prints just the currently selected report. The user then picks "Save as
+  // PDF" (or a printer) in the browser print dialog. Fetches fresh so the
+  // paper copy matches the live data, like printAll.
+  const printCurrent = async () => {
+    setPrintAllBusy(true);
+    setError("");
+    try {
+      const params = {};
+      if (from) params.from = from;
+      if (to) params.to = to;
+      const res = await API.get(`/reports-suite/${current.key}`, { params });
+      const data = res.data || {};
+      setPrintAllData({
+        reports: [
+          {
+            ...current,
+            columns: data.columns || [],
+            rows: data.rows || [],
+            summary: data.summary || null,
+            error: "",
+          },
+        ],
+        from,
+        to,
+      });
+    } catch (err) {
+      setError(err?.response?.data?.message || "Report could not be loaded for this print.");
+    }
+    setPrintAllBusy(false);
+  };
+
   // Fires the browser print dialog once the print-only view is in the DOM.
   useEffect(() => {
     if (!printAllData) return undefined;
@@ -327,6 +363,14 @@ export default function ReportsSuite() {
             <p className="mt-1.5 text-[15px] text-slate-600 sm:text-[16px]">{current.note}</p>
           </div>
           <div className="flex flex-wrap items-center gap-2">
+            <button
+              type="button"
+              onClick={printCurrent}
+              disabled={printAllBusy || loading}
+              className="flex items-center gap-2 rounded-xl bg-[#0f172a] px-4 py-2.5 text-[14px] font-bold text-white shadow-[0_10px_24px_rgba(15,23,42,0.25)] transition-all duration-200 hover:bg-slate-800 disabled:opacity-40 sm:px-5 sm:py-3 sm:text-[15px]"
+            >
+              <FaPrint size={14} /> {printAllBusy ? "Preparing…" : `Print / Save PDF: ${current.label}`}
+            </button>
             <button
               type="button"
               onClick={printAll}
