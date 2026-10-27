@@ -178,6 +178,10 @@ async function initializeDatabase(options = {}) {
 
     await bootstrapSchema("Housekeeping schema init", ensureHousekeepingSchema);
     await bootstrapSchema("Hotel room inventory schema init", ensureHotelRoomInventorySchema);
+    await bootstrapSchema("Booking rooms schema init", async () => {
+      const bookingRoomsModel = require("./models/BookingRoomsModel");
+      await bookingRoomsModel.ensureSchema();
+    });
     await bootstrapSchema("Guest schema init", ensureGuestSchema);
     await bootstrapSchema("Guest documents schema init", ensureGuestDocumentSchema);
     await bootstrapSchema("Other booking schema init", ensureOtherBookingSchema);

@@ -296,6 +296,7 @@ const getBookingWizardDataById = async (id) => {
             br.extra_charges,
             br.discount,
             br.total AS roomTotal,
+            COALESCE(NULLIF(br.gst_percent, 0), 5) AS gstPercent,
             br.guest_name AS booking_room_guest,
             br.adults,
             br.children,
@@ -372,7 +373,7 @@ const getBookingWizardDataById = async (id) => {
       roomTypeId,
       quantity: 1,
       price: Number(row.tariff || 0),
-      gst: 0,
+      gst: row.gstPercent,
       unitLabel: row.unitLabel || "PER NIGHT",
     };
   });
@@ -737,7 +738,9 @@ exports.createGuest = async (req, res) => {
                 : 1;
             const tariffRows = await new Promise((resolve, reject) => {
               db.query(
-                "SELECT rate_per_night AS tariff, 0 AS gst, 1 AS quantity FROM booking_rooms WHERE booking_id = ?",
+                // Legacy rows stored before the column defaulted the rate to 0;
+                // room rent bills at 5%, so a NULL/0 reads back as 5.
+                "SELECT rate_per_night AS tariff, COALESCE(NULLIF(gst_percent, 0), 5) AS gst, 1 AS quantity FROM booking_rooms WHERE booking_id = ?",
                 [bookingId],
                 (err, rows) => (err ? reject(err) : resolve(rows)),
               );
@@ -1139,6 +1142,10 @@ exports.updateTariff = async (req, res) => {
 
     const tariff = Number(data.tariff || data.price || 0);
     const total = Number(data.total || 0) || tariff;
+    // The booking form's "Room & Tariff Details" section sends gstPercent per
+    // row; it used to be dropped here, so a room saved at 5% GST read back
+    // as 0 on edit. Persist it so the entered rate survives a save/reload.
+    const gstPercent = Number(data.gstPercent ?? data.gst ?? 0);
     const existingRoomLine = await query(
       "SELECT id FROM booking_rooms WHERE booking_id = ? AND room_id = ? LIMIT 1",
       [bookingId, resolvedRoom.room_id],
@@ -1147,15 +1154,15 @@ exports.updateTariff = async (req, res) => {
     if (existingRoomLine.length) {
       await query(
         `UPDATE booking_rooms
-         SET rate_per_night = ?, total = ?
+         SET rate_per_night = ?, total = ?, gst_percent = ?
          WHERE id = ?`,
-        [tariff, total, existingRoomLine[0].id],
+        [tariff, total, gstPercent, existingRoomLine[0].id],
       );
     } else {
       await query(
         `INSERT INTO booking_rooms
-           (booking_id, room_id, category_id, rate_per_night, nights, room_charge, total, guest_name)
-         VALUES (?, ?, ?, ?, 1, ?, ?, ?)`,
+           (booking_id, room_id, category_id, rate_per_night, nights, room_charge, total, guest_name, gst_percent)
+         VALUES (?, ?, ?, ?, 1, ?, ?, ?, ?)`,
         [
           bookingId,
           resolvedRoom.room_id,
@@ -1164,6 +1171,7 @@ exports.updateTariff = async (req, res) => {
           tariff,
           total,
           data.guest_name || data.guestName || null,
+          gstPercent,
         ],
       );
     }
@@ -1376,7 +1384,9 @@ exports.getFullBooking = async (req, res) => {
           IFNULL(r.id, br.room_id) AS roomId,
           rc.name AS roomType,
           br.rate_per_night AS tariff,
-          0 AS gst,
+          -- Rows written before the gst_percent column landed are 0; the
+          -- resort bills room rent at 5% GST, so read those back as 5.
+          COALESCE(NULLIF(br.gst_percent, 0), 5) AS gst,
           br.total,
           1 AS quantity,
           br.adults,
@@ -1685,12 +1695,13 @@ exports.updateFullBooking = async (req, res) => {
             SET rate_per_night = ?,
                 room_charge = ?,
                 total = ?,
+                gst_percent = ?,
                 adults = ?,
                 children = ?,
                 notes = COALESCE(?, notes)
             WHERE id = ?
           `,
-          [tariff, tariff, total, adults, children, room.mealPlan || null, target[0].id],
+          [tariff, tariff, total, gst, adults, children, room.mealPlan || null, target[0].id],
         );
       }
     }
