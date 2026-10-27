@@ -378,20 +378,20 @@ exports.sendInvoiceWhatsApp = async (req, res) => {
     invoice.remainingAmount = remainingAmount;
     invoice.paymentStatus = paymentStatus;
 
-    // 2. Generate the PDF
+    // 2. Generate the PDF — best-effort only. WhatsApp delivery is
+    // text-only (the message body carries the full invoice breakdown), so
+    // a PDF failure or a missing/changed ngrok PUBLIC_BASE_URL must never
+    // block the message from being sent.
     let pdfResult;
     try {
       pdfResult = await InvoicePdfService.generateInvoicePdf(invoice);
     } catch (pdfErr) {
-      console.error("Invoice PDF generation failed:", pdfErr);
-      return res
-        .status(500)
-        .json({ error: "Failed to generate invoice PDF", details: pdfErr.message });
+      console.error("Invoice PDF generation failed (message still sends):", pdfErr.message);
     }
 
-    // 3. Build the public file URL
+    // 3. Public file URL (informational — not used for WhatsApp delivery).
     const publicBase = getPublicBaseUrl();
-    const fileUrl = `${publicBase}/uploads/invoices/${pdfResult.fileName}`;
+    const fileUrl = pdfResult ? `${publicBase}/uploads/invoices/${pdfResult.fileName}` : null;
     // 3a. Resolve admin number: request body → DB lookup (prefer admin WITH phone) → env fallback → empty
     let adminNumber = req.body?.adminNumber || "";
     console.log("[send-whatsapp] adminNumber from request body:", adminNumber || "(empty)");
@@ -417,20 +417,13 @@ exports.sendInvoiceWhatsApp = async (req, res) => {
     }
     console.log("[send-whatsapp] Final adminNumber passed to service:", adminNumber || "(empty)");
 
-    // 4. Use the high-level helper to send to customer + admin (WhatsApp + SMS)
-    //
-    // 🐛 FIX: previously only { fileUrl, fileName } was passed here — the
-    // actual local disk path (pdfResult.filePath) was dropped. whatsappService's
-    // sendWhatsAppMessage() only attempts the real multipart PDF upload when
-    // `attachment.filePath` exists and points to a real file on disk
-    // (`if (filePath && fs.existsSync(filePath))`); without it, that check
-    // always fails and the code silently falls through to a TEXT-ONLY
-    // fallback message ("Your invoice PDF is available. Please contact the
-    // resort for a copy.") — which is exactly why the customer never
-    // received the actual invoice PDF. Passing filePath through fixes it.
+    // 4. Use the high-level helper to send to customer + admin (WhatsApp + SMS).
+    // Text-only by design: no PDF attachment, no ngrok dependency — the
+    // message body carries the full invoice breakdown. (The `attachment`
+    // slot is accepted for signature compatibility but intentionally unused.)
     const { customer, admin } = await WhatsAppService.sendInvoiceNotifications(
       invoice,
-      { fileUrl, fileName: pdfResult.fileName, filePath: pdfResult.filePath },
+      null,
       {
         customerNumber: req.body?.customerNumber,
         adminNumber,

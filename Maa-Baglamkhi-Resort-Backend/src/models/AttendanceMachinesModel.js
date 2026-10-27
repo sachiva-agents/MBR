@@ -20,8 +20,8 @@ class AttendanceMachines {
         \`machine_password\` VARCHAR(16) NOT NULL DEFAULT '00000000',
         \`status\` ENUM('active','inactive') NOT NULL DEFAULT 'active',
         \`day_shift_start\` TIME NOT NULL DEFAULT '09:00:00',
-        \`day_shift_end\` TIME NOT NULL DEFAULT '18:00:00',
-        \`night_shift_start\` TIME NOT NULL DEFAULT '18:00:00',
+        \`day_shift_end\` TIME NOT NULL DEFAULT '18:30:00',
+        \`night_shift_start\` TIME NOT NULL DEFAULT '18:30:00',
         \`night_shift_end\` TIME NOT NULL DEFAULT '09:00:00',
         \`last_sync_at\` DATETIME,
         \`last_sync_status\` VARCHAR(40),
@@ -97,8 +97,8 @@ class AttendanceMachines {
         String(data.machinePassword || data.machine_password || '00000000'),
         data.status === 'inactive' ? 'inactive' : 'active',
         data.dayShiftStart || data.day_shift_start || '09:00:00',
-        data.dayShiftEnd || data.day_shift_end || '18:00:00',
-        data.nightShiftStart || data.night_shift_start || '18:00:00',
+        data.dayShiftEnd || data.day_shift_end || '18:30:00',
+        data.nightShiftStart || data.night_shift_start || '18:30:00',
         data.nightShiftEnd || data.night_shift_end || '09:00:00',
       ]
     )

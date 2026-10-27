@@ -38,8 +38,8 @@ const shiftTimesForUi = (machine) => {
   };
   return {
     dayShiftStart: shift(machine.day_shift_start, "09:00:00"),
-    dayShiftEnd: shift(machine.day_shift_end, "18:00:00"),
-    nightShiftStart: shift(machine.night_shift_start, "18:00:00"),
+    dayShiftEnd: shift(machine.day_shift_end, "18:30:00"),
+    nightShiftStart: shift(machine.night_shift_start, "18:30:00"),
     nightShiftEnd: shift(machine.night_shift_end, "09:00:00"),
   };
 };

@@ -26,8 +26,8 @@ const DEFAULT_FORM = {
   machinePassword: "00000000",
   status: "active",
   dayShiftStart: "09:00:00",
-  dayShiftEnd: "18:00:00",
-  nightShiftStart: "18:00:00",
+  dayShiftEnd: "18:30:00",
+  nightShiftStart: "18:30:00",
   nightShiftEnd: "09:00:00",
 };
 
@@ -140,8 +140,8 @@ const ZkAttendance = () => {
       machinePassword: machine.machinePassword || "00000000",
       status: machine.status,
       dayShiftStart: String(machine.dayShiftStart || "09:00:00").slice(0, 5),
-      dayShiftEnd: String(machine.dayShiftEnd || "18:00:00").slice(0, 5),
-      nightShiftStart: String(machine.nightShiftStart || "18:00:00").slice(0, 5),
+      dayShiftEnd: String(machine.dayShiftEnd || "18:30:00").slice(0, 5),
+      nightShiftStart: String(machine.nightShiftStart || "18:30:00").slice(0, 5),
       nightShiftEnd: String(machine.nightShiftEnd || "09:00:00").slice(0, 5),
     });
     setEditing(machine.id);

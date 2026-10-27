@@ -75,7 +75,7 @@ async function syncMachine(machine, { from, to, deleteAfter = false, actor = nul
 
   const shifts = {
     dayStart: toTimeHms(machine.day_shift_start) || '09:00:00',
-    dayEnd: toTimeHms(machine.day_shift_end) || '18:00:00'
+    dayEnd: toTimeHms(machine.day_shift_end) || '18:30:00'
   }
 
   // ESSL units are not NTP-synced: a clock drifted past the shift split sends

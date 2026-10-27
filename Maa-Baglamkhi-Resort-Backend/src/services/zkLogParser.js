@@ -91,7 +91,7 @@ function previousDay(date) {
  * @param {object} shifts { dayStart: "HH:MM", dayEnd: "HH:MM" }
  * @returns {{ shiftDay: string, shift: 'day' | 'night' }}
  */
-function resolveShiftDay({ date, hour, minute }, { dayStart = '09:00', dayEnd = '18:00' } = {}) {
+function resolveShiftDay({ date, hour, minute }, { dayStart = '09:00', dayEnd = '18:30' } = {}) {
   const toMinutes = (text) => {
     const [h, mm] = String(text).split(':').map(Number)
     return h * 60 + mm
