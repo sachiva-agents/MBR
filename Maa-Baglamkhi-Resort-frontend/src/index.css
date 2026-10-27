@@ -690,22 +690,74 @@ textarea:focus-visible {
 #reports-print-root { display: none; }
 
 @media print {
+  /* Release the app's pinned body height so all 33 reports flow across
+     multiple pages instead of being clipped to one viewport-height page. */
+  html, body {
+    height: auto !important;
+    min-height: 0 !important;
+    overflow: visible !important;
+    background: #ffffff !important;
+  }
+
   #root { display: none !important; }
-  #reports-print-root { display: block !important; background: #fff; color: #111; }
-  .rp-document { font-family: ui-sans-serif, system-ui, sans-serif; font-size: 10.5px; line-height: 1.4; }
-  .rp-header { text-align: center; border-bottom: 3px solid #047857; padding-bottom: 8px; margin-bottom: 14px; }
-  .rp-header .rp-hotel { font-size: 22px; font-weight: 800; letter-spacing: 0.04em; }
-  .rp-header .rp-sub { font-weight: 700; font-size: 13px; margin-top: 2px; }
-  .rp-header .rp-period { font-size: 12px; color: #374151; margin-top: 2px; }
-  .rp-section { margin-bottom: 16px; }
-  .rp-section h2 { font-size: 13px; margin: 0 0 6px; padding: 4px 8px; background: #065f46; color: #fff; border-radius: 4px; }
-  .rp-summary { display: flex; flex-wrap: wrap; gap: 4px 10px; margin-bottom: 6px; font-size: 11px; }
-  .rp-chip b { text-transform: uppercase; font-size: 9.5px; color: #6b7280; margin-right: 4px; }
-  .rp-empty, .rp-err { font-size: 11px; font-style: italic; margin: 4px 0; color: #6b7280; }
-  .rp-err { color: #b91c1c; }
-  .rp-section table { width: 100%; border-collapse: collapse; font-size: 10px; }
-  .rp-section th, .rp-section td { border: 1px solid #d1d5db; padding: 3px 6px; text-align: left; }
-  .rp-section th { background: #f3f4f6; font-weight: 700; text-transform: uppercase; font-size: 9px; letter-spacing: 0.03em; }
-  .rp-section tbody tr:nth-child(even) td { background: #f9fafb; }
-  @page { margin: 14mm; }
+  #reports-print-root { display: block !important; background: #ffffff; color: #0f1e3d; }
+
+  .rp-document {
+    font-family: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
+    font-size: 11px;
+    line-height: 1.4;
+    color: #1f2a44;
+  }
+
+  .rp-header {
+    text-align: center;
+    padding: 14px 16px 12px;
+    margin-bottom: 16px;
+    border: 1px solid #e7eefb;
+    border-radius: 16px;
+    background: #ffffff;
+  }
+  .rp-header .rp-hotel { font-size: 24px; font-weight: 800; letter-spacing: 0.03em; color: #0b1e4d !important; }
+  .rp-header .rp-sub { font-weight: 700; font-size: 13px; margin-top: 3px; color: #1d4ed8 !important; }
+  .rp-header .rp-period { font-size: 12px; font-weight: 600; color: #5b6b8c !important; margin-top: 3px; }
+
+  .rp-section { margin-bottom: 18px; break-inside: auto; }
+  .rp-section h2 {
+    font-size: 13px;
+    margin: 0 0 8px;
+    padding: 7px 14px;
+    border-radius: 10px;
+    background: #1d4ed8 !important;
+    color: #ffffff !important;
+    font-weight: 700;
+    letter-spacing: 0.01em;
+  }
+  .rp-summary { display: flex; flex-wrap: wrap; gap: 4px 10px; margin-bottom: 8px; font-size: 11px; }
+  .rp-chip {
+    background: #eaf2fe;
+    border: 1px solid #cfe0fc;
+    border-radius: 8px;
+    padding: 2px 8px;
+  }
+  .rp-chip b { text-transform: uppercase; font-size: 9.5px; color: #1d4ed8; margin-right: 4px; letter-spacing: 0.03em; }
+  .rp-empty, .rp-err { font-size: 11px; font-style: italic; margin: 6px 0; color: #8b98b8; }
+  .rp-err { color: #c62828; }
+
+  .rp-section table { width: 100%; border-collapse: collapse; font-size: 10px; border: 1px solid #e7eefb; border-radius: 8px; overflow: hidden; }
+  .rp-section th, .rp-section td { border-bottom: 1px solid #eef3fd; border-right: 1px solid #eef3fd; padding: 5px 8px; text-align: left; }
+  .rp-section td:last-child, .rp-section th:last-child { border-right: none; }
+  .rp-section th {
+    background: #f5f9ff !important;
+    color: #0b1e4d !important;
+    font-weight: 700;
+    text-transform: uppercase;
+    font-size: 9px;
+    letter-spacing: 0.05em;
+    border-bottom: 1px solid #dbe6fb;
+  }
+  .rp-section tbody tr:nth-child(even) td { background: #f8faff; }
+  .rp-section thead { display: table-header-group; }
+  .rp-section tr { break-inside: avoid; }
+
+  @page { margin: 12mm; }
 }

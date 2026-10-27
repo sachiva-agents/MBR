@@ -41,8 +41,22 @@ function dateRange(req) {
 }
 
 // RFC 4180-ish CSV: quote when the value contains , " \n \r.
+// Date values come back from MySQL as JS Date objects; plain String(value)
+// would dump "Fri Oct 26 2026 00:00:00 GMT" into the file, so serialise
+// them as local YYYY-MM-DD (with HH:MM when they carry a time of day).
 function csvEscape(value) {
   if (value === null || value === undefined) return "";
+  if (value instanceof Date) {
+    const y = value.getFullYear();
+    const m = String(value.getMonth() + 1).padStart(2, "0");
+    const d = String(value.getDate()).padStart(2, "0");
+    const h = String(value.getHours()).padStart(2, "0");
+    const mi = String(value.getMinutes()).padStart(2, "0");
+    value =
+      value.getHours() === 0 && value.getMinutes() === 0
+        ? `${y}-${m}-${d}`
+        : `${y}-${m}-${d} ${h}:${mi}`;
+  }
   const text = String(value);
   return /[",\n\r]/.test(text) ? `"${text.replace(/"/g, '""')}"` : text;
 }
@@ -96,7 +110,10 @@ async function sendReport(req, res, { reportKey, columns, rows, summary }) {
       : null;
     res.setHeader("Content-Type", "text/csv; charset=utf-8");
     res.setHeader("Content-Disposition", `attachment; filename="${filename}"`);
-    res.send(header ? `${header}\n${csv}\n` : `${csv}\n`);
+    // BOM so Excel/Numbers open UTF-8 files (rupee sign, Hindi text, dashes)
+    // with the correct encoding.
+    const BOM = String.fromCharCode(0xfeff);
+    res.send(BOM + (header ? header + "\n" : "") + csv + "\n");
     return;
   }
   res.json({ report: reportKey, columns, rows, summary: summary || null });
