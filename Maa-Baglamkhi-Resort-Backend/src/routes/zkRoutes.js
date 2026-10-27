@@ -13,7 +13,12 @@ router.put("/machines/:id", zkController.updateMachine);
 router.delete("/machines/:id", zkController.deleteMachine);
 router.post("/machines/:id/test-connection", zkController.testConnection);
 router.post("/machines/:id/verify-time", zkController.verifyTime);
+router.post("/machines/:id/device-users", zkController.deviceUsers);
 router.post("/machines/:id/sync", zkController.sync);
 router.get("/machines/:id/pulls", zkController.pulls);
+// Badge map: resolve device fingerprint ids to employees when they differ.
+router.get("/badge-map", zkController.badgeMap);
+router.post("/badge-map", zkController.badgeMapSet);
+router.delete("/badge-map/:deviceUserId", zkController.badgeMapDelete);
 
 module.exports = router;

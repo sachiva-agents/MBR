@@ -194,6 +194,61 @@ async function testConnection(req, res) {
   }
 }
 
+// POST /api/zk/machines/:id/device-users
+// Reads the users (fingerprint enrolments) registered on the device and
+// resolves each one against the badge map / employee_code / numeric id.
+// Unmatched ids are the ones an operator should pin via the badge map.
+async function deviceUsers(req, res) {
+  let machine = null;
+  try {
+    await machinesModel.ensureSchema();
+    machine = await machinesModel.getMachine(Number(req.params.id));
+    if (!machine) return res.status(404).json({ message: "Machine not found" });
+
+    const { resolveEmployeeId } = require("../services/zkSyncService");
+    const db = require("../config/db");
+    const rawUsers = await zk.getDeviceUsers(machine);
+
+    const conn = await db.getConnection();
+    try {
+      const users = [];
+      for (const user of rawUsers) {
+        let employeeId = null;
+        if (user.deviceId) employeeId = await resolveEmployeeId(conn, user.deviceId);
+        let employee = null;
+        if (employeeId) {
+          const [rows] = await conn.query(
+            "SELECT id, first_name, last_name, employee_code FROM employees WHERE id = ? LIMIT 1",
+            [employeeId]
+          );
+          employee = rows[0] || null;
+        }
+        users.push({
+          uid: user.uid,
+          deviceName: user.name || null,
+          deviceId: user.deviceId || String(user.uid),
+          matched: Boolean(employeeId),
+          employee,
+        });
+      }
+      res.json({
+        machine: machine.name,
+        users,
+        unmatched: users.filter((u) => !u.matched).map((u) => u.deviceId),
+      });
+    } finally {
+      conn.release();
+    }
+  } catch (error) {
+    const target = `${machine?.machine_ip || machine?.ip}:${machine?.machine_port || machine?.port || 4380}`;
+    console.error(`[zk device-users] ${target}`, error);
+    res.status(error.statusCode || 502).json({
+      message: `Could not read users from ${target}: ${error.message || "device handshake failed"}`,
+      code: error.code || error.err?.code || null,
+    });
+  }
+}
+
 // POST /api/zk/machines/:id/sync
 async function sync(req, res) {
   try {
@@ -229,6 +284,48 @@ async function pulls(req, res) {
   }
 }
 
+// --- Badge map: map the device fingerprint id an employee is enrolled under
+// --- to their employees.id row, so their punches resolve on the next sync.
+async function badgeMap(req, res) {
+  try {
+    await machinesModel.ensureSchema();
+    const rows = await machinesModel.listBadgeMappings();
+    res.json({ mappings: rows });
+  } catch (error) {
+    res.status(500).json({ message: error.message, error });
+  }
+}
+
+async function badgeMapSet(req, res) {
+  try {
+    await machinesModel.ensureSchema();
+    const { deviceUserId, employeeId } = req.body || {};
+    const device = String(deviceUserId ?? "").trim();
+    const empId = Number(employeeId);
+    if (!device) return res.status(400).json({ message: "deviceUserId required" });
+    if (!Number.isFinite(empId) || empId <= 0) return res.status(400).json({ message: "employeeId required" });
+    const db = require("../config/db");
+    const [[emp]] = await db.query("SELECT id FROM employees WHERE id = ? LIMIT 1", [empId]);
+    if (!emp) return res.status(404).json({ message: "Employee not found" });
+    await machinesModel.mapBadge(device, empId);
+    res.json({ mapped: { deviceUserId: device, employeeId: empId } });
+  } catch (error) {
+    res.status(500).json({ message: error.message, error });
+  }
+}
+
+async function badgeMapDelete(req, res) {
+  try {
+    await machinesModel.ensureSchema();
+    const device = String(req.params.deviceUserId ?? "").trim();
+    if (!device) return res.status(400).json({ message: "deviceUserId required" });
+    await machinesModel.unmapBadge(device);
+    res.json({ unmapped: device });
+  } catch (error) {
+    res.status(500).json({ message: error.message, error });
+  }
+}
+
 module.exports = {
   createMachine,
   listMachines,
@@ -236,6 +333,10 @@ module.exports = {
   deleteMachine,
   testConnection,
   verifyTime,
+  deviceUsers,
   sync,
   pulls,
+  badgeMap,
+  badgeMapSet,
+  badgeMapDelete,
 };

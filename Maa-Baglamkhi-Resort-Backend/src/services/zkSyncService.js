@@ -27,9 +27,22 @@ const getAttendanceColumns = async (conn) => {
   return new Set(rows.map((row) => row.COLUMN_NAME))
 }
 
+// Resolution order for a device punch-in id:
+//   1. explicit zk_badge_map row (operator-assigned, FK -> employees)
+//   2. employees.employee_code equal to the device id
+//   3. numeric device id equal to employees.id
+// Step 1 exists for ESSL sites that enroll fingerprints under badge numbers
+// that differ from the employee codes; 2/3 stay for devices enrolled directly
+// by code or id.
 const resolveEmployeeId = async (conn, deviceUserId) => {
   const deviceId = String(deviceUserId || '').trim()
   if (!deviceId) return null
+
+  const [mapped] = await conn.query(
+    `SELECT employee_id FROM zk_badge_map WHERE device_user_id = ? LIMIT 1`,
+    [deviceId]
+  )
+  if (mapped[0]) return Number(mapped[0].employee_id)
 
   const [byCode] = await conn.query(
     'SELECT id FROM employees WHERE employee_code = ? LIMIT 1',
@@ -163,5 +176,6 @@ async function syncMachine(machine, { from, to, deleteAfter = false, actor = nul
 }
 
 module.exports = {
-  syncMachine
+  syncMachine,
+  resolveEmployeeId
 }

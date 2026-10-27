@@ -252,6 +252,25 @@ const zk = {
   },
 
   /**
+   * Read the users (fingerprint enrolments) currently registered on the
+   * device. Fingerprint capture itself happens on the machine's keypad; this
+   * lists what is enrolled so unmatched ids can be pinned in the badge map.
+   */
+  async getDeviceUsers(machine) {
+    const { device } = await connectDevice(machine)
+    try {
+      const response = await device.getUsers()
+      return (response?.data || []).map((user) => ({
+        uid: Number(user.uid),
+        name: user.name,
+        deviceId: String(user.userId ?? '').trim(),
+      }))
+    } finally {
+      await device.disconnect().catch(() => {})
+    }
+  },
+
+  /**
    * Verify the machine clock against the server. Returns { deviceTime, serverTime,
    * driftSeconds } — an operator sets the shift split relative to this clock.
    */

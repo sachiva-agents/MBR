@@ -1,15 +1,6 @@
 const db = require("../config/db");
 const SalaryPaymentsModel = require("../models/SalaryPaymentsModel");
-
-const DAY_STATUS_MULTIPLIER = {
-  present: 1,
-  absent: 0,
-  late: 0.5,
-  half_day: 0.5,
-  on_leave: 0,
-  holiday: 1,
-  week_off: 1,
-};
+const { getPayPercentages } = require("./settingsController");
 
 const PAYMENT_STATUSES = ["draft", "approved", "paid", "cancelled"];
 
@@ -50,9 +41,13 @@ function daysInMonth(year, month) {
 // Money must not vanish for an unrecognised status. An unknown value is paid at
 // full rate and logged, so a new status or a typo surfaces in the backend log
 // instead of silently earning the person zero.
-function statusMultiplier(status) {
+//
+// Percentages come from the settings-driven getPayPercentages() (the same source
+// the salary/attendance pages read), so a status pays identically everywhere;
+// the hardcoded per-status table would drift from what an operator configured.
+function statusMultiplier(status, payPct) {
   const key = String(status || "").toLowerCase();
-  const multiplier = DAY_STATUS_MULTIPLIER[key];
+  const multiplier = payPct && payPct[key];
   if (multiplier === undefined) {
     console.warn(`payroll: unknown attendance status "${status}" — paid at full rate`);
     return 1;
@@ -367,6 +362,7 @@ exports.estimateSalary = async (req, res) => {
   }
 
   try {
+    const payPct = await getPayPercentages();
     const employeeId = (await resolveEmployee(Number(rawId))) || Number(rawId);
 
     const [empRows] = await db.query(
@@ -396,7 +392,7 @@ exports.estimateSalary = async (req, res) => {
     );
 
     const attendanceRecords = (records || []).map((record) => {
-      const daySalary = Number((dailyRate * statusMultiplier(record.status)).toFixed(2));
+      const daySalary = Number((dailyRate * statusMultiplier(record.status, payPct)).toFixed(2));
       return {
         id: record.id,
         date: record.date,

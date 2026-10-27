@@ -45,6 +45,19 @@ class AttendanceMachines {
         FOREIGN KEY (\`machine_id\`) REFERENCES \`zk_attendance_machines\`(\`id\`) ON DELETE CASCADE
       ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`)
 
+      // Badge map: ESSL/ZKTeco fingerprint users often punch in under a badge
+      // number that is not the employee_code, so an explicit device-badge ->
+      // employees.id map is kept here. Empty table = fall back to code/numeric
+      // resolution. Self-migrates on boot alongside the rest of ensureSchema.
+      await conn.query(`CREATE TABLE IF NOT EXISTS \`zk_badge_map\` (
+        \`device_user_id\` VARCHAR(40) NOT NULL,
+        \`employee_id\` BIGINT UNSIGNED NOT NULL,
+        \`created_at\` TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP,
+        \`updated_at\` TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+        PRIMARY KEY (\`device_user_id\`),
+        FOREIGN KEY (\`employee_id\`) REFERENCES \`employees\`(\`id\`) ON DELETE CASCADE
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`)
+
       await conn.commit()
     } catch (err) {
       await conn.rollback()
@@ -167,6 +180,32 @@ class AttendanceMachines {
       'UPDATE `zk_attendance_machines` SET `last_sync_at` = NOW(), `last_sync_status` = ? WHERE `id` = ?',
       [status, machineId]
     )
+  }
+
+  // --- zk_badge_map: device fingerprint id -> employees.id -------------------
+
+  async listBadgeMappings() {
+    const [rows] = await pool.query(
+      `SELECT m.device_user_id, m.employee_id,
+              e.employee_code, e.first_name, e.last_name
+         FROM zk_badge_map m
+         JOIN employees e ON e.id = m.employee_id
+         ORDER BY m.employee_id`
+    )
+    return rows
+  }
+
+  async mapBadge(deviceUserId, employeeId) {
+    await pool.query(
+      `INSERT INTO zk_badge_map (device_user_id, employee_id)
+       VALUES (?, ?)
+       ON DUPLICATE KEY UPDATE employee_id = VALUES(employee_id)`,
+      [String(deviceUserId), Number(employeeId)]
+    )
+  }
+
+  async unmapBadge(deviceUserId) {
+    await pool.query('DELETE FROM zk_badge_map WHERE device_user_id = ?', [String(deviceUserId)])
   }
 }
 
