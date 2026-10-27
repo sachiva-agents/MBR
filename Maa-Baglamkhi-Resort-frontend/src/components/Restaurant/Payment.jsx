@@ -431,14 +431,14 @@ const buildReceiptHtml = ({
             padding-bottom: 3px;
           }
           .item-name {
-            width: 30%;
+            width: 26%;
             padding-right: 6px;
             text-align: left !important;
             color: #000000 !important;
             font-weight: 700;
           }
           .qty-col {
-            width: 16%;
+            width: 20%;
             text-align: center !important;
             color: #000000 !important;
             font-weight: 700;
