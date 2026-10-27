@@ -575,7 +575,7 @@ const buildReceiptHtml = ({
           ${
             Number(serviceCharge || 0) > 0
               ? `<div class="summary-row">
-                  <span>Ser.Charges on Food @5.00%</span>
+                  <span>Ser.Charges on Food @5%</span>
                   <span>${formatReceiptAmount(serviceCharge)}</span>
                 </div>`
               : ""
@@ -2712,7 +2712,7 @@ const recalculateInvoiceTotals = (items) => {
                           <div className="flex justify-between py-1.5"><span>SGST (2.5%)</span><span>{formatCurrency(Number(invoice?.gst || 0) / 2)}</span></div>
                           <div className="flex justify-between py-1.5"><span>CGST (2.5%)</span><span>{formatCurrency(Number(invoice?.gst || 0) / 2)}</span></div>
                           <div className="flex items-center justify-between py-1.5 gap-2">
-                            <span>Ser.Charges on Food @5.00%</span>
+                            <span>Ser.Charges on Food @5%</span>
                             <div className="flex items-center gap-1.5">
                               <input
                                 type="number"

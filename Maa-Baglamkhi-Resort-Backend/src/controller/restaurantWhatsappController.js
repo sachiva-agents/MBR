@@ -177,7 +177,7 @@ exports.sendRestaurantInvoiceWhatsApp = async (req, res) => {
       `Items Ordered: ${itemCount}\n` +
       `Food Total: ₹ ${subtotalFormatted}\n` +
       `GST: ₹ ${gstFormatted}\n` +
-      `${invoiceForPdf.serviceCharge > 0 ? `Ser.Charges on Food @5.00%: ₹ ${serviceChargeFormatted}\n` : ""}` +
+      `${invoiceForPdf.serviceCharge > 0 ? `Ser.Charges on Food @5%: ₹ ${serviceChargeFormatted}\n` : ""}` +
       `${invoiceForPdf.discountAmount > 0 ? `Discount: - ₹ ${discountFormatted}\n` : ""}` +
       `─────────────────────────────\n` +
       `Grand Total: ₹ ${totalFormatted}\n` +
@@ -201,7 +201,7 @@ exports.sendRestaurantInvoiceWhatsApp = async (req, res) => {
       `Items: ${itemCount}\n` +
       `Food Total: ₹ ${subtotalFormatted}\n` +
       `GST: ₹ ${gstFormatted}\n` +
-      `${invoiceForPdf.serviceCharge > 0 ? `Ser.Charges on Food @5.00%: ₹ ${serviceChargeFormatted}\n` : ""}` +
+      `${invoiceForPdf.serviceCharge > 0 ? `Ser.Charges on Food @5%: ₹ ${serviceChargeFormatted}\n` : ""}` +
       `${invoiceForPdf.discountAmount > 0 ? `Discount: - ₹ ${discountFormatted}\n` : ""}` +
       `─────────────────────────────\n` +
       `Grand Total: ₹ ${totalFormatted}\n` +
