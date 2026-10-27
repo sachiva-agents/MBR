@@ -117,7 +117,7 @@ async function syncMachine(machine, { from, to, deleteAfter = false, actor = nul
       const columns = await getAttendanceColumns(conn)
       const hasMethod = columns.has('method')
       const [existing] = await conn.query(
-        'SELECT id, check_in, check_out FROM attendance_records WHERE employee_id = ? AND date = ? LIMIT 1 FOR UPDATE',
+        'SELECT id, check_in, check_out, status FROM attendance_records WHERE employee_id = ? AND date = ? LIMIT 1 FOR UPDATE',
         [employeeId, date]
       )
 
@@ -125,20 +125,27 @@ async function syncMachine(machine, { from, to, deleteAfter = false, actor = nul
         const record = existing[0]
         const curIn = toTimeCol(record.check_in)
         const curOut = toTimeCol(record.check_out)
+        const curStatus = String(record.status || 'present').toLowerCase()
 
-        // A day that already has both stamps is complete. Later same-day
-        // punches (re-tapping the thumb) would just re-stamp it — count them
-        // as "already marked" and leave the row untouched, so check-in stays
-        // the first punch of the day, never the last one.
-        if (curIn && curOut) {
+        // Admin-protected statuses are decisions, not punches: a festival
+        // holiday, week off, or approved leave day must never flip to
+        // 'present' just because a thumb touched the reader. Same for a
+        // complete day (both stamps): later same-day punches are counted as
+        // "already marked" and leave the row untouched, so check-in stays the
+        // first punch of the day, never the last one.
+        const PROTECTED_STATUSES = new Set(['holiday', 'week_off', 'on_leave', 'absent'])
+        if ((curIn && curOut) || PROTECTED_STATUSES.has(curStatus)) {
           alreadyMarked += 1
           await conn.rollback()
           continue
         }
 
-        // Keep the earlier check-in and the later check-out across sources.
+        // Keep the earlier check-in and the later check-out across sources,
+        // and keep the existing status unless it is a plain 'present' — a
+        // 'late' or 'half_day' record only gets its missing timestamp filled.
         const keepIn = curIn ? (checkIn && checkIn < curIn ? checkIn : curIn) : checkIn
         const keepOut = curOut ? (checkOut && checkOut > curOut ? checkOut : curOut) : checkOut
+        const keepStatus = curStatus === 'present' ? 'present' : curStatus
 
         const methodClause = hasMethod ? ", method = 'ZK fingerprint'" : ''
         // notes: append only when the marker is not already there — the auto
@@ -148,7 +155,7 @@ async function syncMachine(machine, { from, to, deleteAfter = false, actor = nul
           `UPDATE attendance_records
               SET check_in = COALESCE(?, check_in),
                   check_out = COALESCE(?, check_out),
-                  status = 'present'
+                  status = ?
                   ${methodClause},
                   notes = IF(
                     INSTR(IFNULL(notes, ''), ?) > 0,
@@ -157,7 +164,7 @@ async function syncMachine(machine, { from, to, deleteAfter = false, actor = nul
                   ),
                   updated_at = NOW()
             WHERE id = ?`,
-          [keepIn, keepOut, notes, notes, notes, record.id]
+          [keepIn, keepOut, keepStatus, notes, notes, notes, record.id]
         )
         updated += 1
       } else {
