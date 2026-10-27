@@ -71,23 +71,23 @@ function DateControls({ from, to, onFrom, onTo, onReload, disabled }) {
   ];
   return (
     <div className="flex flex-wrap items-end gap-2">
-      <label className="flex flex-col gap-1 text-[12px] font-bold uppercase tracking-wide text-slate-400">
-        <span className="flex items-center gap-1"><FaCalendarAlt size={12} /> From</span>
-        <input type="date" value={from} onChange={(e) => onFrom(e.target.value)} className="rounded-xl border border-slate-300 px-3 py-2 text-sm font-semibold text-slate-700" />
+      <label className="flex flex-col gap-1 text-[13px] font-bold uppercase tracking-wide text-[#425273]">
+        <span className="flex items-center gap-1"><FaCalendarAlt size={13} /> From</span>
+        <input type="date" value={from} onChange={(e) => onFrom(e.target.value)} className="rounded-xl border border-[#DCE6FB] bg-white px-3 py-2 text-[15px] font-semibold text-slate-800 outline-none transition focus:border-[#2563eb] focus:ring-2 focus:ring-[#2563eb]/15" />
       </label>
-      <label className="flex flex-col gap-1 text-[12px] font-bold uppercase tracking-wide text-slate-400">
+      <label className="flex flex-col gap-1 text-[13px] font-bold uppercase tracking-wide text-[#425273]">
         <span>To</span>
-        <input type="date" value={to} onChange={(e) => onTo(e.target.value)} className="rounded-xl border border-slate-300 px-3 py-2 text-sm font-semibold text-slate-700" />
+        <input type="date" value={to} onChange={(e) => onTo(e.target.value)} className="rounded-xl border border-[#DCE6FB] bg-white px-3 py-2 text-[15px] font-semibold text-slate-800 outline-none transition focus:border-[#2563eb] focus:ring-2 focus:ring-[#2563eb]/15" />
       </label>
-      <div className="flex gap-1">
+      <div className="flex gap-1.5">
         {presets.map(([label, fn]) => (
-          <button key={label} type="button" onClick={fn} disabled={disabled} className="rounded-xl border border-slate-300 px-3 py-2 text-[12px] font-bold uppercase tracking-wide text-slate-600 hover:bg-slate-50 disabled:opacity-40">
+          <button key={label} type="button" onClick={fn} disabled={disabled} className="rounded-xl border border-slate-300 px-3.5 py-2 text-[13px] font-bold uppercase tracking-wide text-slate-700 hover:bg-slate-50 disabled:opacity-40">
             {label === "30d" ? "Last 30d" : label}
           </button>
         ))}
       </div>
-      <button type="button" onClick={onReload} disabled={disabled} className="flex items-center gap-2 rounded-xl bg-emerald-600 px-4 py-2 text-sm font-bold text-white hover:bg-emerald-700 disabled:opacity-50">
-        <FaSyncAlt size={13} /> Load
+      <button type="button" onClick={onReload} disabled={disabled} className="flex items-center gap-2 rounded-xl bg-[#2563eb] px-4 py-2 text-[14px] font-bold text-white shadow-[0_8px_20px_rgba(37,99,235,0.18)] transition-all duration-200 hover:bg-[#1d4ed8] disabled:opacity-50">
+        <FaSyncAlt size={14} /> Load
       </button>
     </div>
   );
@@ -97,31 +97,31 @@ function ReportTable({ columns, rows, summary }) {
   return (
     <div className="space-y-3">
       {summary && Object.keys(summary).length > 0 ? (
-        <div className="flex flex-wrap gap-2">
+        <div className="flex flex-wrap gap-2.5">
           {Object.entries(summary).map(([k, v]) => (
-            <div key={k} className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2">
-              <div className="text-[11px] font-bold uppercase tracking-wide text-slate-400">{k.replace(/_/g, " ")}</div>
-              <div className="text-sm font-bold text-slate-800">
+            <div key={k} className="rounded-xl border border-[#CFE0FC] bg-[#EAF2FE] px-4 py-2.5">
+              <div className="text-[12px] font-bold uppercase tracking-wide text-[#425273]">{k.replace(/_/g, " ")}</div>
+              <div className="text-[18px] font-bold text-[#0B1E4D]">
                 {typeof v === "number" || isMoneyCol(k) ? formatINR(typeof v === "number" ? v : Number(v) || 0) : String(v)}
               </div>
             </div>
           ))}
         </div>
       ) : null}
-      <div className="overflow-x-auto rounded-2xl border border-slate-200 bg-white">
+      <div className="overflow-x-auto rounded-2xl border border-[#E7EEFC] bg-white shadow-[0_14px_36px_-18px_rgba(11,30,77,0.18)]">
         {rows.length === 0 ? (
-          <div className="px-4 py-10 text-center text-sm font-semibold text-slate-400">No rows in this window.</div>
+          <div className="px-4 py-10 text-center text-[15px] font-semibold text-slate-500">No rows in this window.</div>
         ) : (
-          <table className="w-full text-left text-sm">
-            <thead className="bg-slate-50">
-              <tr>{columns.map((c) => <th key={c} className="px-3 py-2 text-[11px] font-bold uppercase tracking-wide text-slate-500">{c}</th>)}</tr>
+          <table className="w-full text-left text-[15px]">
+            <thead className="border-b border-[#E7EEFC] bg-[#F5F9FF]">
+              <tr>{columns.map((c) => <th key={c} className="px-3.5 py-3 text-[13px] font-bold uppercase tracking-[0.05em] text-[#0B1E4D]">{c}</th>)}</tr>
             </thead>
             <tbody>
               {rows.map((row, i) => (
-                <tr key={i} className="border-t border-slate-100">
+                <tr key={i} className="border-t border-[#EEF3FD] transition-colors hover:bg-[#F6F9FF]">
                   {columns.map((c) => (
-                    <td key={c} className="px-3 py-2 text-slate-700">
-                      {renderCell(row[c], c) === "—" ? <span className="text-slate-300">—</span> : renderCell(row[c], c)}
+                    <td key={c} className="px-3.5 py-2.5 font-medium text-[#1f2a44]">
+                      {renderCell(row[c], c) === "—" ? <span className="text-slate-400">—</span> : renderCell(row[c], c)}
                     </td>
                   ))}
                 </tr>
@@ -316,44 +316,44 @@ export default function ReportsSuite() {
   };
 
   return (
-    <div className="space-y-5">
-      <div className="flex flex-col gap-3">
-        <div className="flex flex-wrap items-center justify-between gap-3">
+    <div className="rounded-[24px] border border-slate-200/80 bg-white p-5 shadow-sm sm:p-6 md:p-7 transition-all duration-300">
+      <div className="flex flex-col gap-4 sm:gap-5">
+        <div className="flex flex-col gap-3 border-b border-slate-100 pb-4 sm:flex-row sm:items-start sm:justify-between">
           <div>
-            <div className="flex items-center gap-2 text-[13px] font-bold uppercase tracking-[0.16em] text-emerald-600">
+            <div className="flex items-center gap-2 text-[13px] font-bold uppercase tracking-[0.08em] text-blue-600 sm:text-[14px]">
               <FaChartBar size={14} /> Reports Suite
             </div>
-            <h1 className="mt-1 text-xl font-bold text-slate-900">{current.label}</h1>
-            <p className="text-sm text-slate-500">{current.note}</p>
+            <h1 className="mt-1.5 text-[24px] font-bold leading-tight text-[#1f2a44] sm:text-[28px]">{current.label}</h1>
+            <p className="mt-1.5 text-[15px] text-slate-600 sm:text-[16px]">{current.note}</p>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             <button
               type="button"
               onClick={printAll}
               disabled={printAllBusy || loading}
-              className="flex items-center gap-2 rounded-xl bg-slate-900 px-4 py-2 text-sm font-bold text-white hover:bg-slate-700 disabled:opacity-40"
+              className="flex items-center gap-2 rounded-xl bg-[#2563eb] px-4 py-2.5 text-[14px] font-bold text-white shadow-[0_10px_24px_rgba(37,99,235,0.18)] transition-all duration-200 hover:bg-[#1d4ed8] disabled:opacity-40 sm:px-5 sm:py-3 sm:text-[15px]"
             >
-              <FaPrint size={13} /> {printAllBusy ? `Preparing… ${REPORTS.length} reports` : `Print All ${REPORTS.length} Reports`}
+              <FaPrint size={14} /> {printAllBusy ? `Preparing… ${REPORTS.length} reports` : `Print All ${REPORTS.length} Reports`}
             </button>
             <button
               type="button"
               onClick={downloadNow}
               disabled={loading || rows.length === 0}
-              className="flex items-center gap-2 rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm font-bold text-slate-700 hover:bg-slate-50 disabled:opacity-40"
+              className="flex items-center gap-2 rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-[14px] font-bold text-slate-700 transition-all duration-200 hover:bg-slate-50 disabled:opacity-40 sm:px-5 sm:py-3 sm:text-[15px]"
             >
-              <FaDownload size={13} /> Download CSV
+              <FaDownload size={14} /> Download CSV
             </button>
           </div>
         </div>
 
-        <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+        <div className="rounded-xl border border-slate-200 bg-slate-50/60 p-3.5 sm:p-4">
           <div className="flex flex-wrap gap-1.5">
             {REPORTS.map((r) => (
               <button
                 key={r.key}
                 type="button"
                 onClick={() => { setReportKey(r.key); }}
-                className={`rounded-lg px-3 py-1.5 text-[12px] font-bold tracking-wide transition ${reportKey === r.key ? "bg-emerald-600 text-white" : "bg-slate-100 text-slate-600 hover:bg-slate-200"}`}
+                className={`rounded-lg px-3.5 py-2 text-[13px] font-bold tracking-wide transition sm:text-[14px] ${reportKey === r.key ? "bg-[#2563eb] text-white shadow-[0_6px_14px_rgba(37,99,235,0.3)]" : "bg-white text-slate-700 ring-1 ring-slate-200 hover:bg-slate-100"}`}
               >
                 {r.label}
               </button>
@@ -361,15 +361,15 @@ export default function ReportsSuite() {
           </div>
         </div>
 
-        <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+        <div className="rounded-xl border border-slate-200 bg-slate-50/60 p-3.5 sm:p-4">
           <DateControls from={from} to={to} onFrom={setFrom} onTo={setTo} onReload={load} disabled={loading} />
         </div>
 
         {loading ? (
-          <div className="rounded-2xl border border-slate-200 bg-white p-10 text-center text-sm font-semibold text-slate-400">Loading {current.label}…</div>
+          <div className="rounded-xl border border-slate-200 bg-white p-10 text-center text-[15px] font-semibold text-slate-500">Loading {current.label}…</div>
         ) : error ? (
-          <div className="flex items-center gap-2 rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-semibold text-rose-700">
-            <FaFileAlt size={15} /> {error}
+          <div className="flex items-center gap-2 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-[15px] font-semibold text-rose-700">
+            <FaFileAlt size={16} /> {error}
           </div>
         ) : (
           <ReportTable columns={columns} rows={rows} summary={summary} />
