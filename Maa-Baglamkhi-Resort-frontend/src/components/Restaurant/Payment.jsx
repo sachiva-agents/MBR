@@ -670,28 +670,19 @@ const buildReceiptHtml = ({
                 var root = document.getElementById("receiptRoot");
                 if (!root) return;
 
-                // Use the taller of scrollHeight / bounding rect so nothing
-                // gets clipped, then convert CSS px -> mm (96 CSS px = 1 inch).
-                var heightPx = Math.max(
-                  root.scrollHeight,
-                  root.getBoundingClientRect().height
-                );
-                var PX_TO_MM = 25.4 / 96;
-                var heightMm = heightPx * PX_TO_MM + 3; // small safety buffer
+                var heightPx = root.getBoundingClientRect().height;
+                var heightMm = heightPx * (25.4 / 96);
 
                 var style = document.createElement("style");
                 style.id = "dynamic-receipt-page-size";
-                // Placed after the base <style>, so this rule wins and
-                // overrides the generic "80mm auto" page size with the
-                // exact computed height — this is what stops the printer
-                // from emitting a second, blank page.
+
                 style.textContent =
                   "@page { size: 80mm " + heightMm.toFixed(2) + "mm; margin: 0; }" +
-                  "html, body { height: " + heightMm.toFixed(2) + "mm !important; }";
+                  "html, body { margin: 0 !important; padding: 0 !important; }";
+
                 document.head.appendChild(style);
               } catch (err) {
-                // If measurement fails for any reason, silently fall back
-                // to the default "80mm auto" page size already set above.
+                console.error("Receipt page sizing failed:", err);
               }
             }
 
