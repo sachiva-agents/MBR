@@ -21,6 +21,7 @@ class BookingRooms {
   \`room_charge\` DECIMAL(12,2) NOT NULL DEFAULT 0,
   \`extra_charges\` DECIMAL(12,2) DEFAULT 0,
   \`discount\` DECIMAL(12,2) DEFAULT 0,
+  \`gst_percent\` DECIMAL(5,2) NOT NULL DEFAULT 0,
   \`total\` DECIMAL(12,2) NOT NULL DEFAULT 0,
   \`guest_name\` VARCHAR(255),
   \`adults\` INT DEFAULT 1,
@@ -35,6 +36,17 @@ class BookingRooms {
   FOREIGN KEY (\`booking_id\`) REFERENCES \`bookings\`(\`id\`) ON DELETE CASCADE ON UPDATE CASCADE,
   FOREIGN KEY (\`category_id\`) REFERENCES \`room_categories\`(\`id\`) ON DELETE RESTRICT ON UPDATE CASCADE
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`)
+
+      // Live installs predate the column; SHOW COLUMNS degrades to
+      // "table absent -> skip" is not a risk here (we just created it).
+      const [colRows] = await conn.query(
+        `SHOW COLUMNS FROM \`booking_rooms\` LIKE 'gst_percent'`
+      )
+      if (!colRows.length) {
+        await conn.query(
+          `ALTER TABLE \`booking_rooms\` ADD COLUMN \`gst_percent\` DECIMAL(5,2) NOT NULL DEFAULT 0`
+        )
+      }
 
       await conn.commit()
     } catch (err) {

@@ -717,6 +717,16 @@ const rowTotal = (row, nights = 0) => {
   return base;
 };
 
+// Display-only, GST-INCLUSIVE variant of rowTotal. The stored row total and
+// the invoice taxable base stay pre-tax (room rent is taxed exactly once by
+// the invoice builder at the flat GST_RATE), but the form has to show the
+// entered GST % moving the total — that was the "GST not calculated" half of
+// the bug: the section only ever rendered the pre-tax base.
+const rowTotalGstInclusive = (row, nights = 0) => {
+  const base = rowTotal(row, nights);
+  return base * (1 + (Number(row.gst) || 0) / 100);
+};
+
 const normalizeBooking = (b) => {
   if (!b || typeof b !== "object") return b;
 
@@ -3834,11 +3844,23 @@ const BookingFlow = () => {
     return diff > 0 ? diff : 0;
   }, [formData.checkIn, formData.checkOut]);
 
-  const grandTotal = useMemo(
+  // Grand total shown to the guest is GST-inclusive: it is exactly what the
+  // invoice bills (pre-tax base + base × gst%). baseTotal is the pre-tax part
+  // that the stored row total and the invoice taxable base stay at.
+  const baseTotal = useMemo(
     () =>
       formData.rooms.reduce((sum, row) => sum + rowTotal(row, stayNights), 0),
     [formData.rooms, stayNights],
   );
+  const grandTotal = useMemo(
+    () =>
+      formData.rooms.reduce(
+        (sum, row) => sum + rowTotalGstInclusive(row, stayNights),
+        0,
+      ),
+    [formData.rooms, stayNights],
+  );
+  const gstAmount = Math.round((grandTotal - baseTotal) * 100) / 100;
 
   const [showFolio, setShowFolio] = useState(false);
   const [showGroupBooking, setShowGroupBooking] = useState(false);
@@ -3917,7 +3939,9 @@ const BookingFlow = () => {
             categoryId: ownerCategory ? String(ownerCategory.id) : "",
             roomNo,
             price: r.tariff || r.price || 0,
-            gst: r.gst || r.gstPercent || 0,
+            // Legacy room lines predate per-row GST storage; the resort bills
+            // room rent at 5%, so an absent rate reopens at 5, not 0.
+            gst: r.gst || r.gstPercent || 5,
             quantity: r.quantity || 1,
           };
         }),
@@ -6509,7 +6533,7 @@ const BookingFlow = () => {
                           />
                         </td>
                         <td className="px-3 py-2 font-semibold text-slate-700">
-                          {formatCurrency(rowTotal(row, stayNights))}
+                          {formatCurrency(rowTotalGstInclusive(row, stayNights))}
                         </td>
                         <td className="px-3 py-2">
                           <button
@@ -6602,21 +6626,29 @@ const BookingFlow = () => {
                 <div className="text-sm font-bold uppercase tracking-wide text-slate-500 mb-3">
                   Payment Summary
                 </div>
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-center">
+                <div className="grid grid-cols-1 sm:grid-cols-4 gap-4 text-center">
+                  <div>
+                    <div className="text-xs font-semibold uppercase tracking-wide text-slate-400">
+                      Base (pre-tax)
+                    </div>
+                    <div className="text-base sm:text-lg font-bold text-slate-700">
+                      {formatCurrency(baseTotal)}
+                    </div>
+                  </div>
+                  <div>
+                    <div className="text-xs font-semibold uppercase tracking-wide text-slate-400">
+                      GST
+                    </div>
+                    <div className="text-base sm:text-lg font-bold text-amber-600">
+                      {formatCurrency(gstAmount)}
+                    </div>
+                  </div>
                   <div>
                     <div className="text-xs font-semibold uppercase tracking-wide text-slate-400">
                       Total Amount
                     </div>
                     <div className="text-xl sm:text-2xl font-black text-blue-700">
                       {formatCurrency(grandTotal)}
-                    </div>
-                  </div>
-                  <div>
-                    <div className="text-xs font-semibold uppercase tracking-wide text-slate-400">
-                      Advance Paid
-                    </div>
-                    <div className="text-lg sm:text-xl font-bold text-emerald-600">
-                      {formatCurrency(formData.amount)}
                     </div>
                   </div>
                   <div>
@@ -6628,6 +6660,16 @@ const BookingFlow = () => {
                         Math.max(grandTotal - Number(formData.amount || 0), 0),
                       )}
                     </div>
+                  </div>
+                </div>
+                <div className="mt-3 text-center">
+                  <div className="inline-flex items-center gap-4 text-xs font-semibold uppercase tracking-wide text-slate-400">
+                    <span>
+                      Advance Paid:{" "}
+                      <span className="text-emerald-600">
+                        {formatCurrency(formData.amount)}
+                      </span>
+                    </span>
                   </div>
                 </div>
               </div>

@@ -147,6 +147,7 @@ const Sidebar = ({ isMobile, sidebarOpen, setSidebarOpen, setIsAuthenticated }) 
       { id: 114, name: "Salary", icon: FaMoneyBillWave, path: "/salary", section: "records" },
       { id: 1141, name: "Payroll & Roles", icon: FaCoins, path: "/payroll", section: "records" },
       { id: 1115, name: "Backup & Restore", icon: FaDatabase, path: "/backup-settings", section: "records" },
+      { id: 1116, name: "Settings", icon: FaStar, path: "/settings", section: "records" },
     ],
     manager: [
       { id: 201, name: "All Bookings", icon: FaHotel, path: "/hotel/all-bookings", section: "operations" },

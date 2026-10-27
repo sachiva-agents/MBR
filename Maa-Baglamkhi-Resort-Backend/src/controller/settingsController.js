@@ -16,12 +16,23 @@ const DEFAULT_SETTINGS = {
 };
 
 // New columns added to existing installs (CREATE TABLE below covers fresh ones).
+// An app_settings table created before a column existed is never altered by
+// CREATE TABLE IF NOT EXISTS — every column the table must carry is migrated
+// individually here, not just the pay ones.
 const PAY_COLUMNS = [
   ["present_pay", "DECIMAL(5,2) NOT NULL DEFAULT 100"],
   ["late_pay", "DECIMAL(5,2) NOT NULL DEFAULT 50"],
   ["half_day_pay", "DECIMAL(5,2) NOT NULL DEFAULT 50"],
   ["absent_pay", "DECIMAL(5,2) NOT NULL DEFAULT 0"],
   ["leave_pay", "DECIMAL(5,2) NOT NULL DEFAULT 0"],
+];
+const MIGRATED_COLUMNS = [
+  ["admin_whatsapp_number", "VARCHAR(30) NULL"],
+  ["admin_whatsapp_username", "VARCHAR(80) NULL"],
+  ["sms_enabled", "TINYINT(1) NOT NULL DEFAULT 0"],
+  ["business_name", "VARCHAR(120) DEFAULT 'Maa Baglamukhi Resort'"],
+  ["business_contact", "VARCHAR(120) NULL"],
+  ...PAY_COLUMNS,
 ];
 
 const ensureSettingsRow = async () => {
@@ -42,7 +53,7 @@ const ensureSettingsRow = async () => {
     )
   `);
   // MySQL has no ADD COLUMN IF NOT EXISTS — check per column instead.
-  for (const [column, def] of PAY_COLUMNS) {
+  for (const [column, def] of MIGRATED_COLUMNS) {
     const [check] = await db.query(
       "SELECT COUNT(*) AS c FROM information_schema.columns WHERE table_schema = DATABASE() AND table_name = 'app_settings' AND column_name = ?",
       [column]
@@ -52,8 +63,20 @@ const ensureSettingsRow = async () => {
     }
   }
   const [existing] = await db.query("SELECT id FROM app_settings WHERE id = 1");
-  if (!existing) {
-    await db.query("INSERT INTO app_settings (id) VALUES (1)");
+  // `existing` is the rows array: an empty result is [] — truthy — so check
+  // length or the seed INSERT below is skipped and the row never gets created.
+  if (!existing || existing.length === 0) {
+    // Some installs carry a pre-existing key/value shape app_settings where
+    // `key` is NOT NULL + UNIQUE; the fresh CREATE TABLE above has no such
+    // column. Seed the row in the shape the table actually has.
+    const [cols] = await db.query(
+      "SELECT COUNT(*) AS c FROM information_schema.columns WHERE table_schema = DATABASE() AND table_name = 'app_settings' AND column_name = 'key'"
+    );
+    if (cols[0].c > 0) {
+      await db.query(`INSERT INTO app_settings (\`key\`) VALUES ('default')`);
+    } else {
+      await db.query(`INSERT INTO app_settings (id) VALUES (1)`);
+    }
   }
 };
 
