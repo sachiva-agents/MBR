@@ -116,9 +116,16 @@ class PrintLogs {
     }
 
     const whereClause = conditions.length ? `WHERE ${conditions.join(' AND ')}` : ''
-    const [rows] = await this.pool.execute(
+    // pool.query, not pool.execute: MySQL's prepared-statement protocol
+    // rejects bound LIMIT ? / OFFSET ? values (ER_WRONG_ARGUMENTS 1210)
+    // while MariaDB tolerates them — this server runs plain MySQL. Every
+    // parameter is a value supplied by this handler (filter strings plus
+    // server-side page numbers), so client-side interpolation is safe.
+    const limit = Number.isFinite(Number(filters.limit)) ? Number(filters.limit) : 50
+    const offset = Number.isFinite(Number(filters.offset)) ? Number(filters.offset) : 0
+    const [rows] = await this.pool.query(
       `SELECT * FROM print_logs ${whereClause} ORDER BY printed_at DESC LIMIT ? OFFSET ?`,
-      [...params, filters.limit || 50, filters.offset || 0]
+      [...params, limit, offset]
     )
     return rows
   }

@@ -2,6 +2,7 @@
 // Manages the `register` table — staff users (admin, manager, receptionist, accountant, housekeeping, waiter, kitchen)
 const db = require("../config/db");
 const bcrypt = require("bcryptjs");
+const { addColumnIfMissing } = require("../utils/schemaMigrations");
 
 const runQuery = (sql, params = []) =>
   new Promise((resolve, reject) => {
@@ -12,23 +13,6 @@ const runQuery = (sql, params = []) =>
   });
 
 const ensureSchema = async () => {
-  // Ensure phone column exists
-  try {
-    const [[{ COUNT }]] = await runQuery(
-      "SELECT COUNT(*) AS COUNT FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'register' AND COLUMN_NAME = 'phone'"
-    );
-    if (!COUNT) {
-      await runQuery("ALTER TABLE register ADD COLUMN phone VARCHAR(20) DEFAULT NULL AFTER email");
-    }
-  } catch (alterErr) {
-    // MySQL < 8.0 doesn't support the information_schema approach cleanly; try directly
-    try {
-      await runQuery("ALTER TABLE register ADD COLUMN IF NOT EXISTS phone VARCHAR(20) DEFAULT NULL AFTER email");
-    } catch (e) {
-      // If it already exists, silently continue
-    }
-  }
-
   await runQuery(`
     CREATE TABLE IF NOT EXISTS register (
       id INT AUTO_INCREMENT PRIMARY KEY,
@@ -40,6 +24,14 @@ const ensureSchema = async () => {
       avatar_url VARCHAR(255) DEFAULT NULL
     )
   `);
+
+  // Backfill phone for `register` tables created before the column existed.
+  // Portable across MariaDB and plain MySQL (no MariaDB-only IF NOT EXISTS).
+  try {
+    await addColumnIfMissing(db, "register", "phone", "VARCHAR(20) DEFAULT NULL");
+  } catch {
+    // Phone is optional metadata; never block schema on it.
+  }
 };
 
 const seedDefaults = async () => {

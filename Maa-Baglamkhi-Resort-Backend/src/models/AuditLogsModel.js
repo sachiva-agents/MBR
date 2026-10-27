@@ -58,7 +58,15 @@ class AuditLogs {
   }
 
   async findAll(limit) {
-    const [rows] = await this.pool.execute("SELECT * FROM \`audit_logs\` ORDER BY \`created_at\` DESC LIMIT ?", [limit])
+    // pool.query, not pool.execute: MySQL's prepared-statement protocol
+    // rejects a bound value for LIMIT ? (ER_WRONG_ARGUMENTS 1210) while
+    // MariaDB tolerates it — this server runs on plain MySQL. limit is a
+    // server-side integer (coerced in the controller), so text
+    // interpolation is safe.
+    const [rows] = await this.pool.query(
+      "SELECT * FROM `audit_logs` ORDER BY `created_at` DESC LIMIT ?",
+      [Number(limit) || 100]
+    )
     return rows
   }
 }

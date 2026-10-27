@@ -1,4 +1,5 @@
 const { pool, getConnection } = require('../utils/poolPromise')
+const { addColumnIfMissing, addKeyIfMissing } = require('../utils/schemaMigrations')
 
 class HousekeepingAssignments {
   constructor() {
@@ -39,12 +40,15 @@ class HousekeepingAssignments {
       // Additive backfill for databases that already have the stricter v4
       // columns. CREATE TABLE IF NOT EXISTS never relaxes an existing column,
       // and assignments for rooms outside the Rooms inventory must still work.
+      // Column/key adds go through the portable helper (information_schema
+      // pre-check) because "ADD COLUMN IF NOT EXISTS" is MariaDB-only syntax
+      // that plain MySQL rejects outright.
       await conn.query(`ALTER TABLE \`housekeeping_assignments\` MODIFY \`room_id\` INT UNSIGNED`)
       await conn.query(`ALTER TABLE \`housekeeping_assignments\` MODIFY \`room_number\` VARCHAR(50)`)
-      await conn.query(`ALTER TABLE \`housekeeping_assignments\` ADD COLUMN IF NOT EXISTS \`assigned_by\` BIGINT UNSIGNED`)
-      await conn.query(`ALTER TABLE \`housekeeping_assignments\` ADD COLUMN IF NOT EXISTS \`assigned_by_name\` VARCHAR(191)`)
-      await conn.query(`ALTER TABLE \`housekeeping_assignments\` ADD COLUMN IF NOT EXISTS \`due_time\` DATETIME`)
-      await conn.query(`ALTER TABLE \`housekeeping_assignments\` ADD KEY IF NOT EXISTS \`idx_assigner\` (\`assigned_by\`)`)
+      await addColumnIfMissing(conn, 'housekeeping_assignments', 'assigned_by', 'BIGINT UNSIGNED')
+      await addColumnIfMissing(conn, 'housekeeping_assignments', 'assigned_by_name', 'VARCHAR(191)')
+      await addColumnIfMissing(conn, 'housekeeping_assignments', 'due_time', 'DATETIME')
+      await addKeyIfMissing(conn, 'housekeeping_assignments', 'idx_assigner', '`assigned_by`')
 
       await conn.commit()
     } catch (err) {

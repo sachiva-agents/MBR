@@ -51,6 +51,8 @@ const banquetMigrations = [
   ["banquet_bookings", "billed_at", "DATETIME DEFAULT NULL"],
 ];
 
+const { addColumnIfMissing } = require("../utils/schemaMigrations");
+
 let schemaReady = null;
 
 const ensureBanquetSchema = async () => {
@@ -58,10 +60,12 @@ const ensureBanquetSchema = async () => {
   schemaReady = (async () => {
     for (const [table, column, definition] of banquetMigrations) {
       try {
-        // ADD COLUMN IF NOT EXISTS is native to MariaDB/MySQL 8.0.29+; the
-        // information_schema pre-check is a separate round trip that returns
-        // stale rows under XAMPP's caching and was leaving the table unmigrated.
-        await db.query(`ALTER TABLE \`${table}\` ADD COLUMN IF NOT EXISTS \`${column}\` ${definition}`);
+        // Portable across MariaDB and plain MySQL: information_schema
+        // pre-check, then a plain ALTER only when the column is missing.
+        // (The MariaDB-only "ADD COLUMN IF NOT EXISTS" syntax that was here
+        // made MySQL reject the whole statement, so these columns were never
+        // added on MySQL deployments.)
+        await addColumnIfMissing(db, table, column, definition);
       } catch (err) {
         console.error(`banquet schema migration failed for ${table}.${column}:`, err.message);
       }

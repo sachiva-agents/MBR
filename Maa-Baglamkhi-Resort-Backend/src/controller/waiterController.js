@@ -1,5 +1,6 @@
 const db = require("../config/db");
 const { getRequestActor, isWaiterActor, namesMatch } = require("../utils/requestActor");
+const { addColumnIfMissing } = require("../utils/schemaMigrations");
 
 
 const parseItems = (raw) => {
@@ -10,17 +11,14 @@ const parseItems = (raw) => {
 
 const now = () => new Date();
 
-// Add status columns if missing
+// Add status columns if missing — portable helper works on both MariaDB and
+// plain MySQL ("ADD COLUMN IF NOT EXISTS" is MariaDB-only syntax).
 async function ensureWaiterColumns() {
   try {
-    await db.query("ALTER TABLE kitchen_orders ADD COLUMN IF NOT EXISTS picked_up_at DATETIME NULL AFTER ready_at");
+    await addColumnIfMissing(db, "kitchen_orders", "picked_up_at", "DATETIME NULL AFTER ready_at");
+    await addColumnIfMissing(db, "kitchen_orders", "served_at", "DATETIME NULL AFTER picked_up_at");
   } catch {
-    try { await db.query("ALTER TABLE kitchen_orders ADD COLUMN picked_up_at DATETIME NULL AFTER ready_at"); } catch {}
-  }
-  try {
-    await db.query("ALTER TABLE kitchen_orders ADD COLUMN IF NOT EXISTS served_at DATETIME NULL AFTER picked_up_at");
-  } catch {
-    try { await db.query("ALTER TABLE kitchen_orders ADD COLUMN served_at DATETIME NULL AFTER picked_up_at"); } catch {}
+    // Status columns are best-effort bookkeeping; never block the request.
   }
 }
 
