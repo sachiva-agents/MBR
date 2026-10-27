@@ -164,7 +164,7 @@ const buildPaymentReceipt = (data) => {
       lines.push(padRight("CGST (2.5%)", 32) + formatINR(cgst).padStart(14));
     }
     if (serviceCharge > 0) {
-      lines.push(padRight("Ser.Charges on Food @5%", 32) + formatINR(serviceCharge).padStart(14));
+      lines.push(padRight("Ser.Charges @5.00%", 32) + formatINR(serviceCharge).padStart(14));
     }
     if (discount > 0) {
       lines.push(padRight("Discount", 32) + ("-" + formatINR(discount)).padStart(14));
