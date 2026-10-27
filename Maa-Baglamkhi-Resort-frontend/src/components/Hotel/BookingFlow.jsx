@@ -5040,7 +5040,19 @@ const BookingFlow = () => {
       (sum, e) => sum + (Number(e.amount) || 0),
       0,
     );
-    const finalTotal = roomChargesTotal + folioChargesTotal;
+    // Same pre-tax-vs-inclusive rule as the details screen: the stored room
+    // totals are pre-tax, so add the per-room GST back for the grand totals.
+    const roomsList = Array.isArray(d.rooms) && d.rooms.length > 0 ? d.rooms : [];
+    const roomsGstAmount = roomsList.length
+      ? roomsList.reduce(
+          (sum, r) =>
+            sum +
+            (Number(r.total) || 0) *
+              ((Number(r.gst ?? r.gstPercent ?? 5) || 0) / 100),
+          0,
+        )
+      : roomChargesTotal * 0.05;
+    const finalTotal = roomChargesTotal + folioChargesTotal + roomsGstAmount;
     const effectivePaid = totalPaid > 0 ? totalPaid : Number(b.paidAmount) || 0;
     const remainingAmount =
       effectivePaid > 0 ? Math.max(finalTotal - effectivePaid, 0) : 0;
@@ -5108,25 +5120,28 @@ const BookingFlow = () => {
       stayDates.push(new Date());
     }
 
-    // 🐛 FIX: this used to divide the (already GST-inclusive) roomChargesTotal
-    // evenly across nights and then ADD an extra flat 5% (2.5% SGST + 2.5%
-    // CGST) on top of that — regardless of the room's actual configured GST
-    // rate. A room set up with 0% GST (or any rate other than 5%) therefore
-    // printed an inflated Final Total (e.g. a real ₹2,000 charge became
-    // ₹2,100). Now each room's real GST % (weighted by its share of the
-    // total) is used to correctly split the already-inclusive total into
-    // taxable + SGST + CGST instead of assuming 5%.
+    // Stored booking_rooms totals are PRE-tax, so the GST has to be added
+    // back per room (row total × (1 + row gst%/100)) and the per-night
+    // line items carry that inclusive gross; the tax columns then split
+    // it into taxable + SGST/CGST at the room's real rate.
+    const printRoomsList =
+      Array.isArray(d.rooms) && d.rooms.length > 0 ? d.rooms : [];
+    const roomsGstInclusiveTotal = printRoomsList.length
+      ? printRoomsList.reduce(
+          (sum, r) =>
+            sum +
+            (Number(r.total) || 0) *
+              (1 + ((Number(r.gst ?? r.gstPercent ?? 5) || 0) / 100)),
+          0,
+        )
+      : roomChargesTotal * 1.05;
     const weightedGstPercent =
       roomChargesTotal > 0
-        ? (Array.isArray(d.rooms) ? d.rooms : []).reduce((sum, r) => {
-            const total = Number(r.total) || 0;
-            const gstPercent = Number(r.gst ?? r.gstPercent ?? 0);
-            return sum + (total / roomChargesTotal) * gstPercent;
-          }, 0)
+        ? (roomsGstInclusiveTotal / roomChargesTotal - 1) * 100
         : 0;
     const perNightGrossTotal =
       stayDates.length > 0
-        ? Number(((roomChargesTotal || 0) / stayDates.length).toFixed(2))
+        ? Number((roomsGstInclusiveTotal / stayDates.length).toFixed(2))
         : 0;
     const perNightDisc = 0;
     const perNightTaxable =
@@ -6866,17 +6881,34 @@ const BookingFlow = () => {
     const d = bookingDetail || {};
     const b = selectedBooking || {};
 
-    const roomChargesTotal =
-      Array.isArray(d.rooms) && d.rooms.length > 0
-        ? d.rooms.reduce((sum, r) => sum + (Number(r.total) || 0), 0)
-        : Number(b.totalAmount) || 0;
+    const roomsList =
+      Array.isArray(d.rooms) && d.rooms.length > 0 ? d.rooms : [];
+    const roomChargesTotal = roomsList.length
+      ? roomsList.reduce((sum, r) => sum + (Number(r.total) || 0), 0)
+      : Number(b.totalAmount) || 0;
+
+    // Stored booking_rooms totals are PRE-tax (the form saves rowTotal
+    // before GST), so the GST shown on the new-booking screen and on the
+    // invoice has to be added back here instead of hidden.
+    const roomsGstAmount = roomsList.length
+      ? Math.round(
+          roomsList.reduce(
+            (sum, r) =>
+              sum +
+              (Number(r.total) || 0) *
+                ((Number(r.gst ?? r.gstPercent ?? 5) || 0) / 100),
+            0,
+          ),
+        ) / 100
+      : Math.round(roomChargesTotal * 5) / 100;
 
     const folioChargesTotal = folioCharges.reduce(
       (sum, e) => sum + (Number(e.amount) || 0),
       0,
     );
 
-    const updatedTotalAmount = roomChargesTotal + folioChargesTotal;
+    const updatedTotalAmount =
+      roomChargesTotal + folioChargesTotal + roomsGstAmount;
 
     const advancePaid =
       Number(
@@ -7052,13 +7084,27 @@ const BookingFlow = () => {
                   </dd>
                 </div>
                 <div className="flex justify-between gap-3">
+                  <dt className="text-slate-500">
+                    GST on Rooms
+                    <span className="ml-1 text-xs font-semibold text-amber-600">
+                      {roomsList.length
+                        ? (roomsList.reduce((s, r) => s + (Number(r.gst ?? r.gstPercent ?? 5) || 0), 0) / roomsList.length).toFixed(1)
+                        : "5.0"}
+                      %
+                    </span>
+                  </dt>
+                  <dd className="font-bold text-amber-600">
+                    {formatCurrency(roomsGstAmount)}
+                  </dd>
+                </div>
+                <div className="flex justify-between gap-3">
                   <dt className="text-slate-500">Folio Charges</dt>
                   <dd className="font-bold text-slate-800">
                     {formatCurrency(folioChargesTotal)}
                   </dd>
                 </div>
                 <div className="flex justify-between gap-3">
-                  <dt className="text-slate-500">Total (Room + Folio)</dt>
+                  <dt className="text-slate-500">Total (incl. GST)</dt>
                   <dd className="font-bold text-slate-800">
                     {formatCurrency(updatedTotalAmount)}
                   </dd>
@@ -7091,7 +7137,7 @@ const BookingFlow = () => {
                         <th className="py-2 pr-4">Tariff</th>
                         <th className="py-2 pr-4">GST %</th>
                         <th className="py-2 pr-4">Qty</th>
-                        <th className="py-2">Total</th>
+                        <th className="py-2">Total (incl. GST)</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-200 text-[17px]">
@@ -7104,14 +7150,25 @@ const BookingFlow = () => {
                             {formatCurrency(r.tariff || r.price)}
                           </td>
                           <td className="py-2 pr-4">
-                            {r.gst || r.gstPercent || 0}%
+                            {Number(r.gst ?? r.gstPercent ?? 5) || 0}%
                           </td>
                           <td className="py-2 pr-4">{r.quantity || 1}</td>
-                          <td className="py-2 font-semibold">
-                            {formatCurrency(r.total)}
+                          <td className="py-2 font-semibold text-amber-700">
+                            {formatCurrency(
+                              (Number(r.total) || 0) *
+                                (1 + ((Number(r.gst ?? r.gstPercent ?? 5) || 0) / 100)),
+                            )}
                           </td>
                         </tr>
                       ))}
+                      <tr className="border-t-2 border-slate-200">
+                        <td colSpan={4} className="py-2 pr-4 font-bold text-slate-800">
+                          Rooms incl. GST
+                        </td>
+                        <td className="py-2 font-bold text-slate-900">
+                          {formatCurrency(roomChargesTotal + roomsGstAmount)}
+                        </td>
+                      </tr>
                     </tbody>
                   </table>
                 </div>
