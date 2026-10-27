@@ -51,6 +51,8 @@ const ZkAttendance = () => {
   const [fetchingUsers, setFetchingUsers] = useState(null);
   const [rowMap, setRowMap] = useState({});
   const [pinning, setPinning] = useState(null);
+  const [deviceIds, setDeviceIds] = useState([]);
+  const [fetchingAll, setFetchingAll] = useState(false);
 
   const loadMachines = async () => {
     try {
@@ -259,6 +261,38 @@ const ZkAttendance = () => {
     }
   };
 
+  const fetchAllDeviceUsers = async () => {
+    if (machines.length === 0) {
+      setError("No machines registered yet.");
+      return;
+    }
+    setFetchingAll(true);
+    setError("");
+    setDeviceIds([]);
+    const results = await Promise.allSettled(
+      machines.map(async (m) => {
+        const res = await API.post(`/zk/machines/${m.id}/device-users`, {}, { timeout: 60000 });
+        return (res.data?.users || []).map((u) => ({
+          deviceId: u.deviceId || String(u.uid),
+          deviceName: u.deviceName || null,
+          machineName: m.name,
+          matched: Boolean(u.matched),
+        }));
+      })
+    );
+    const all = results.flatMap((r) => (r.status === "fulfilled" ? r.value : []));
+    const failed = results.filter((r) => r.status === "rejected").length;
+    setDeviceIds(all);
+    if (all.length > 0) {
+      setNotice(`Fetched ${all.length} device ids from ${results.length - failed} of ${results.length} machine${results.length === 1 ? "" : "s"}${failed ? ` (${failed} unreachable)` : ""}.`);
+    } else if (failed === results.length) {
+      setError(`Could not read any machine (${failed} unreachable). Check the devices are on the LAN and powered on.`);
+    } else {
+      setNotice("No users are enrolled on any machine yet.");
+    }
+    setFetchingAll(false);
+  };
+
   const pinUser = async (deviceId, employeeId) => {
     if (!employeeId) return;
     setPinning(deviceId);
@@ -372,9 +406,21 @@ const ZkAttendance = () => {
         <form onSubmit={mapBadge} className="flex flex-wrap items-end gap-3 p-3">
           <label style={{ fontSize: 12, color: "#444" }}>
             Device id
-            <input value={badgeForm.deviceUserId}
+            <select value={badgeForm.deviceUserId}
               onChange={(e) => setBadgeForm((f) => ({ ...f, deviceUserId: e.target.value }))}
-              placeholder="e.g. 4482" style={{ ...inputStyle, width: 140 }} />
+              style={{ ...inputStyle, width: 220 }}>
+              <option value="">— choose device id —</option>
+              {deviceIds.map((d) => (
+                <option key={`${d.machineName}:${d.deviceId}`} value={d.deviceId}>
+                  {d.deviceId}
+                  {d.deviceName ? ` · ${d.deviceName}` : ""}
+                  {" · "}({d.machineName}){d.matched ? "" : " · unmapped"}
+                </option>
+              ))}
+              {badgeForm.deviceUserId && !deviceIds.some((d) => d.deviceId === badgeForm.deviceUserId) && (
+                <option value={badgeForm.deviceUserId}>{badgeForm.deviceUserId} · manual</option>
+              )}
+            </select>
           </label>
           <label style={{ fontSize: 12, color: "#444" }}>
             Employee
@@ -390,6 +436,11 @@ const ZkAttendance = () => {
               ))}
             </select>
           </label>
+          <button type="button" onClick={fetchAllDeviceUsers}
+            disabled={fetchingAll || machines.length === 0}
+            className="dashboard-button-secondary px-4 py-2 text-sm text-slate-700">
+            <FaFingerprint /> {fetchingAll ? "Fetching…" : "Fetch ids from machines"}
+          </button>
           <button type="submit" className="dashboard-button-primary px-4 py-2 text-sm text-white">
             Map badge
           </button>
