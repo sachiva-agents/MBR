@@ -176,5 +176,6 @@ async function syncMachine(machine, { from, to, deleteAfter = false, actor = nul
 }
 
 module.exports = {
-  syncMachine
+  syncMachine,
+  resolveEmployeeId
 }
