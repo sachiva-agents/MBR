@@ -268,7 +268,7 @@ const buildReceiptHtml = ({
         <style>
           @page {
             size: 80mm auto;
-            margin: 0;
+            margin: 0 !important;
           }
           *, *::before, *::after {
             box-sizing: border-box;
@@ -671,7 +671,11 @@ const buildReceiptHtml = ({
                 if (!root) return;
 
                 var heightPx = root.getBoundingClientRect().height;
-                var heightMm = heightPx * (25.4 / 96);
+                // Exact content height + a small buffer, so the final line
+                // ("Powered by...") never wraps onto a second page — the
+                // browser's print rasterization is a hair taller than the
+                // on-screen measurement.
+                var heightMm = heightPx * (25.4 / 96) + 8;
 
                 var style = document.createElement("style");
                 style.id = "dynamic-receipt-page-size";
