@@ -294,7 +294,7 @@ const buildReceiptHtml = ({
     width: 72mm;
     max-width: 72mm;
     margin: 0 auto !important;
-    padding: 0 4px !important;
+    padding: 0 10px !important;
 
     font-size: 14px !important;
     line-height: 1.45;
@@ -683,7 +683,8 @@ const buildReceiptHtml = ({
 
                 style.textContent =
                   "@page { size: 80mm " + heightMm.toFixed(2) + "mm; margin: 0; }" +
-                  "html, body { margin: 0 !important; padding: 0 !important; }";
+                  "html { margin: 0 !important; padding: 0 !important; }" +
+                  "body { margin: 0 !important; }";
 
                 document.head.appendChild(style);
               } catch (err) {
