@@ -291,10 +291,10 @@ const buildReceiptHtml = ({
     text-rendering: geometricPrecision !important;
 }
           body {
-    width: 80mm;
-    max-width: 80mm;
+    width: 72mm;
+    max-width: 72mm;
     margin: 0 auto !important;
-    padding: 0 6px !important;
+    padding: 0 4px !important;
 
     font-size: 14px !important;
     line-height: 1.45;
@@ -413,6 +413,7 @@ const buildReceiptHtml = ({
             font-size: 12px;
             line-height: 1.4;
             font-weight: 700;
+            white-space: normal;
           }
           th {
             font-size: 11px;
@@ -426,26 +427,26 @@ const buildReceiptHtml = ({
             padding-bottom: 3px;
           }
           .item-name {
-            width: 44%;
+            width: 36%;
             padding-right: 6px;
             text-align: left !important;
             color: #000000 !important;
             font-weight: 700;
           }
           .qty-col {
-            width: 14%;
+            width: 10%;
             text-align: center !important;
             color: #000000 !important;
             font-weight: 700;
           }
           .rate-col {
-            width: 20%;
+            width: 27%;
             text-align: right !important;
             color: #000000 !important;
             font-weight: 700;
           }
           .amount-col {
-            width: 22%;
+            width: 27%;
             text-align: right !important;
             color: #000000 !important;
             font-weight: 800;
