@@ -94,6 +94,33 @@ async function requireEmployeeRow(userIdOrEmployeeId) {
   return byUser && byUser[0] ? byUser[0].id : null;
 }
 
+// Self-heal for users created after an older createUser that did not also
+// create their employees row (or pre-backfill deployments): if the id is a
+// users.id, mint the missing employees row so payroll can attach to it,
+// exactly like the salary save path does.
+async function ensureEmployeeRow(userId) {
+  const [users] = await db.query("SELECT id, name, email FROM users WHERE id = ? LIMIT 1", [userId]);
+  const user = Array.isArray(users) ? users[0] : null;
+  if (!user) return null;
+  const parts = String(user.name || "").trim().split(/\s+/);
+  const firstName = parts[0] || "User";
+  const lastName = parts.slice(1).join(" ");
+  try {
+    const [header] = await db.execute(
+      "INSERT INTO employees (user_id, first_name, last_name, base_salary) VALUES (?, ?, ?, 0)",
+      [userId, firstName, lastName || null]
+    );
+    return header.insertId;
+  } catch (err) {
+    // Duplicate key = a race created it between check and insert; re-read.
+    if (err && (err.code === "ER_DUP_ENTRY" || err.code === "ER_DUP_UNIQ")) {
+      const [rows] = await db.query("SELECT id FROM employees WHERE user_id = ? LIMIT 1", [userId]);
+      return rows && rows[0] ? rows[0].id : null;
+    }
+    throw err;
+  }
+}
+
 // GET /api/payroll/payments — admin only.
 exports.listPayments = async (req, res) => {
   try {
@@ -145,9 +172,15 @@ exports.createPayment = async (req, res) => {
   try {
     employeeId = await requireEmployeeRow(employeeId);
     if (!employeeId) {
-      return res.status(404).json({
-        message: "Employee not found — pass an existing employee id, or create the employee first",
-      });
+      // The id may be a users.id whose employees row was never created
+      // (older createUser / pre-backfill deployment): mint it, same as the
+      // salary save path, instead of dead-ending the payment.
+      employeeId = await ensureEmployeeRow(employeeId);
+      if (!employeeId) {
+        return res.status(404).json({
+          message: "Employee not found — no user or employee matches this id",
+        });
+      }
     }
 
     if (body.basic_salary === undefined) {
@@ -375,7 +408,25 @@ exports.estimateSalary = async (req, res) => {
        WHERE e.id = ? LIMIT 1`,
       [employeeId]
     );
-    const employee = empRows && empRows[0];
+    let employee = empRows && empRows[0];
+    if (!employee) {
+      // Self-heal: the id may be a users.id whose employees row was never
+      // created (older createUser / pre-backfill deployment).
+      const createdId = await ensureEmployeeRow(Number(rawId));
+      if (createdId) {
+        const [retried] = await db.query(
+          `SELECT e.id, e.employee_code, e.base_salary, u.id AS user_id, u.name AS username, u.email,
+                  COALESCE(r.name, 'staff') AS role, d.name AS designation
+           FROM employees e
+           LEFT JOIN users u ON u.id = e.user_id
+           LEFT JOIN roles r ON r.id = u.role_id
+           LEFT JOIN designations d ON d.id = e.designation_id
+           WHERE e.id = ? LIMIT 1`,
+          [createdId]
+        );
+        employee = retried && retried[0];
+      }
+    }
     if (!employee) return res.status(404).json({ message: "Employee not found" });
 
     const baseSalary = Number(employee.base_salary || 0);
