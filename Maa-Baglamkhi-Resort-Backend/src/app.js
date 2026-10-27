@@ -211,6 +211,10 @@ async function initializeDatabase(options = {}) {
       const printLogModel = require("./models/PrintLogsModel");
       await printLogModel.ensureSchema();
     });
+    await bootstrapSchema("Holiday calendar schema init", async () => {
+      const holidayCalendarModel = require("./models/HolidayCalendarModel");
+      await holidayCalendarModel.ensureSchema();
+    });
     await bootstrapSchema("Default staff login bootstrap", ensureDefaultStaffLogins);
   } catch (error) {
     console.error(

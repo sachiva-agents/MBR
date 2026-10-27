@@ -508,56 +508,55 @@ exports.listDesignations = async (req, res) => {
 };
 
 // /api/employees/stats — counts for the attendance summary cards.
+// Daily status tallies straight from attendance_records; "earned today" is
+// computed from each employee's base salary and the per-status pay convention
+// (attendance_records has no denormalised salary column — the old query read
+// a non-existent ar.salary_amount and 500'd on every date).
 exports.getEmployeeStats = async (req, res) => {
   const date = String(req.query && req.query.date || "").slice(0, 10);
   try {
     const [total] = await db.query("SELECT COUNT(*) AS total FROM employees WHERE is_active = 1");
-    const [byStatus] = date
-      ? await db.query(
-          `SELECT e.department_id, COALESCE(d.name, 'Unassigned') AS department,
-                  e.designation_id, COALESCE(g.name, 'Unassigned') AS designation,
-                  COALESCE(r.name, 'staff') AS role,
-                  ar.status, ar.salary_amount
-           FROM employees e
-           LEFT JOIN attendance_records ar ON ar.employee_id = e.id AND ar.date = ?
-           LEFT JOIN departments d ON d.id = e.department_id
-           LEFT JOIN designations g ON g.id = e.designation_id
-           LEFT JOIN users u ON u.id = e.user_id
-           LEFT JOIN roles r ON r.id = u.role_id
-           WHERE e.is_active = 1`,
-          [date]
-        )
-      : await db.query(
-          `SELECT e.department_id, COALESCE(d.name, 'Unassigned') AS department,
-                  e.designation_id, COALESCE(g.name, 'Unassigned') AS designation,
-                  COALESCE(r.name, 'staff') AS role,
-                  NULL AS status, NULL AS salary_amount
-           FROM employees e
-           LEFT JOIN departments d ON d.id = e.department_id
-           LEFT JOIN designations g ON g.id = e.designation_id
-           LEFT JOIN users u ON u.id = e.user_id
-           LEFT JOIN roles r ON r.id = u.role_id
-           WHERE e.is_active = 1`
-        );
-
-    const rows = byStatus || [];
-    const tally = { present: 0, absent: 0, late: 0, on_leave: 0, half_day: 0 };
+    const tally = { present: 0, absent: 0, late: 0, on_leave: 0, half_day: 0, holiday: 0, week_off: 0 };
     let totalSalary = 0;
-    for (const row of rows) {
-      const status = String(row.status || "").toLowerCase();
-      if (tally.hasOwnProperty(status)) tally[status] += 1;
-      totalSalary += Number(row.salary_amount || 0);
+
+    if (date) {
+      const [statusRows] = await db.query(
+        "SELECT status, COUNT(*) AS c FROM attendance_records WHERE DATE(date) = ? GROUP BY status",
+        [date]
+      );
+      for (const row of statusRows || []) {
+        const key = String(row.status || "").toLowerCase();
+        if (Object.prototype.hasOwnProperty.call(tally, key)) tally[key] = Number(row.c || 0);
+      }
+
+      const [payRows] = await db.query(
+        `SELECT ar.status, COALESCE(SUM(e.base_salary), 0) AS base
+           FROM attendance_records ar
+           JOIN employees e ON e.id = ar.employee_id
+          WHERE DATE(ar.date) = ?
+          GROUP BY ar.status`,
+        [date]
+      );
+      // Same pay convention as the salary engine: full for present / holiday /
+      // week off, half for late and half day, zero for absent / on leave.
+      for (const row of payRows || []) {
+        const key = String(row.status || "").toLowerCase();
+        const base = Number(row.base || 0);
+        if (key === "present" || key === "holiday" || key === "week_off") totalSalary += base;
+        else if (key === "late" || key === "half_day") totalSalary += base / 2;
+      }
+      totalSalary = Number(totalSalary.toFixed(2));
     }
 
     return res.json({
       total: Number((total && total[0] && total[0].total) || 0),
       date: date || null,
       ...tally,
-      totalSalary: Number(totalSalary.toFixed(2)),
+      totalSalary,
     });
   } catch (err) {
     console.error("getEmployeeStats error:", err.message || err);
-    return res.status(500).json({ message: "Failed to fetch employee stats" });
+    return res.status(500).json({ message: "Failed to fetch employee stats", error: err });
   }
 };
 

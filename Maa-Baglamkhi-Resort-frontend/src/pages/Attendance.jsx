@@ -3,6 +3,8 @@ import {
   FaCalendarAlt,
   FaClipboardCheck,
   FaClock,
+  FaStar,
+  FaTrash,
   FaUserCheck,
   FaUserPlus,
   FaUsers,
@@ -35,6 +37,13 @@ const Attendance = () => {
   const [staff, setStaff] = useState([]);
   const [loadError, setLoadError] = useState("");
   const [notice, setNotice] = useState(null);
+
+  // Festival / holiday calendar — admin adds a festival day; the backend
+  // marks every active employee as a paid holiday for it, so salary counts it.
+  const [holidays, setHolidays] = useState([]);
+  const [holidayName, setHolidayName] = useState("");
+  const [holidayDate, setHolidayDate] = useState("");
+  const [holidayBusy, setHolidayBusy] = useState(false);
 
   // Pagination
   const [currentPage, setCurrentPage] = useState(1);
@@ -72,6 +81,64 @@ const Attendance = () => {
   useEffect(() => {
     loadAttendance();
   }, [date]);
+
+  /* ================= FESTIVAL HOLIDAYS (admin) ================= */
+
+  const loadHolidays = async () => {
+    try {
+      const res = await API.get("/attendance/holidays");
+      setHolidays(Array.isArray(res.data) ? res.data : []);
+    } catch {
+      setHolidays([]);
+    }
+  };
+
+  useEffect(() => {
+    if (isAdmin) loadHolidays();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isAdmin]);
+
+  const addHoliday = async () => {
+    if (!holidayDate) {
+      showNotice("Pick the festival date first", "error");
+      return;
+    }
+    setHolidayBusy(true);
+    try {
+      const res = await API.post("/attendance/mark-holiday", {
+        date: holidayDate,
+        name: holidayName.trim() || "Festival Holiday",
+      });
+      showNotice(res.data?.message || `Holiday added for ${holidayDate}`);
+      setHolidayName("");
+      setHolidayDate("");
+      loadHolidays();
+      setDate(holidayDate);
+    } catch (err) {
+      showNotice(
+        err?.response?.data?.message || "Could not add the holiday",
+        "error"
+      );
+    } finally {
+      setHolidayBusy(false);
+    }
+  };
+
+  const removeHoliday = async (holiday) => {
+    const when = String(holiday.date || "").slice(0, 10);
+    if (!when) return;
+    if (!window.confirm(`Remove ${holiday.name || when} from the holiday calendar? Already-marked attendance rows stay.`)) return;
+    try {
+      await API.delete(`/attendance/holidays/${when}`);
+      showNotice(`Removed ${holiday.name || when} from the calendar`);
+      loadHolidays();
+    } catch (err) {
+      showNotice(
+        err?.response?.data?.message || "Could not remove the holiday",
+        "error"
+      );
+    }
+  };
 
   /* The grid lists every active staff member for the day. An employee who was
      never marked still shows a row with no status, so "Total" is the roster
@@ -178,15 +245,23 @@ const Attendance = () => {
     ).length;
 
   const totalStaff = rowsForDate.length;
-  const presentStaff = statusCount("Present");
-  const absentStaff = statusCount("Absent");
-  const lateStaff = statusCount("Late");
-  const onLeaveStaff = statusCount("On Leave");
+  // Statuses arrive lowercase with underscores from the API ("on_leave",
+  // "half_day") — compare on the raw key, not the display label, or the
+  // cards silently stay at zero.
+  const statusCountRaw = (value) =>
+    rowsForDate.filter((e) => String(e.status || "").toLowerCase() === value).length;
+
+  const presentStaff = statusCountRaw("present");
+  const absentStaff = statusCountRaw("absent");
+  const lateStaff = statusCountRaw("late");
+  const onLeaveStaff = statusCountRaw("on_leave");
   const totalSalary = rowsForDate.reduce(
     (sum, e) => sum + parseFloat(e.salary_amount || 0),
     0
   );
-  const halfDayStaff = statusCount("Half Day");
+  const halfDayStaff = statusCountRaw("half_day");
+  const holidayStaff = statusCountRaw("holiday");
+  const weekOffStaff = statusCountRaw("week_off");
   const unmarkedStaff = rowsForDate.filter((e) => !e.status).length;
 
   const showNotice = (message, tone = "success") => {
@@ -309,13 +384,15 @@ const Attendance = () => {
       )}
 
       {/* Summary cards */}
-      <section className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
+      <section className="grid grid-cols-2 gap-3 sm:grid-cols-4 lg:grid-cols-8">
         <SummaryCard label="Total" value={totalStaff} icon={FaUsers} />
         <SummaryCard label="Present" value={presentStaff} color="green" icon={FaUserCheck} />
         <SummaryCard label="Absent" value={absentStaff} color="red" icon={FaClipboardCheck} />
         <SummaryCard label="Late" value={lateStaff} color="yellow" icon={FaClock} />
-        <SummaryCard label="Leave" value={onLeaveStaff} color="blue" icon={FaCalendarAlt} />
         <SummaryCard label="Half Day" value={halfDayStaff} color="amber" icon={FaClock} />
+        <SummaryCard label="Leave" value={onLeaveStaff} color="blue" icon={FaCalendarAlt} />
+        <SummaryCard label="Holiday" value={holidayStaff} color="purple" icon={FaCalendarAlt} />
+        <SummaryCard label="Week Off" value={weekOffStaff} color="slate" icon={FaClock} />
         <SummaryCard label="Unmarked" value={unmarkedStaff} color="slate" icon={FaUsers} />
         <SummaryCard
           label="Paid Today"
@@ -324,6 +401,91 @@ const Attendance = () => {
           icon={FaUsers}
         />
       </section>
+
+      {/* FESTIVAL / HOLIDAY CALENDAR (admin) — adding a festival marks every
+          active employee as a paid holiday for that date, so salary counts it
+          at 100% and the Holiday card above picks it up. */}
+      {isAdmin && (
+        <section className="rounded-[24px] border border-purple-100 bg-gradient-to-br from-purple-50/60 to-white p-5 shadow-[0_6px_16px_rgba(109,40,217,0.06)]">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div className="flex items-center gap-3">
+              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-purple-500 to-fuchsia-500 text-white shadow-sm">
+                <FaStar />
+              </div>
+              <div>
+                <h3 className="text-[16px] sm:text-[18px] font-extrabold text-slate-900">
+                  Festival &amp; Holiday Calendar
+                </h3>
+                <p className="text-[12px] sm:text-[13px] text-slate-500">
+                  Add a festival day — every staff member is marked as a paid holiday and salary counts it in full.
+                </p>
+              </div>
+            </div>
+            <span className="rounded-full bg-purple-100 px-3 py-1 text-[12px] font-bold text-purple-700">
+              {holidays.length} on calendar
+            </span>
+          </div>
+
+          <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-end">
+            <div className="flex-1">
+              <label className="mb-1 block text-[11px] font-bold uppercase tracking-wider text-slate-500">
+                Festival / holiday name
+              </label>
+              <input
+                value={holidayName}
+                onChange={(e) => setHolidayName(e.target.value)}
+                placeholder="e.g. Diwali, Holi, Christmas"
+                className="w-full rounded-xl border border-purple-100 bg-white px-3.5 py-2.5 text-[14px] font-semibold text-slate-800 outline-none focus:border-purple-400 focus:ring-4 focus:ring-purple-100"
+              />
+            </div>
+            <div className="sm:w-52">
+              <label className="mb-1 block text-[11px] font-bold uppercase tracking-wider text-slate-500">
+                Date
+              </label>
+              <input
+                type="date"
+                value={holidayDate}
+                onChange={(e) => setHolidayDate(e.target.value)}
+                className="w-full rounded-xl border border-purple-100 bg-white px-3.5 py-2.5 text-[14px] font-semibold text-slate-800 outline-none focus:border-purple-400 focus:ring-4 focus:ring-purple-100"
+              />
+            </div>
+            <button
+              type="button"
+              onClick={addHoliday}
+              disabled={holidayBusy}
+              className="inline-flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-purple-600 to-fuchsia-500 px-5 py-2.5 text-[14px] font-bold text-white shadow-sm transition hover:brightness-110 disabled:opacity-60"
+            >
+              <FaStar size={13} />
+              {holidayBusy ? "Adding…" : "Add & mark all staff"}
+            </button>
+          </div>
+
+          {holidays.length > 0 && (
+            <div className="mt-4 flex flex-wrap gap-2">
+              {holidays.map((h) => {
+                const when = String(h.date || "").slice(0, 10);
+                return (
+                  <span
+                    key={when}
+                    className="inline-flex items-center gap-2 rounded-full border border-purple-100 bg-white px-3 py-1.5 text-[13px] font-bold text-purple-700 shadow-sm"
+                  >
+                    <FaCalendarAlt size={12} />
+                    {when} · {h.name}
+                    <button
+                      type="button"
+                      onClick={() => removeHoliday(h)}
+                      title={`Remove ${h.name} from calendar`}
+                      className="rounded-full p-0.5 text-purple-300 transition hover:bg-purple-100 hover:text-purple-700"
+                    >
+                      <FaTrash size={11} />
+                    </button>
+                  </span>
+                );
+              })}
+            </div>
+          )}
+        </section>
+      )}
 
       {/* TABLE */}
       <div className="rounded-[24px] border border-blue-100 bg-white shadow-[0_6px_16px_rgba(30,64,175,0.04)] overflow-hidden">

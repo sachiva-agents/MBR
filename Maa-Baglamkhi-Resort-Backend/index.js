@@ -29,6 +29,11 @@ initializeDatabase().then(() => {
   } catch (e) {
     console.error("Backup scheduler init failed:", e.message);
   }
+  try {
+    require("./src/services/zkAutoSync").start();
+  } catch (e) {
+    console.error("ZK auto-sync init failed:", e.message);
+  }
 });
 
 process.once("SIGINT", () => shutdown("SIGINT"));

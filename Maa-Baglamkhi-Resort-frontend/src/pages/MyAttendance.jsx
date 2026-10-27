@@ -128,6 +128,8 @@ const MyAttendance = () => {
   const lateCount = countStatus("Late");
   const leaveCount = countStatus("On Leave");
   const halfDayCount = countStatus("Half Day");
+  const holidayCount = countStatus("Holiday");
+  const weekOffCount = countStatus("Week Off");
 
   const mSummary = summary?.summary || {};
   const monthlyTotal = Number(mSummary.totalEarned ?? mSummary.totalAmountEarned ?? summary?.totalPaid ?? 0);
@@ -167,12 +169,14 @@ const MyAttendance = () => {
         </p>
       </div>
 
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-7 gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-9 gap-4">
         <SummaryCard label="Present" value={presentCount} color="green" icon={FaUserCheck} />
         <SummaryCard label="Absent" value={absentCount} color="red" icon={FaClipboardCheck} />
         <SummaryCard label="Late" value={lateCount} color="yellow" icon={FaClock} />
         <SummaryCard label="Half Day" value={halfDayCount} color="amber" icon={FaClock} />
         <SummaryCard label="Leave" value={leaveCount} color="blue" icon={FaCalendarAlt} />
+        <SummaryCard label="Holiday" value={holidayCount} color="purple" icon={FaCalendarAlt} />
+        <SummaryCard label="Week Off" value={weekOffCount} color="slate" icon={FaClock} />
         <SummaryCard
           label="Monthly Pay"
           value={formatCurrency(monthlySalary)}
@@ -211,6 +215,8 @@ const MyAttendance = () => {
           {markBtn("late", "Mark Late", "bg-amber-500")}
           {markBtn("half_day", "Half Day", "bg-orange-400")}
           {markBtn("on_leave", "On Leave", "bg-blue-600")}
+          {markBtn("holiday", "Holiday", "bg-purple-500")}
+          {markBtn("week_off", "Week Off", "bg-slate-500")}
           {markBtn("absent", "Absent", "bg-rose-500")}
           {marking && <span className="text-[14px] font-semibold text-slate-500">Saving…</span>}
         </div>

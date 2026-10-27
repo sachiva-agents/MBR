@@ -78,6 +78,17 @@ async function syncMachine(machine, { from, to, deleteAfter = false, actor = nul
     dayEnd: toTimeHms(machine.day_shift_end) || '18:00:00'
   }
 
+  // ESSL units are not NTP-synced: a clock drifted past the shift split sends
+  // today's punches to yesterday (or past the pull window entirely, where they
+  // are lost with deleteAfter). Align the device clock first — best effort, so
+  // a failed SET TIME never blocks attendance pulling.
+  let clock = null
+  try {
+    clock = await zk.setDeviceTime(machine, { toleranceSeconds: 30 })
+  } catch (error) {
+    console.error(`[zk sync ${machine.name}] clock check failed:`, error.message)
+  }
+
   const { rawLogs, machineTime } = await zk.pullLogs(machine, { from, to, deleteAfter })
   const parsed = parseLogLines(rawLogs)
   const groups = groupByShift(parsed, shifts)
@@ -118,16 +129,23 @@ async function syncMachine(machine, { from, to, deleteAfter = false, actor = nul
         const keepOut = curOut ? (checkOut && checkOut > curOut ? checkOut : curOut) : checkOut
 
         const methodClause = hasMethod ? ", method = 'ZK fingerprint'" : ''
+        // notes: append only when the marker is not already there — the auto
+        // sync re-runs the same punches every interval and would otherwise
+        // pile "ZK ... | ZK ... | ZK ..." duplicates onto the row.
         await conn.query(
           `UPDATE attendance_records
               SET check_in = COALESCE(?, check_in),
                   check_out = COALESCE(?, check_out),
                   status = 'present'
                   ${methodClause},
-                  notes = CONCAT(IFNULL(notes, ''), IF(notes IS NOT NULL AND ? <> '', ' | ', ''), ?),
+                  notes = IF(
+                    INSTR(IFNULL(notes, ''), ?) > 0,
+                    notes,
+                    CONCAT(IFNULL(notes, ''), IF(notes IS NOT NULL AND ? <> '', ' | ', ''), ?)
+                  ),
                   updated_at = NOW()
             WHERE id = ?`,
-          [keepIn, keepOut, notes, notes, record.id]
+          [keepIn, keepOut, notes, notes, notes, record.id]
         )
         updated += 1
       } else {
@@ -163,6 +181,10 @@ async function syncMachine(machine, { from, to, deleteAfter = false, actor = nul
   return {
     machine: machine.name,
     machineTime,
+    // The device clock we pulled against, plus whether it was auto-corrected
+    // this run (drifted ESSL units otherwise send today's punches to
+    // yesterday's shift day).
+    clock,
     logsPulled: parsed.length,
     shiftsWritten: created + updated,
     recordsCreated: created,

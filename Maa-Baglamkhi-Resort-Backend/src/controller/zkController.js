@@ -162,6 +162,27 @@ async function deleteMachine(req, res) {
   }
 }
 
+// POST /api/zk/machines/:id/set-time
+// Aligns the device clock with the server when the drift exceeds 30 s —
+// required on ESSL units, whose drifted clocks otherwise misfile punches.
+async function setMachineTime(req, res) {
+  let machine = null
+  try {
+    await machinesModel.ensureSchema()
+    machine = await machinesModel.getMachine(Number(req.params.id))
+    if (!machine) return res.status(404).json({ message: "Machine not found" })
+    const result = await zk.setDeviceTime(machine, { toleranceSeconds: 30 })
+    res.json({ machine: machine.name, ...result })
+  } catch (error) {
+    const target = `${machine?.machine_ip || machine?.ip}:${machine?.machine_port || machine?.port || 4380}`
+    console.error(`[zk set-time] ${target}`, error)
+    res.status(error.statusCode || 502).json({
+      message: `Could not set time on ${target}: ${error.message || "device handshake failed"}`,
+      code: error.code || error.err?.code || null,
+    })
+  }
+}
+
 // POST /api/zk/machines/:id/verify-time
 async function verifyTime(req, res) {
   try {
@@ -333,6 +354,7 @@ module.exports = {
   deleteMachine,
   testConnection,
   verifyTime,
+  setMachineTime,
   deviceUsers,
   sync,
   pulls,

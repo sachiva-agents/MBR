@@ -154,6 +154,23 @@ function groupByShift(parsed, shifts) {
       bucket.checkOut = entry.time
     }
   }
+
+  // A lone punch — or a physical touch that the device echoes as two log lines a
+  // moment apart — is a check-IN only. Without this, first ≈ last stamps
+  // check_out to the same instant as check_in, so a single fingerprint touch
+  // both opens and closes the day. A real in/out pair is always many minutes
+  // apart, so a 60 s gap is the safe line between "same touch" and "worked a
+  // stretch".
+  const toMs = (ts) => (ts ? new Date(`${ts}Z`).getTime() : null)
+  for (const bucket of buckets.values()) {
+    if (bucket.firstTime !== null && bucket.firstTime !== bucket.lastTime) {
+      const gapMs = toMs(bucket.lastTime) - toMs(bucket.firstTime)
+      if (gapMs > 0 && gapMs < 60_000) bucket.checkOut = null
+    } else {
+      bucket.checkOut = null
+    }
+  }
+
   return [...buckets.values()].sort(
     (a, b) => a.shiftDay.localeCompare(b.shiftDay) || a.shift.localeCompare(b.shift) || a.employeeId.localeCompare(b.employeeId)
   )

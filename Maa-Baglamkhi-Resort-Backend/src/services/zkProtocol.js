@@ -271,6 +271,51 @@ const zk = {
   },
 
   /**
+   * Align the machine clock with the server clock. ESSL / ZKTeco units are not
+   * NTP-synced; a drifted device clock is the #1 cause of punches landing in
+   * the wrong shift day (or falling outside the pull window and being lost).
+   *
+   * Pushes the server's LOCAL time to the device only when |drift| exceeds
+   * `toleranceSeconds` — the shift split is configured against device local
+   * time, so the two clocks must agree on local wall time. Returns
+   * { deviceTime, serverTime, driftSeconds, corrected, newDeviceTime }.
+   */
+  async setDeviceTime(machine, { toleranceSeconds = 30 } = {}) {
+    const { device } = await connectDevice(machine)
+    try {
+      const deviceTime = toDeviceDate(await device.getTime())
+      const now = new Date()
+      const deviceParts = parseTimestamp(deviceTime)
+      const toEpoch = (p) =>
+        new Date(Date.UTC(p.year, p.month - 1, p.day, p.hour, p.minute, p.second)).getTime()
+      const serverParts = {
+        year: now.getFullYear(),
+        month: now.getMonth() + 1,
+        day: now.getDate(),
+        hour: now.getHours(),
+        minute: now.getMinutes(),
+        second: now.getSeconds(),
+      }
+      const driftSeconds = Math.round((toEpoch(deviceParts) - toEpoch(serverParts)) / 1000)
+      const corrected = Math.abs(driftSeconds) > toleranceSeconds
+      let newDeviceTime = deviceTime
+      if (corrected) {
+        await device.setTime(now)
+        newDeviceTime = toDeviceDate(await device.getTime())
+      }
+      return {
+        deviceTime,
+        serverTime: formatTimestamp(serverParts),
+        driftSeconds,
+        corrected,
+        newDeviceTime,
+      }
+    } finally {
+      await device.disconnect().catch(() => {})
+    }
+  },
+
+  /**
    * Verify the machine clock against the server. Returns { deviceTime, serverTime,
    * driftSeconds } — an operator sets the shift split relative to this clock.
    */

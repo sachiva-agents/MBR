@@ -39,6 +39,7 @@ const ZkAttendance = () => {
   const [form, setForm] = useState(DEFAULT_FORM);
   const [syncing, setSyncing] = useState(null);
   const [verifying, setVerifying] = useState(null);
+  const [settingTime, setSettingTime] = useState(null);
   const [verifyResult, setVerifyResult] = useState(null);
   const [lastSync, setLastSync] = useState(null);
   const [error, setError] = useState("");
@@ -225,6 +226,25 @@ const ZkAttendance = () => {
     }
   };
 
+  const setMachineTime = async (machine) => {
+    setSettingTime(machine.id);
+    setVerifyResult(null);
+    setError("");
+    try {
+      const res = await API.post(`/zk/machines/${machine.id}/set-time`, {});
+      const d = res.data;
+      setVerifyResult(
+        d.corrected
+          ? `${machine.name} clock corrected from ${d.deviceTime} to ${d.newDeviceTime} (drift ${d.driftSeconds}s)`
+          : `${machine.name} clock within ${Math.abs(d.driftSeconds)}s of server — no change`
+      );
+    } catch (err) {
+      setError(`Set time failed for ${machine.name}: ${err.response?.data?.message || err.message}`);
+    } finally {
+      setSettingTime(null);
+    }
+  };
+
   const syncMachine = async (machine) => {
     setSyncing(machine.id);
     setLastSync(null);
@@ -232,12 +252,17 @@ const ZkAttendance = () => {
     try {
       const res = await API.post(`/zk/machines/${machine.id}/sync`, {});
       setLastSync(res.data);
+      const clockNote =
+        res.data.clock && res.data.clock.corrected
+          ? ` Machine clock auto-corrected ${res.data.clock.deviceTime} → ${res.data.clock.newDeviceTime} (was ${res.data.clock.driftSeconds}s off).`
+          : "";
       setNotice(
         `Synced ${machine.name}: ${res.data.logsPulled} punches, ` +
           `${res.data.recordsCreated} new records, ${res.data.recordsUpdated} updated` +
           (res.data.recordsSkipped
             ? `. ${res.data.recordsSkipped} unmatched device users skipped (${(res.data.skippedDeviceIds || []).join(", ")}).`
-            : ".")
+            : ".") +
+          clockNote
       );
       loadMachines();
     } catch (err) {
@@ -592,6 +617,9 @@ const ZkAttendance = () => {
                       </ActionBtn>
                       <ActionBtn onClick={() => verifyTime(m)} disabled={verifying === m.id}>
                         <FaClock /> {verifying === m.id ? "Checking…" : "Check time"}
+                      </ActionBtn>
+                      <ActionBtn onClick={() => setMachineTime(m)} disabled={settingTime === m.id} accent>
+                        <FaSync /> {settingTime === m.id ? "Setting…" : "Set time"}
                       </ActionBtn>
                       <ActionBtn onClick={() => loadDeviceUsers(m)} disabled={fetchingUsers === m.id}>
                         <FaFingerprint /> {fetchingUsers === m.id ? "Reading…" : "Registered users"}

@@ -17,6 +17,12 @@ router.get("/", authMiddleware, attendanceController.getAllAttendance);
 router.post("/", authMiddleware, roleMiddleware(["admin"]), attendanceController.markAttendance);
 router.post("/mark", authMiddleware, roleMiddleware(["admin"]), attendanceController.markAttendance);
 
+// Festival / holiday handling: mark every active employee as holiday for a
+// date (so payroll pays it in full) and read the holiday calendar.
+router.post("/mark-holiday", authMiddleware, roleMiddleware(["admin"]), attendanceController.markHolidayForAll);
+router.get("/holidays", authMiddleware, attendanceController.getHolidayCalendar);
+router.delete("/holidays/:date", authMiddleware, roleMiddleware(["admin"]), attendanceController.deleteHolidayCalendarEntry);
+
 // Edit / delete a record.
 router.put("/:id", authMiddleware, attendanceController.updateAttendanceRecord);
 router.patch("/:id", authMiddleware, attendanceController.updateAttendanceRecord);

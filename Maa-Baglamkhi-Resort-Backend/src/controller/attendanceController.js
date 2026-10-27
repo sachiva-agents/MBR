@@ -475,6 +475,128 @@ exports.deleteAttendanceRecord = async (req, res) => {
 };
 
 /**
+ * POST /api/attendance/mark-holiday (admin only)
+ * Body: { date: "YYYY-MM-DD", name?: "Diwali", force?: true }
+ *
+ * Marks EVERY active employee as `holiday` for the date so the payroll
+ * engine pays it in full (holiday multiplier = 1.0, same as a present day)
+ * and attendance reports count it under Holiday. Existing rows are
+ * re-marked only when force=true; by default a row already carrying a real
+ * status (present/late/half_day...) is left alone — a staff member who
+ * actually worked on a festival day keeps that status.
+ */
+exports.markHolidayForAll = async (req, res) => {
+  return withAttendanceSchema(res, async () => {
+    const body = req.body || {};
+    const dateStr = isDateStr(body.date) ? body.date.trim() : todayStr();
+    const name = typeof body.name === "string" && body.name.trim() ? body.name.trim() : null;
+    const force = body.force === true;
+    const notes = name ? `Holiday: ${name}` : "Holiday";
+
+    const [employees] = await db.query("SELECT id FROM employees WHERE is_active = 1");
+    const activeEmployees = Array.isArray(employees) ? employees : [];
+
+    let created = 0;
+    let reMarked = 0;
+    let kept = 0;
+
+    for (const emp of activeEmployees) {
+      const [existing] = await db.query(
+        "SELECT id, status FROM attendance_records WHERE employee_id = ? AND DATE(date) = ? LIMIT 1",
+        [emp.id, dateStr]
+      );
+      const row = Array.isArray(existing) ? existing[0] : null;
+
+      if (row && !force && String(row.status || "").toLowerCase() !== "holiday") {
+        kept += 1;
+        continue;
+      }
+      if (row) {
+        await db.query(
+          `UPDATE attendance_records
+             SET status = 'holiday', leave_type = NULL, notes = ?, updated_at = NOW()
+           WHERE id = ?`,
+          [notes, row.id]
+        );
+        reMarked += 1;
+      } else {
+        await db.query(
+          `INSERT INTO attendance_records (employee_id, date, status, notes, created_at, updated_at)
+           VALUES (?, ?, 'holiday', ?, NOW(), NOW())`,
+          [emp.id, dateStr, notes]
+        );
+        created += 1;
+      }
+    }
+
+    // Keep the festival in the calendar so future month reports can count it
+    // even for days not yet marked.
+    if (name) {
+      try {
+        const HolidayCalendarModel = require("../models/HolidayCalendarModel");
+        await HolidayCalendarModel.ensureSchema();
+        await HolidayCalendarModel.add({ date: dateStr, name, fullPay: true });
+      } catch (calErr) {
+        console.error("mark-holiday: calendar upsert failed:", calErr.message);
+      }
+    }
+
+    res.json({
+      message: `Holiday marked for ${dateStr}${name ? ` (${name})` : ""}`,
+      date: dateStr,
+      activeEmployees: activeEmployees.length,
+      created,
+      reMarked,
+      kept,
+      keptNote: kept
+        ? `${kept} record(s) kept their existing status (worked on the holiday); use force=true to override.`
+        : null,
+    });
+  });
+};
+
+/**
+ * GET /api/attendance/holidays?from&to — festival calendar for the report UI.
+ */
+exports.getHolidayCalendar = async (req, res) => {
+  const from = isDateStr(req.query?.from) ? req.query.from.trim() : null;
+  const to = isDateStr(req.query?.to) ? req.query.to.trim() : null;
+  try {
+    const HolidayCalendarModel = require("../models/HolidayCalendarModel");
+    await HolidayCalendarModel.ensureSchema();
+    const rows = await HolidayCalendarModel.list(from, to);
+    res.json((Array.isArray(rows) ? rows : []).map((r) => ({
+      date: toISODate(r.holiday_date),
+      name: r.name,
+      fullPay: Boolean(r.full_pay),
+      notes: r.notes || null,
+    })));
+  } catch (err) {
+    res.status(500).json({ message: "Failed to load holiday calendar", error: err.message });
+  }
+};
+
+/**
+ * DELETE /api/attendance/holidays/:date — remove a festival day from the
+ * calendar. Existing attendance rows are untouched; only the calendar entry
+ * is dropped.
+ */
+exports.deleteHolidayCalendarEntry = async (req, res) => {
+  const d = String(req.params?.date || "").trim();
+  if (!isDateStr(d)) {
+    return res.status(400).json({ message: "Valid date (YYYY-MM-DD) required" });
+  }
+  try {
+    const HolidayCalendarModel = require("../models/HolidayCalendarModel");
+    await HolidayCalendarModel.ensureSchema();
+    const removed = await HolidayCalendarModel.remove(d.trim());
+    res.json({ message: removed ? "Holiday removed from calendar" : "Holiday not in calendar", date: d.trim(), removed });
+  } catch (err) {
+    res.status(500).json({ message: "Failed to remove holiday", error: err.message });
+  }
+};
+
+/**
  * GET /api/attendance/employees
  * Who can be marked. ?date adds each employee's status for that day;
  * ?month adds month totals. Feeds the admin manual-entry flow.
@@ -611,10 +733,13 @@ exports.getAttendanceReport = async (req, res) => {
         acc.absent += r.totals.absent;
         acc.late += r.totals.late;
         acc.half_day += r.totals.half_day;
+        acc.on_leave += r.totals.on_leave;
+        acc.holiday += r.totals.holiday;
+        acc.week_off += r.totals.week_off;
         acc.earned += r.totals.earned;
         return acc;
       },
-      { employees: 0, days: 0, present: 0, absent: 0, late: 0, half_day: 0, earned: 0 }
+      { employees: 0, days: 0, present: 0, absent: 0, late: 0, half_day: 0, on_leave: 0, holiday: 0, week_off: 0, earned: 0 }
     );
 
     res.json({
@@ -719,9 +844,17 @@ exports.getPayrollAttendance = async (req, res) => {
         acc.presentDays += r.totals.present;
         acc.absentDays += r.totals.absent;
         acc.lateDays += r.totals.late;
+        acc.halfDayDays += r.totals.half_day;
+        acc.onLeaveDays += r.totals.on_leave;
+        acc.holidayDays += r.totals.holiday;
+        acc.weekOffDays += r.totals.week_off;
         return acc;
       },
-      { employees: 0, monthlySalary: 0, earned: 0, presentDays: 0, absentDays: 0, lateDays: 0 }
+      {
+        employees: 0, monthlySalary: 0, earned: 0,
+        presentDays: 0, absentDays: 0, lateDays: 0,
+        halfDayDays: 0, onLeaveDays: 0, holidayDays: 0, weekOffDays: 0,
+      }
     );
 
     res.json({
@@ -736,6 +869,10 @@ exports.getPayrollAttendance = async (req, res) => {
         totalPresentDays: totals.presentDays,
         totalAbsentDays: totals.absentDays,
         totalLateDays: totals.lateDays,
+        totalHalfDayDays: totals.halfDayDays,
+        totalOnLeaveDays: totals.onLeaveDays,
+        totalHolidayDays: totals.holidayDays,
+        totalWeekOffDays: totals.weekOffDays,
       },
       employees: rows,
     });
