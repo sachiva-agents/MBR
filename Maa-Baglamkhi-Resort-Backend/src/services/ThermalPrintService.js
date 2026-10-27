@@ -307,7 +307,9 @@ const printKOT = async (data, printerKey = "KITCHEN_PRINTER") => {
     // always generate the narrow thermal-width PDF for KOT prints instead
     // of branching on printer.type. generateInkjetKOTPdf is left in place
     // (unused here) in case a genuine A5/A4 KOT printer is needed later.
-    const pdfResult = await generateThermalPdfFromText(receiptText);
+    // bold: KOTs read thin in normal Courier on thermal paper — print the
+    // whole ticket heavier so kitchen staff can see it from across the room.
+    const pdfResult = await generateThermalPdfFromText(receiptText, { bold: true });
 
     // FIX (blank space): force the printer's continuous-roll paper form
     // (see THERMAL_PAPER_SIZE comment above) so the driver doesn't pad our
@@ -365,8 +367,8 @@ const printReceipt = async (printType, data, printerKey = "THERMAL_PRINTER") => 
 /**
  * Generate a thermal-width PDF from text content.
  */
-const generateThermalPdfFromText = async (textContent) => {
-  return generateThermalPdf(null, null, textContent);
+const generateThermalPdfFromText = async (textContent, opts = {}) => {
+  return generateThermalPdf(null, null, textContent, opts);
 };
 
 /**

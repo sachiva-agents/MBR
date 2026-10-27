@@ -527,7 +527,7 @@ const THERMAL_CHAR_WIDTH = 6;
 // against the printer's actual line width instead of a guessed constant.
 const THERMAL_CHARS_PER_LINE = Math.max(20, Math.floor(THERMAL_CONTENT_WIDTH / THERMAL_CHAR_WIDTH));
 
-const generateThermalPdf = (escPosBuffer, printer, textContent = "") => {
+const generateThermalPdf = (escPosBuffer, printer, textContent = "", opts = {}) => {
   ensureDir(THERMAL_PDF_DIR);
 
   const fileName = `thermal_${Date.now()}.pdf`;
@@ -593,7 +593,10 @@ const generateThermalPdf = (escPosBuffer, printer, textContent = "") => {
     stream.on("error", reject);
     doc.pipe(stream);
 
-    doc.fillColor("#000000").font("Courier").fontSize(FONT_SIZE);
+    // Courier-Bold is the same fixed-width metric as Courier, so the
+    // CHARS_PER_LINE / centering math above stays exact — the glyphs just
+    // print heavier, which on thermal paper reads as "darker + bolder".
+    doc.fillColor("#000000").font(opts.bold ? "Courier-Bold" : "Courier").fontSize(FONT_SIZE);
 
     let y = MARGIN.top;
     for (const line of wrappedLines) {
