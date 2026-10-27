@@ -1,3 +1,4 @@
+
 const db = require("../config/db");
 const AttendanceRecordsModel = require("../models/AttendanceRecordsModel");
 const { getPayPercentages } = require("./settingsController");
@@ -50,6 +51,23 @@ async function employeeForUser(userId) {
   return Array.isArray(rows) ? rows[0] || null : null;
 }
 
+// Many users never got an employees row (onboarding predates the v4 schema),
+// and setEmployeeSalary 404'd for them. Create the row on demand so any user
+// can have a salary set.
+async function ensureEmployeeRow(userId) {
+  const [users] = await db.query("SELECT id, name, email FROM users WHERE id = ? LIMIT 1", [userId]);
+  const user = Array.isArray(users) ? users[0] : null;
+  if (!user) return null;
+  const parts = String(user.name || "").trim().split(/\s+/);
+  const firstName = parts[0] || "User";
+  const lastName = parts.slice(1).join(" ");
+  const [header] = await db.execute(
+    "INSERT INTO employees (user_id, first_name, last_name, base_salary) VALUES (?, ?, ?, 0)",
+    [userId, firstName, lastName || null]
+  );
+  return { id: header.insertId };
+}
+
 // ADMIN: Set or update salary + designation for an employee.
 // POST /api/salary/:userId — body: { salary, designation }
 exports.setEmployeeSalary = async (req, res) => {
@@ -65,8 +83,11 @@ exports.setEmployeeSalary = async (req, res) => {
   }
 
   try {
-    const employee = await employeeForUser(userId);
-    if (!employee) return res.status(404).json({ message: "Employee not found" });
+    let employee = await employeeForUser(userId);
+    if (!employee) {
+      employee = await ensureEmployeeRow(userId);
+      if (!employee) return res.status(404).json({ message: "User not found" });
+    }
 
     // `designation` arrives as a free-text NAME from the admin UI, but
     // employees.designation_id is a foreign key to designations.id. Bind a real

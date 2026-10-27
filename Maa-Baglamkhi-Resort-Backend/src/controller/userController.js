@@ -120,15 +120,32 @@ exports.createUser = async (req, res) => {
     const hashedPassword = await bcrypt.hash(password, 10);
     const roleId = resolveRoleId(role);
 
-    await db.query(
+    const [userHeader] = await db.query(
       "INSERT INTO users (name, email, password_hash, role_id, status) VALUES (?, ?, ?, ?, 'active')",
       [name, email, hashedPassword, roleId]
     );
 
+    // v4 schema: salary, designation and attendance all key off
+    // employees.user_id, so every user gets an employee row from birth.
+    // Best-effort: the user is already created, a failure here must not
+    // turn the request into a 500.
+    let employeeId = null;
+    try {
+      const parts = String(name).trim().split(/\s+/);
+      const [empHeader] = await db.execute(
+        "INSERT INTO employees (user_id, first_name, last_name, base_salary) VALUES (?, ?, ?, 0)",
+        [userHeader.insertId, parts[0] || name, parts.slice(1).join(" ") || null]
+      );
+      employeeId = empHeader.insertId;
+    } catch (empErr) {
+      console.error(`Could not create employee row for user ${userHeader.insertId}:`, empErr.message);
+    }
+
     return res.json({
       message: "User created successfully",
       user: {
-        id: null,
+        id: userHeader.insertId,
+        employeeId,
         name,
         email,
         role: String(roleId),
