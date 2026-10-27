@@ -229,6 +229,48 @@ async function pulls(req, res) {
   }
 }
 
+// --- Badge map: map the device fingerprint id an employee is enrolled under
+// --- to their employees.id row, so their punches resolve on the next sync.
+async function badgeMap(req, res) {
+  try {
+    await machinesModel.ensureSchema();
+    const rows = await machinesModel.listBadgeMappings();
+    res.json({ mappings: rows });
+  } catch (error) {
+    res.status(500).json({ message: error.message, error });
+  }
+}
+
+async function badgeMapSet(req, res) {
+  try {
+    await machinesModel.ensureSchema();
+    const { deviceUserId, employeeId } = req.body || {};
+    const device = String(deviceUserId ?? "").trim();
+    const empId = Number(employeeId);
+    if (!device) return res.status(400).json({ message: "deviceUserId required" });
+    if (!Number.isFinite(empId) || empId <= 0) return res.status(400).json({ message: "employeeId required" });
+    const db = require("../config/db");
+    const [[emp]] = await db.query("SELECT id FROM employees WHERE id = ? LIMIT 1", [empId]);
+    if (!emp) return res.status(404).json({ message: "Employee not found" });
+    await machinesModel.mapBadge(device, empId);
+    res.json({ mapped: { deviceUserId: device, employeeId: empId } });
+  } catch (error) {
+    res.status(500).json({ message: error.message, error });
+  }
+}
+
+async function badgeMapDelete(req, res) {
+  try {
+    await machinesModel.ensureSchema();
+    const device = String(req.params.deviceUserId ?? "").trim();
+    if (!device) return res.status(400).json({ message: "deviceUserId required" });
+    await machinesModel.unmapBadge(device);
+    res.json({ unmapped: device });
+  } catch (error) {
+    res.status(500).json({ message: error.message, error });
+  }
+}
+
 module.exports = {
   createMachine,
   listMachines,
@@ -238,4 +280,7 @@ module.exports = {
   verifyTime,
   sync,
   pulls,
+  badgeMap,
+  badgeMapSet,
+  badgeMapDelete,
 };

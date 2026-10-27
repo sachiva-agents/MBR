@@ -44,6 +44,10 @@ const ZkAttendance = () => {
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
 
+  const [mappings, setMappings] = useState([]);
+  const [employees, setEmployees] = useState([]);
+  const [badgeForm, setBadgeForm] = useState({ deviceUserId: "", employeeId: "" });
+
   const loadMachines = async () => {
     try {
       const res = await API.get("/zk/machines");
@@ -55,8 +59,58 @@ const ZkAttendance = () => {
     }
   };
 
+  const loadBadgeMap = async () => {
+    try {
+      const res = await API.get("/zk/badge-map");
+      setMappings(Array.isArray(res.data?.mappings) ? res.data.mappings : []);
+    } catch {
+      setMappings([]);
+    }
+  };
+
+  const loadEmployees = async () => {
+    try {
+      const res = await API.get("/employees");
+      setEmployees(Array.isArray(res.data) ? res.data : res.data?.employees || []);
+    } catch {
+      setEmployees([]);
+    }
+  };
+
+  const mapBadge = async (e) => {
+    e.preventDefault();
+    const { deviceUserId, employeeId } = badgeForm;
+    if (!deviceUserId.trim() || !employeeId) {
+      setError("Badge mapping needs both a device id and an employee.");
+      return;
+    }
+    setError("");
+    try {
+      await API.post("/zk/badge-map", { deviceUserId: deviceUserId.trim(), employeeId: Number(employeeId) });
+      setNotice(`Mapped device id ${deviceUserId.trim()} to employee ${employeeId}.`);
+      setBadgeForm({ deviceUserId: "", employeeId: "" });
+      loadBadgeMap();
+    } catch (err) {
+      setError(`Badge mapping failed: ${err.response?.data?.message || err.message}`);
+    }
+  };
+
+  const unmapBadge = async (deviceUserId) => {
+    if (!window.confirm(`Unmap device id ${deviceUserId}? Its punches will be skipped unless they match a code or employee id.`)) return;
+    setError("");
+    try {
+      await API.delete(`/zk/badge-map/${encodeURIComponent(deviceUserId)}`);
+      setNotice(`Unmapped device id ${deviceUserId}.`);
+      loadBadgeMap();
+    } catch (err) {
+      setError(`Unmap failed: ${err.response?.data?.message || err.message}`);
+    }
+  };
+
   useEffect(() => {
     loadMachines();
+    loadBadgeMap();
+    loadEmployees();
   }, []);
 
   const resetForm = () => {
@@ -266,6 +320,71 @@ const ZkAttendance = () => {
           </button>
         </div>
       )}
+
+      {/* Badge map: enroll a device fingerprint id to a specific employee when
+          their punch-in id is not their employee_code. */}
+      <div className="zk-attendance__table-wrap dashboard-card overflow-hidden rounded-xl mt-5">
+        <div className="flex items-center gap-2 border-b border-slate-100 px-3 py-2.5">
+          <FaFingerprint style={{ color: "#0d47a1" }} />
+          <strong style={{ fontSize: 14, color: "#1f2a44" }}>
+            Badge map — device fingerprint id → employee
+          </strong>
+          <span style={{ fontSize: 12, color: "#777" }}>
+            A punch only lands on an employee if its device id is a code, a numeric id, or mapped here.
+          </span>
+        </div>
+
+        <form onSubmit={mapBadge} className="flex flex-wrap items-end gap-3 p-3">
+          <label style={{ fontSize: 12, color: "#444" }}>
+            Device id
+            <input value={badgeForm.deviceUserId}
+              onChange={(e) => setBadgeForm((f) => ({ ...f, deviceUserId: e.target.value }))}
+              placeholder="e.g. 4482" style={{ ...inputStyle, width: 140 }} />
+          </label>
+          <label style={{ fontSize: 12, color: "#444" }}>
+            Employee
+            <select value={badgeForm.employeeId}
+              onChange={(e) => setBadgeForm((f) => ({ ...f, employeeId: e.target.value }))}
+              style={{ ...inputStyle, width: 260 }}>
+              <option value="">— choose employee —</option>
+              {employees.map((emp) => (
+                <option key={emp.employee_id} value={emp.employee_id}>
+                  {`${emp.first_name || ""} ${emp.last_name || ""}`.trim() || emp.employee_code}
+                  {" "}({emp.employee_code})
+                </option>
+              ))}
+            </select>
+          </label>
+          <button type="submit" className="dashboard-button-primary px-4 py-2 text-sm text-white">
+            Map badge
+          </button>
+        </form>
+
+        <table className="zk-attendance__table" style={{ borderCollapse: "collapse", fontSize: 14 }}>
+          <thead>
+            <tr style={{ background: "#f5f5f5", textAlign: "left" }}>
+              <th style={thStyle}>Device id</th>
+              <th style={thStyle}>Employee</th>
+              <th style={thStyle}></th>
+            </tr>
+          </thead>
+          <tbody>
+            {mappings.length === 0 ? (
+              <tr><td colSpan={3} style={tdStyle}>No badge mappings yet.</td></tr>
+            ) : (
+              mappings.map((m) => (
+                <tr key={m.device_user_id} style={{ borderBottom: "1px solid #eee" }}>
+                  <td style={tdStyle}><code>{m.device_user_id}</code></td>
+                  <td style={tdStyle}>{m.first_name} {m.last_name} <span style={{ color: "#777" }}>({m.employee_code})</span></td>
+                  <td style={tdStyle}>
+                    <ActionBtn onClick={() => unmapBadge(m.device_user_id)} danger><FaTrash />Unmap</ActionBtn>
+                  </td>
+                </tr>
+              ))
+            )}
+          </tbody>
+        </table>
+      </div>
 
       <div className="zk-attendance__table-wrap dashboard-card overflow-hidden rounded-xl">
         <table className="zk-attendance__table" style={{ borderCollapse: "collapse", fontSize: 14 }}>
