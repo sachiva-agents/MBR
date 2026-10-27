@@ -278,7 +278,7 @@ const buildReceiptHtml = ({
           }
         html, body {
     margin: 0 !important;
-    padding: 0;
+    padding: 0 !important;
     background: #fff !important;
     color: #000 !important;
 
@@ -294,7 +294,7 @@ const buildReceiptHtml = ({
     width: 80mm;
     max-width: 80mm;
     margin: 0 auto !important;
-    padding: 0px 6px;
+    padding: 0 6px !important;
 
     font-size: 14px !important;
     line-height: 1.45;
@@ -322,7 +322,7 @@ const buildReceiptHtml = ({
             background: transparent;
           }
           .brand {
-            padding-top: 4px;
+            padding-top: 0 !important;
             text-align: center;
             color: #020202 !important;
           }
