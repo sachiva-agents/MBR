@@ -248,10 +248,14 @@ const buildReceiptHtml = ({
       const qty = Number(item?.qty || 0);
       const rate = Number(item?.rate || 0);
       const lineTotal = qty * rate;
+      // Whole quantities print as plain integers ("1", not "1.00") —
+      // "1.00" was wrapping onto two lines in the narrow qty column, which
+      // looked like the quantity was printed twice. Fractional qty keeps 2dp.
+      const qtyDisplay = Number.isInteger(qty) ? String(qty) : formatReceiptAmount(qty);
       return `
         <tr>
           <td class="item-name">${escapeReceiptHtml(item?.name || "Menu Item")}</td>
-          <td class="qty-col">${formatReceiptAmount(qty)}</td>
+          <td class="qty-col">${qtyDisplay}</td>
           <td class="rate-col">${formatReceiptAmount(rate)}</td>
           <td class="amount-col">${formatReceiptAmount(lineTotal)}</td>
         </tr>
@@ -427,17 +431,18 @@ const buildReceiptHtml = ({
             padding-bottom: 3px;
           }
           .item-name {
-            width: 36%;
+            width: 30%;
             padding-right: 6px;
             text-align: left !important;
             color: #000000 !important;
             font-weight: 700;
           }
           .qty-col {
-            width: 10%;
+            width: 16%;
             text-align: center !important;
             color: #000000 !important;
             font-weight: 700;
+            white-space: nowrap;
           }
           .rate-col {
             width: 27%;
