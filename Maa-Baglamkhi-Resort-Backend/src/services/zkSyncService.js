@@ -95,6 +95,7 @@ async function syncMachine(machine, { from, to, deleteAfter = false, actor = nul
 
   let created = 0
   let updated = 0
+  let alreadyMarked = 0
   const skippedDeviceIds = new Set()
 
   for (const group of groups) {
@@ -122,9 +123,20 @@ async function syncMachine(machine, { from, to, deleteAfter = false, actor = nul
 
       if (existing.length > 0) {
         const record = existing[0]
-        // Keep the earlier check-in and the later check-out across sources.
         const curIn = toTimeCol(record.check_in)
         const curOut = toTimeCol(record.check_out)
+
+        // A day that already has both stamps is complete. Later same-day
+        // punches (re-tapping the thumb) would just re-stamp it — count them
+        // as "already marked" and leave the row untouched, so check-in stays
+        // the first punch of the day, never the last one.
+        if (curIn && curOut) {
+          alreadyMarked += 1
+          await conn.rollback()
+          continue
+        }
+
+        // Keep the earlier check-in and the later check-out across sources.
         const keepIn = curIn ? (checkIn && checkIn < curIn ? checkIn : curIn) : checkIn
         const keepOut = curOut ? (checkOut && checkOut > curOut ? checkOut : curOut) : checkOut
 
@@ -168,7 +180,16 @@ async function syncMachine(machine, { from, to, deleteAfter = false, actor = nul
     }
   }
 
-  const status = created + updated > 0 ? (skippedDeviceIds.size ? 'partial' : 'ok') : (skippedDeviceIds.size ? 'unmatched' : 'empty')
+  const status =
+    created + updated > 0
+      ? skippedDeviceIds.size
+        ? 'partial'
+        : 'ok'
+      : skippedDeviceIds.size
+        ? 'unmatched'
+        : alreadyMarked > 0
+          ? 'already-marked'
+          : 'empty'
   await machinesModel.markSynced(machine.id, status)
   await machinesModel.recordPull(machine.id, {
     rawLogs: rawLogs.slice(0, 500),
@@ -189,6 +210,7 @@ async function syncMachine(machine, { from, to, deleteAfter = false, actor = nul
     shiftsWritten: created + updated,
     recordsCreated: created,
     recordsUpdated: updated,
+    recordsAlreadyMarked: alreadyMarked,
     recordsSkipped: skippedDeviceIds.size,
     skippedDeviceIds: [...skippedDeviceIds],
     window: { from, to },

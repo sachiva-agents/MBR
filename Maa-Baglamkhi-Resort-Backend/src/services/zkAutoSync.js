@@ -92,7 +92,8 @@ async function runOnce() {
         results.push(summary);
         console.log(
           `[zk-auto-sync] ${machine.name}: ${summary.logsPulled} punches, ` +
-            `${summary.recordsCreated} created, ${summary.recordsUpdated} updated (${summary.status})`
+            `${summary.recordsCreated} created, ${summary.recordsUpdated} updated, ` +
+            `${summary.recordsAlreadyMarked || 0} already marked (${summary.status})`
         );
       } catch (err) {
         console.error(`[zk-auto-sync] ${machine.name} sync failed:`, err.message);

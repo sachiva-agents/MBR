@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import {
   FaClock,
   FaFingerprint,
@@ -54,6 +54,10 @@ const ZkAttendance = () => {
   const [pinning, setPinning] = useState(null);
   const [deviceIds, setDeviceIds] = useState([]);
   const [fetchingAll, setFetchingAll] = useState(false);
+  // Guards: never fire two fetches at once. The machine list may refresh after
+  // each fetch, so ref-compare the ids already on the wire instead of the
+  // stale closure.
+  const inFlightMachinesRef = useRef([]);
 
   const loadMachines = async () => {
     try {
@@ -256,12 +260,16 @@ const ZkAttendance = () => {
         res.data.clock && res.data.clock.corrected
           ? ` Machine clock auto-corrected ${res.data.clock.deviceTime} → ${res.data.clock.newDeviceTime} (was ${res.data.clock.driftSeconds}s off).`
           : "";
+      const alreadyMarkedNote = res.data.recordsAlreadyMarked
+        ? `. Attendance for ${res.data.recordsAlreadyMarked} day${res.data.recordsAlreadyMarked === 1 ? "" : "s"} was already marked (check-in + check-out both present) — no changes.`
+        : "";
       setNotice(
         `Synced ${machine.name}: ${res.data.logsPulled} punches, ` +
           `${res.data.recordsCreated} new records, ${res.data.recordsUpdated} updated` +
           (res.data.recordsSkipped
             ? `. ${res.data.recordsSkipped} unmatched device users skipped (${(res.data.skippedDeviceIds || []).join(", ")}).`
             : ".") +
+          alreadyMarkedNote +
           clockNote
       );
       loadMachines();
@@ -286,21 +294,23 @@ const ZkAttendance = () => {
     }
   };
 
-  const fetchAllDeviceUsers = async () => {
-    if (machines.length === 0) {
+  const fetchAllDeviceUsers = async (machinesParam) => {
+    const m = machinesParam || machines;
+    if (m.length === 0) {
       setError("No machines registered yet.");
       return;
     }
+    inFlightMachinesRef.current = m;
     setFetchingAll(true);
     setError("");
     setDeviceIds([]);
     const results = await Promise.allSettled(
-      machines.map(async (m) => {
-        const res = await API.post(`/zk/machines/${m.id}/device-users`, {}, { timeout: 60000 });
+      m.map(async (machine) => {
+        const res = await API.post(`/zk/machines/${machine.id}/device-users`, {}, { timeout: 60000 });
         return (res.data?.users || []).map((u) => ({
           deviceId: u.deviceId || String(u.uid),
           deviceName: u.deviceName || null,
-          machineName: m.name,
+          machineName: machine.name,
           matched: Boolean(u.matched),
         }));
       })
@@ -316,6 +326,19 @@ const ZkAttendance = () => {
       setNotice("No users are enrolled on any machine yet.");
     }
     setFetchingAll(false);
+    inFlightMachinesRef.current = [];
+  };
+
+  // Opening the "Device id" dropdown auto-fetches ids from every machine the
+  // first time it is empty, so a fresh click on an empty list populates it.
+  const autoFetchAllDeviceUsers = async (force = false) => {
+    if (!force && inFlightMachinesRef.current.length > 0) return;
+    if (!force && deviceIds.length > 0) return;
+    if (machines.length === 0) {
+      setError("No machines registered yet.");
+      return;
+    }
+    await fetchAllDeviceUsers(machines);
   };
 
   const pinUser = async (deviceId, employeeId) => {
@@ -375,7 +398,9 @@ const ZkAttendance = () => {
         <div className="mb-3.5 rounded-lg border border-blue-100 bg-blue-50/70 p-2.5 text-[#0d47a1]">
           <strong>Last sync ({lastSync.machine}):</strong> {lastSync.logsPulled} punches in
           {lastSync.window.from} → {lastSync.window.to}, {lastSync.recordsCreated} created,
-          {" "}{lastSync.recordsUpdated} updated, at {lastSync.syncedAt}.
+          {" "}{lastSync.recordsUpdated} updated
+          {lastSync.recordsAlreadyMarked ? `, ${lastSync.recordsAlreadyMarked} already marked` : ""}
+          {`, at ${lastSync.syncedAt}`}.
         </div>
       )}
 
@@ -429,12 +454,20 @@ const ZkAttendance = () => {
         </div>
 
         <form onSubmit={mapBadge} className="flex flex-wrap items-end gap-3 p-3">
-          <label style={{ fontSize: 12, color: "#444" }}>
+          <label style={{ fontSize: 12, color: "#444" }} title="Ids are fetched from all machines when you open this dropdown; double-click to re-fetch">
             Device id
             <select value={badgeForm.deviceUserId}
               onChange={(e) => setBadgeForm((f) => ({ ...f, deviceUserId: e.target.value }))}
+              onFocus={() => autoFetchAllDeviceUsers()}
+              onDoubleClick={() => autoFetchAllDeviceUsers(true)}
               style={{ ...inputStyle, width: 220 }}>
-              <option value="">— choose device id —</option>
+              {deviceIds.length === 0 ? (
+                <option value="">
+                  {fetchingAll ? "Fetching ids from machines…" : "No ids yet — opening fetches them automatically"}
+                </option>
+              ) : (
+                <option value="">— choose device id —</option>
+              )}
               {deviceIds.map((d) => (
                 <option key={`${d.machineName}:${d.deviceId}`} value={d.deviceId}>
                   {d.deviceId}
