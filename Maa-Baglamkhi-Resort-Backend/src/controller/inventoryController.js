@@ -684,9 +684,16 @@ exports.getItem = async (req, res) => {
 exports.updateItem = async (req, res) => {
   try {
     const data = { ...req.body, createdBy: req.user?.username || "system" };
-    if (!data.name && !data.category && !data.stock && !data.price) {
+
+    const updatableKeys = [
+      "name", "category", "subcategory", "stock", "unit",
+      "price", "reorderPoint", "expiry", "branch",
+    ];
+    const present = updatableKeys.filter((k) => req.body[k] !== undefined);
+    if (present.length === 0) {
       return res.status(400).json({ message: "Nothing to update." });
     }
+    const has = (k) => req.body[k] !== undefined;
 
     await ensureSchema();
     const connection = await getConnection();
@@ -695,7 +702,8 @@ exports.updateItem = async (req, res) => {
 
       const existingRows = await queryWithConnection(
         connection,
-        `SELECT id, name, stock, unit, price, branch FROM inventory WHERE id = ? LIMIT 1`,
+        `SELECT id, name, stock, unit, price, branch, category, subcategory, reorder_point, expiry
+         FROM inventory WHERE id = ? LIMIT 1`,
         [req.params.id],
       );
       const existing = existingRows[0];
@@ -705,40 +713,53 @@ exports.updateItem = async (req, res) => {
         throw error;
       }
 
-      const nextStock = normalizeNumber(data.stock);
-      const previousStock = normalizeNumber(existing.stock);
-      const adjustmentQty = Number((nextStock - previousStock).toFixed(2));
+      // Partial update: only apply the fields actually sent in the body; any
+      // field left out keeps its stored value instead of being zeroed.
+      const nextName = has("name") ? data.name : existing.name;
+      const nextCategory = has("category") ? data.category : existing.category;
+      const nextSubcategory = has("subcategory") ? data.subcategory || null : existing.subcategory;
+      const nextUnit = has("unit") ? data.unit : existing.unit;
+      const nextPrice = has("price") ? normalizeNumber(data.price) : normalizeNumber(existing.price);
+      const nextReorder = has("reorderPoint")
+        ? data.reorderPoint ?? 10
+        : normalizeNumber(existing.reorder_point, 10);
+      const nextExpiry = has("expiry") ? data.expiry || null : existing.expiry;
+      const nextBranch = has("branch") ? data.branch : existing.branch;
+      const nextStock = has("stock") ? normalizeNumber(data.stock) : normalizeNumber(existing.stock);
 
-      const result = await queryWithConnection(
+      const previousStock = normalizeNumber(existing.stock);
+      const stockChanged = has("stock") && nextStock !== previousStock;
+
+      await queryWithConnection(
         connection,
         `UPDATE inventory SET name=?, category=?, subcategory=?, stock=?, unit=?, price=?, reorder_point=?, expiry=?, branch=? WHERE id=?`,
         [
-          data.name,
-          data.category,
-          data.subcategory || null,
+          nextName,
+          nextCategory,
+          nextSubcategory,
           nextStock,
-          data.unit,
-          data.price,
-          data.reorderPoint ?? 10,
-          data.expiry || null,
-          data.branch,
+          nextUnit,
+          nextPrice,
+          nextReorder,
+          nextExpiry,
+          nextBranch,
           req.params.id,
         ],
       );
 
-      if (adjustmentQty !== 0) {
+      if (stockChanged) {
         const nextItem = await getInventoryItemDetails(connection, req.params.id);
         await writeLedgerEntry(connection, {
           itemId: req.params.id,
-          itemName: data.name || existing.name,
-          referenceType: adjustmentQty > 0 ? "stock_adjustment_in" : "stock_adjustment_out",
+          itemName: nextName,
+          referenceType: nextStock > previousStock ? "stock_adjustment_in" : "stock_adjustment_out",
           referenceId: req.params.id,
-          direction: adjustmentQty > 0 ? "IN" : "OUT",
-          quantity: Math.abs(adjustmentQty),
-          unit: data.unit || existing.unit || null,
-          locationName: data.branch || existing.branch || null,
-          rate: normalizeNumber(data.price, existing.price || 0),
-          amount: normalizeNumber(data.price, existing.price || 0) * Math.abs(adjustmentQty),
+          direction: nextStock > previousStock ? "IN" : "OUT",
+          quantity: Math.abs(Number((nextStock - previousStock).toFixed(2))),
+          unit: nextUnit,
+          locationName: nextBranch,
+          rate: nextPrice,
+          amount: nextPrice * Math.abs(nextStock - previousStock),
           balanceAfter: Number(nextItem?.stock || nextStock),
           remarks: data.adjustmentReason || `Manual stock update from ${previousStock} to ${nextStock}`,
           entryDate: new Date().toISOString().slice(0, 10),
