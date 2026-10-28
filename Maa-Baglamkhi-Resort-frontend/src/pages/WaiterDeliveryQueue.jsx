@@ -5,13 +5,16 @@
  */
 import React, { useEffect, useState, useCallback } from "react";
 import { FaSyncAlt, FaCheckCircle, FaClock, FaUtensils } from "react-icons/fa";
+import { useNavigate } from "react-router-dom";
 import API from "../api";
 import { getCurrentActor } from "../utils/currentActor";
 import WaiterAssignmentCard from "../components/Restaurant/WaiterAssignmentCard";
+import ReadyOrdersPanel from "../components/Waiter/ReadyOrdersPanel";
 
 const POLL_INTERVAL = 5000;
 
 export default function WaiterDeliveryQueue() {
+  const navigate = useNavigate();
   const actor = getCurrentActor();
   const waiterName = actor?.name || "";
 
@@ -105,6 +108,11 @@ export default function WaiterDeliveryQueue() {
             </div>
           ))}
         </div>
+      </div>
+
+      {/* Ready restaurant orders (pickup / mark served) */}
+      <div className="mb-6">
+        <ReadyOrdersPanel onNavigateToKitchen={() => navigate("/kitchen-dashboard")} />
       </div>
 
       {/* Error */}

@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import API from "../api";
 import { getCurrentActor } from "../utils/currentActor";
+import { getRestaurantSocket, releaseRestaurantSocket } from "../utils/restaurantSocket";
 
 const POLL_INTERVAL = 5000; // 5 seconds
 
@@ -46,10 +47,14 @@ export const useWaiterOrders = () => {
     return () => clearInterval(interval);
   }, [fetchReadyOrders]);
 
-  // Listen to Socket.io event for real-time updates
+  // Listen to the shared socket.io event for real-time updates (the
+  // window "kitchen-order-ready" event was never dispatched by any code)
   useEffect(() => {
-    const handleKitchenReady = (event) => {
-      const data = event.detail || event;
+    let activeSocket = null;
+    let unsubscribed = false;
+
+    const handleKitchenReady = (payload = {}) => {
+      const data = payload.detail || payload;
       if (data.orderStatus === "ready" || data.status === "Ready") {
         // Add the new ready order to the list
         setReadyOrders((prev) => {
@@ -82,12 +87,24 @@ export const useWaiterOrders = () => {
       }
     };
 
-    // Listen for kitchen-order-ready events
-    window.addEventListener("kitchen-order-ready", handleKitchenReady);
+    const setupSocket = async () => {
+      const socket = await getRestaurantSocket();
+      if (!socket || unsubscribed) return;
+      activeSocket = socket;
+      socket.on("kitchen-order-ready", handleKitchenReady);
+      return () => {
+        socket.off("kitchen-order-ready", handleKitchenReady);
+      };
+    };
+
+    const teardownPromise = setupSocket();
 
     return () => {
-      window.removeEventListener("kitchen-order-ready", handleKitchenReady);
-    };
+      unsubscribed = true;
+      Promise.resolve(teardownPromise).then((teardown) => teardown && teardown());
+      activeSocket = null;
+      releaseRestaurantSocket();
+    };;
   }, [playAlertSound]);
 
   // Atomic pickup - only one waiter can succeed
