@@ -402,6 +402,10 @@ const buildReceiptHtml = ({
             color: #000000 !important;
             font-weight: 800;
           }
+          .service-charge-label {
+            white-space: nowrap !important;
+            font-size: 11px;
+          }
           table {
             width: 100%;
             border-collapse: collapse;
@@ -575,7 +579,7 @@ const buildReceiptHtml = ({
           ${
             Number(serviceCharge || 0) > 0
               ? `<div class="summary-row">
-                  <span>Ser.Charges @5.00%</span>
+                  <span class="service-charge-label">Ser.Charges @5.00%</span>
                   <span>${formatReceiptAmount(serviceCharge)}</span>
                 </div>`
               : ""
