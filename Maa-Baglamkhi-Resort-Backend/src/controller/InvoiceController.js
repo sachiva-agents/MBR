@@ -563,6 +563,7 @@ exports.generateCustomerInvoice = async (req, res) => {
         nights: qty,
         total: Number(rowTotal.toFixed(2)),
       };
+
     });
 
     // Folio items (v4: hotel_folio_entries)
@@ -781,6 +782,31 @@ exports.generateCustomerInvoice = async (req, res) => {
   } catch (error) {
     const status = String(error.message || "").includes("not found") ? 404 : 500;
     res.status(status).json({ error: error.message || "Failed to generate invoice" });
+  }
+};
+
+exports.downloadCustomerInvoicePdf = async (req, res) => {
+  try {
+    const bookingId = Number(req.params.customerId);
+    if (!bookingId) {
+      return res.status(400).json({ error: "bookingId is required" });
+    }
+
+    const InvoiceModel = require("../models/InvoiceModel");
+    const InvoicePdfService = require("../services/invoicePdfService");
+    const invoice = await InvoiceModel.generateCustomerInvoice(bookingId);
+    if (!invoice) {
+      return res.status(404).json({ error: "Invoice not found" });
+    }
+
+    const pdf = await InvoicePdfService.generateInvoicePdf(invoice);
+    return res.download(pdf.filePath, pdf.fileName);
+  } catch (err) {
+    console.error("Invoice PDF download failed:", err);
+    return res.status(500).json({
+      error: "Failed to generate invoice PDF",
+      details: err.message || String(err),
+    });
   }
 };
 

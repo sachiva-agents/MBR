@@ -98,7 +98,6 @@ bookingAPI.interceptors.response.use(
 
 import React, { useEffect, useMemo, useState } from "react";
 import { useLocation, useNavigate, useSearchParams } from "react-router-dom";
-import { jsPDF } from "jspdf";
 import {
   FaPlus,
   FaEye,
@@ -1636,8 +1635,16 @@ const InvoiceModal = ({
   })();
 
   const handlePrint = () => {
+    // Open the window immediately from the click handler so browser popup
+    // protection does not block the print/PDF window after invoice preparation.
+    const win = window.open("", "_blank", "width=900,height=700");
+    if (!win) {
+      console.error("Invoice window was blocked by the browser.");
+      return;
+    }
+
     const d = invoice || {};
-    const b = selectedBooking || {};
+    const b = booking || {};
 
     // 🐛 FIX: this used to read `d.items` (the raw, possibly-stale invoice
     // row from the database) FIRST, before ever looking at the live,
@@ -1691,7 +1698,7 @@ const InvoiceModal = ({
     const roundOff =
       Math.round(totalTariff * 100) / 100 - Math.round(totalTariff * 100) / 100;
     const finalTotal = invoiceTotal;
-    const remaining = Math.max(finalTotal - totalPaid, 0);
+    const remaining = Math.max(finalTotal - paid, 0);
     const amountInWords = toWords(finalTotal);
     const paymentMode =
       d.paymentMode || d.payment_method || booking?.paymentMode || "Front Desk";
@@ -1699,9 +1706,6 @@ const InvoiceModal = ({
     const invoiceDate = d.date
       ? formatDate(new Date(d.date))
       : formatDate(new Date());
-
-    const win = window.open("", "_blank", "width=900,height=700");
-    if (!win) return;
 
     const renderRow = (item) => {
       const dateStr = item.date ? formatDate(new Date(item.date)) : "";
@@ -2034,344 +2038,44 @@ const InvoiceModal = ({
       </html>
     `);
     win.document.close();
-    win.focus();
-    win.print();
+    const printInvoice = () => {
+      win.focus();
+      win.print();
+    };
+    if (win.document.readyState === "complete") {
+      window.setTimeout(printInvoice, 150);
+    } else {
+      win.addEventListener("load", () => window.setTimeout(printInvoice, 150), {
+        once: true,
+      });
+    }
   };
 
   const handleDownloadPdf = () => {
-    if (!invoice) return;
+    if (!bookingId) return;
 
-    const doc = new jsPDF({
-      unit: "mm",
-      format: "a4",
-      orientation: "portrait",
-    });
-    const pageWidth = doc.internal.pageSize.getWidth();
-    const pageHeight = doc.internal.pageSize.getHeight();
-    const margin = 12;
-    const rightEdge = pageWidth - margin;
-    const center = pageWidth / 2;
-    let y = margin;
-
-    const ensureSpace = (needed) => {
-      if (y + needed <= pageHeight - margin) return;
-      doc.addPage();
-      y = margin;
-    };
-
-    doc.setFillColor(241, 245, 249);
-    doc.rect(0, 0, pageWidth, 26, "F");
-    doc.setTextColor(15, 23, 42);
-    doc.setFont("helvetica", "bold");
-    doc.setFontSize(18);
-    doc.text(RESORT_NAME_INVOICE, center, y + 9, { align: "center" });
-    doc.setFont("helvetica", "normal");
-    doc.setFontSize(9);
-    doc.text(
-      `${RESORT_ADDRESS_LINE_1}  |  ${RESORT_ADDRESS_LINE_2}`,
-      center,
-      y + 14,
-      { align: "center" },
-    );
-    doc.text(
-      `Ph: ${RESORT_PHONE_INVOICE}  |  ${RESORT_EMAIL_INVOICE}`,
-      center,
-      y + 18,
-      { align: "center" },
-    );
-    doc.text(
-      `GSTIN: ${RESORT_GSTIN_INVOICE}  |  State: ${RESORT_STATE_CODE_INVOICE}`,
-      center,
-      y + 22,
-      { align: "center" },
-    );
-
-    y = 32;
-    doc.setTextColor(15, 23, 42);
-
-    doc.setFillColor(245, 247, 250);
-    doc.rect(margin, y, pageWidth - margin * 2, 8, "F");
-    doc.setFont("helvetica", "bold");
-    doc.setFontSize(12);
-    doc.text("TAX INVOICE", margin + 3, y + 5.5);
-    doc.setFont("helvetica", "normal");
-    doc.setFontSize(9);
-    doc.text(`#${invoiceNo}`, center, y + 5.5, { align: "center" });
-    doc.text(
-      `Date: ${formatDate(invoice?.date || new Date())}`,
-      rightEdge - 3,
-      y + 5.5,
-      { align: "right" },
-    );
-    y += 12;
-
-    const cardW = (pageWidth - margin * 2 - 6) / 2;
-    const cardH = 24;
-
-    doc.setDrawColor(203, 213, 225);
-    doc.roundedRect(margin, y, cardW, cardH, 1.5, 1.5);
-    doc.setFont("helvetica", "bold");
-    doc.setFontSize(8);
-    doc.setTextColor(100, 116, 139);
-    doc.text("BILL TO", margin + 3, y + 4.5);
-    doc.setTextColor(15, 23, 42);
-    doc.setFontSize(10);
-    doc.text(invoice?.customerName || guestName || "Guest", margin + 3, y + 10);
-    doc.setFont("helvetica", "normal");
-    doc.setFontSize(8.5);
-    doc.text(
-      `Phone: ${invoice?.phone || booking?.mobile || "-"}`,
-      margin + 3,
-      y + 15,
-    );
-    doc.text(`Booking ID: ${invoice?.bookingId || "-"}`, margin + 3, y + 19);
-    const pdfCompanyName =
-      invoice?.companyName ||
-      invoice?.company_name ||
-      booking?.company_name ||
-      "";
-    const pdfCompanyGstin =
-      invoice?.companyGstin ||
-      invoice?.company_gstin ||
-      invoice?.company_gst ||
-      booking?.company_gst ||
-      "";
-    let pdfBillToExtraLines = 0;
-    if (pdfCompanyName) {
-      doc.text(
-        `Company: ${pdfCompanyName}`,
-        margin + 3,
-        y + 23 + pdfBillToExtraLines * 4,
-      );
-      pdfBillToExtraLines++;
-    }
-    if (pdfCompanyGstin) {
-      doc.text(
-        `GSTIN: ${pdfCompanyGstin}`,
-        margin + 3,
-        y + 23 + pdfBillToExtraLines * 4,
-      );
-      pdfBillToExtraLines++;
-    }
-    if (pdfBillToExtraLines > 0) {
-      // Also adjust the right card to match height if needed (left card grew)
-    }
-
-    const rightX = margin + cardW + 6;
-    const pdfBillToCardH = cardH + pdfBillToExtraLines * 4;
-    doc.roundedRect(margin, y, cardW, pdfBillToCardH, 1.5, 1.5);
-    doc.setFont("helvetica", "bold");
-    doc.setFontSize(8);
-    doc.setTextColor(100, 116, 139);
-    doc.text("STAY DETAILS", rightX + 3, y + 4.5);
-    doc.setTextColor(15, 23, 42);
-    doc.setFont("helvetica", "normal");
-    doc.setFontSize(8.5);
-    const stayLines = [
-      `Room: ${invoice?.roomNumber || "-"}`,
-      `Check-In: ${formatDate(invoice?.checkIn || invoice?.check_in || booking?.check_in)}`,
-      `Check-Out: ${formatDate(invoice?.checkOut || invoice?.check_out || booking?.check_out)}`,
-      `Payment Mode: ${invoice?.paymentMode || invoice?.payment_method || "Front Desk"}`,
-    ];
-    stayLines.forEach((line, idx) => {
-      doc.text(line, rightX + 3, y + 10 + idx * 4);
-    });
-    doc.roundedRect(rightX, y, cardW, pdfBillToCardH, 1.5, 1.5);
-    y += pdfBillToCardH + 4;
-
-    const colX = [
-      margin + 2,
-      margin + 50,
-      margin + 120,
-      margin + 145,
-      rightEdge - 3,
-    ];
-    const headerRow = ["#", "Description", "Qty", "Rate", "Amount"];
-
-    doc.setFillColor(226, 232, 240);
-    doc.rect(margin, y, pageWidth - margin * 2, 7, "F");
-    doc.setTextColor(15, 23, 42);
-    doc.setFont("helvetica", "bold");
-    doc.setFontSize(8);
-    headerRow.forEach((label, i) => {
-      doc.text(label, colX[i], y + 5);
-    });
-    y += 7;
-
-    doc.setTextColor(15, 23, 42);
-    doc.setFont("helvetica", "normal");
-    doc.setFontSize(9);
-
-    items.forEach((item, index) => {
-      const nameLines = doc.splitTextToSize(
-        String(item.name || item.description || "Charge"),
-        colX[2] - colX[1] - 2,
-      );
-      const rowH = Math.max(7, nameLines.length * 4 + 2);
-      ensureSpace(rowH + 3);
-
-      doc.setDrawColor(226, 232, 240);
-      doc.setLineWidth(0.2);
-      doc.line(margin, y, rightEdge, y);
-      y += 1.5;
-
-      doc.text(String(index + 1), colX[0], y + 3.5);
-      doc.text(nameLines, colX[1], y + 3.5);
-      doc.text(String(item.quantity || 1), colX[2], y + 3.5, {
-        align: "center",
+    API.get(`/invoice/${bookingId}/pdf`, { responseType: "blob" })
+      .then((response) => {
+        const contentDisposition = response.headers["content-disposition"] || "";
+        const filenameMatch = contentDisposition.match(
+          /filename\*?=(?:UTF-8'')?"?([^";]+)"?/i,
+        );
+        const filename = filenameMatch?.[1]
+          ? decodeURIComponent(filenameMatch[1])
+          : `Tax_Invoice_${invoiceNo}.pdf`;
+        const url = URL.createObjectURL(response.data);
+        const anchor = document.createElement("a");
+        anchor.href = url;
+        anchor.download = filename;
+        document.body.appendChild(anchor);
+        anchor.click();
+        anchor.remove();
+        URL.revokeObjectURL(url);
+      })
+      .catch((error) => {
+        console.error("Failed to download hotel invoice PDF:", error);
       });
-      doc.text(formatCurrency(item.price), colX[3], y + 3.5, {
-        align: "right",
-      });
-      doc.text(formatCurrency(item.total), colX[4], y + 3.5, {
-        align: "right",
-      });
-      y += rowH;
-    });
-
-    y += 1;
-    doc.setDrawColor(15, 23, 42);
-    doc.setLineWidth(0.3);
-    doc.line(margin, y, rightEdge, y);
-    y += 4;
-
-    ensureSpace(42);
-    const totalsW = 72;
-    const totalsX = rightEdge - totalsW;
-
-    doc.setFont("helvetica", "normal");
-    doc.setFontSize(8.5);
-    doc.setTextColor(50, 50, 50);
-    doc.text("Payment Summary", margin, y);
-    doc.setFontSize(8);
-    doc.text(
-      `Status: ${invoice?.paymentStatus || invoice?.payment_status || (remainingAmount > 0 ? "Pending" : "Paid")}`,
-      margin,
-      y + 5,
-    );
-    doc.text(
-      `Mode: ${invoice?.paymentMode || invoice?.payment_method || "Front Desk"}`,
-      margin,
-      y + 10,
-    );
-    if (invoice?.paymentReference) {
-      doc.text(`Ref: ${invoice.paymentReference}`, margin, y + 15);
-    }
-    doc.setFontSize(7.5);
-    doc.setTextColor(100, 100, 100);
-    doc.text("Invoice issued u/s 31 of CGST Act, 2017", margin, y + 20);
-
-    doc.setFillColor(248, 250, 252);
-    doc.roundedRect(totalsX, y, totalsW, 34, 1.5, 1.5, "F");
-    doc.setDrawColor(203, 213, 225);
-    doc.roundedRect(totalsX, y, totalsW, 34, 1.5, 1.5, "S");
-    doc.setFont("helvetica", "normal");
-    doc.setFontSize(9);
-    doc.setTextColor(51, 65, 85);
-    const tx = totalsX + 4;
-    const tv = rightEdge - 4;
-
-    doc.text("Subtotal", tx, y + 6);
-    doc.text(formatCurrency(invoiceSubtotal), tv, y + 6, { align: "right" });
-
-    doc.text(`SGST @ 2.5%`, tx, y + 11);
-    doc.text(formatCurrency(invoiceSgst), tv, y + 11, { align: "right" });
-
-    doc.text(`CGST @ 2.5%`, tx, y + 16);
-    doc.text(formatCurrency(invoiceCgst), tv, y + 16, { align: "right" });
-
-    if (invoiceDiscount > 0) {
-      doc.text("Discount", tx, y + 21);
-      doc.text(`- ${formatCurrency(invoiceDiscount)}`, tv, y + 21, {
-        align: "right",
-      });
-    }
-
-    doc.setDrawColor(203, 213, 225);
-    doc.setLineWidth(0.3);
-    doc.line(
-      tx,
-      y + (invoiceDiscount > 0 ? 26 : 23),
-      tv,
-      y + (invoiceDiscount > 0 ? 26 : 23),
-    );
-
-    doc.setFont("helvetica", "bold");
-    doc.setFontSize(11);
-    doc.setTextColor(15, 23, 42);
-    doc.text("GRAND TOTAL", tx, y + (invoiceDiscount > 0 ? 31 : 28));
-    doc.text(
-      formatCurrency(invoiceTotal),
-      tv,
-      y + (invoiceDiscount > 0 ? 31 : 28),
-      { align: "right" },
-    );
-
-    doc.setFont("helvetica", "normal");
-    doc.setFontSize(7);
-    doc.setTextColor(100, 116, 139);
-    doc.text(
-      "(inclusive of all taxes)",
-      tv,
-      y + (invoiceDiscount > 0 ? 34 : 31),
-      { align: "right" },
-    );
-
-    y += 40;
-
-    doc.setTextColor(15, 23, 42);
-    doc.setFont("helvetica", "bold");
-    doc.setFontSize(8);
-    doc.text("Bank Details (for refund / credit):", margin, y);
-    doc.setFont("helvetica", "normal");
-    doc.setFontSize(7.5);
-    doc.text(
-      "A/C: 1234567890  |  IFSC: SBIN0001234  |  Bank: SBI  |  Branch: Baglamukhi",
-      margin,
-      y + 5,
-    );
-
-    y += 12;
-
-    ensureSpace(16);
-    doc.setDrawColor(203, 213, 225);
-    doc.line(margin, y, rightEdge, y);
-    y += 4;
-
-    doc.setFont("helvetica", "italic");
-    doc.setFontSize(8);
-    doc.setTextColor(100, 100, 100);
-    doc.text(
-      "This is a computer generated invoice. No physical signature required.",
-      margin,
-      y,
-    );
-    doc.text(
-      `Generated: ${formatDate(new Date())} ${formatTime(new Date())}`,
-      rightEdge,
-      y,
-      { align: "right" },
-    );
-
-    y += 6;
-    doc.setFont("helvetica", "normal");
-    doc.setTextColor(15, 23, 42);
-    doc.text(`Thank you for staying with ${RESORT_NAME_INVOICE}.`, margin, y);
-
-    const sigX = rightEdge - 50;
-    doc.setDrawColor(15, 23, 42);
-    doc.line(sigX, y + 8, rightEdge, y + 8);
-    doc.setFont("helvetica", "normal");
-    doc.setFontSize(8);
-    doc.setTextColor(100, 100, 100);
-    doc.text("Authorized Signatory", rightEdge, y + 12, { align: "right" });
-    doc.text(`For ${RESORT_NAME_INVOICE}`, rightEdge, y + 16, {
-      align: "right",
-    });
-
-    doc.save(`${invoiceNo}.pdf`);
   };
-
   const handleSendNotification = async () => {
     if (!bookingId || !invoice) {
       setSendStatus({
@@ -2614,7 +2318,10 @@ const InvoiceModal = ({
           </div>
 
           {/* ─── Invoice paper — matches reference layout ─── */}
-          <div className="border border-black font-['Helvetica',Arial,sans-serif] text-black">
+          <div
+            id="hotel-invoice-paper"
+            className="border border-black font-['Helvetica',Arial,sans-serif] text-black"
+          >
             {/* 1. "Tax Invoice" centered title */}
             <div className="text-center py-1.5">
               <h2 className="text-[20px] font-extrabold tracking-wide leading-tight">
