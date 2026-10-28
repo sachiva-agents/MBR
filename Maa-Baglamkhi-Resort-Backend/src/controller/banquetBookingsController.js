@@ -478,7 +478,30 @@ const updateBanquetBooking = async (req, res) => {
       paymentStatus,
       paymentReferenceNo,
       invoiceNo,
+      status,
     } = req.body;
+
+    // status is the inquiry|confirmed|in_progress|completed|cancelled set (stored
+    // lowercase; cancelled bookings flow through /cancel, refunds through /refund).
+    const STATUS_MAP = {
+      inquiry: "inquiry",
+      confirmed: "confirmed",
+      in_progress: "in_progress",
+      "in progress": "in_progress",
+      inprogress: "in_progress",
+      completed: "completed",
+      cancelled: "cancelled",
+      canceled: "cancelled",
+    };
+    const statusVal =
+      status !== undefined && status !== null && String(status).trim() !== ""
+        ? STATUS_MAP[String(status).trim().toLowerCase()]
+        : undefined;
+    if (status !== undefined && status !== null && String(status).trim() !== "" && !statusVal) {
+      return res.status(400).json({
+        message: `Invalid status. Allowed: ${Object.keys(STATUS_MAP).filter((k) => STATUS_MAP[k] === k).join(", ")}`,
+      });
+    }
 
     if (
       !validateBookingPayload({
@@ -540,6 +563,7 @@ const updateBanquetBooking = async (req, res) => {
       existingBooking
     );
 
+    const statusClause = statusVal ? ", status = ?" : "";
     const [result] = await db.query(
       `
       UPDATE banquet_bookings
@@ -574,7 +598,7 @@ const updateBanquetBooking = async (req, res) => {
           payment_mode = ?,
           payment_status = ?,
           payment_reference_no = ?,
-          invoice_no = ?
+          invoice_no = ?${statusClause}
       WHERE id = ?
       `,
       [
@@ -610,6 +634,7 @@ const updateBanquetBooking = async (req, res) => {
         financials.paymentStatus,
         financials.paymentReferenceNo,
         invoiceNo || existingBooking.invoice_no || null,
+        ...(statusVal ? [statusVal] : []),
         id,
       ]
     );
@@ -618,7 +643,10 @@ const updateBanquetBooking = async (req, res) => {
       return res.status(404).json({ message: "Booking not found" });
     }
 
-    res.status(200).json({ message: "Booking updated successfully" });
+    res.status(200).json({
+      message: "Booking updated successfully",
+      status: statusVal || existingBooking.status,
+    });
   } catch (error) {
     console.error("updateBanquetBooking error:", error);
     res.status(500).json({ message: "Failed to update booking", error: error.message });
