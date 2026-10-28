@@ -177,6 +177,16 @@ exports.updateRoom = (req, res) => {
   });
 };
 
+// The only statuses that mapHousekeepingToHotelStatus understands; anything
+// else would write a free-form label that never syncs to rooms/inventory.
+const HOUSEKEEPING_STATUSES = {
+  "vacant clean": "Vacant Clean",
+  "vacant dirty": "Vacant Dirty",
+  "cleaning in progress": "Cleaning In Progress",
+  "occupied dirty": "Occupied Dirty",
+  "out of service": "Out of Service",
+};
+
 exports.updateStatus = (req, res) => {
   const id = req.params.id;
   const { status } = req.body;
@@ -185,7 +195,14 @@ exports.updateStatus = (req, res) => {
     return res.status(400).json({ message: "status is required" });
   }
 
-  Housekeeping.updateStatus(id, status, (err, result) => {
+  const normalized = HOUSEKEEPING_STATUSES[String(status).trim().toLowerCase()];
+  if (!normalized) {
+    return res.status(400).json({
+      message: `Invalid housekeeping status. Allowed: ${Object.values(HOUSEKEEPING_STATUSES).join(", ")}`,
+    });
+  }
+
+  Housekeeping.updateStatus(id, normalized, (err, result) => {
     if (err) {
       console.error("updateStatus error:", err);
       return res.status(500).json({
