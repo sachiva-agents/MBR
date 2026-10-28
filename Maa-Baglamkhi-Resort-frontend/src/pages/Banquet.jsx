@@ -15,6 +15,7 @@ import {
   FaLink,
   FaMoneyCheckAlt,
   FaPaperPlane,
+  FaPrint,
   FaPlus,
   FaReceipt,
   FaSearch,
@@ -32,6 +33,7 @@ import {
 import BanquetBill from "../components/Banquet/BanquetBill";
 import BanquetWhatsAppModal from "../components/Banquet/BanquetWhatsAppModal";
 import API, { getBackendBaseURL } from "../api";
+import { printBanquetInvoice } from "../utils/printBanquetInvoice";
 import {
   banquetConfigStorageKey,
   banquetMenuDraftStorageKey,
@@ -169,6 +171,7 @@ function ModalShell({
   widthClass = "max-w-5xl",
   heightClass = "h-[min(88vh,760px)]",
   wideClass,
+  headerActions = null,
 }) {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-blue-950/55 p-3 backdrop-blur-md sm:p-4">
@@ -189,9 +192,12 @@ function ModalShell({
                 </h3>
               ) : null}
             </div>
-            <button type="button" onClick={onClose} className={modalCloseBtnCls}>
-              Close
-            </button>
+            <div className="flex items-center gap-2">
+              {headerActions ? <div className="flex items-center gap-2">{headerActions}</div> : null}
+              <button type="button" onClick={onClose} className={modalCloseBtnCls}>
+                Close
+              </button>
+            </div>
           </div>
           <div className="min-h-0 flex-1 overflow-y-auto pr-1">{children}</div>
         </div>
@@ -4127,7 +4133,7 @@ const Banquet = () => {
                       {formatINR(wizardTotals.grandTotal)}
                     </div>
                     <div className="mt-3 text-[13px] sm:text-[14px] text-blue-100">
-                      Bakaya: {formatINR(wizardTotals.balanceDue)}
+                      balance due: {formatINR(wizardTotals.balanceDue)}
                     </div>
                   </div>
                 </div>
@@ -4602,6 +4608,22 @@ const Banquet = () => {
           onClose={() => setShowBill(false)}
           widthClass="max-w-4xl"
           heightClass="h-[min(88vh,780px)]"
+          headerActions={
+            <button
+              type="button"
+              onClick={() =>
+                printBanquetInvoice(selectedBooking, {
+                  halls,
+                  menuPackages: pricingConfig.menuPackages,
+                  lightingOptions: pricingConfig.lightingOptions,
+                })
+              }
+              className="inline-flex items-center gap-2 rounded-full bg-gradient-to-r from-blue-800 to-sky-500 px-4 py-1.5 text-[13px] font-bold text-white shadow-[0_8px_20px_rgba(37,99,235,0.3)] transition-all duration-300 hover:-translate-y-0.5 sm:px-5 sm:py-2 sm:text-[14px]"
+            >
+              <FaPrint />
+              Print Invoice
+            </button>
+          }
         >
             <BanquetBill
               booking={selectedBooking}

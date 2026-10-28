@@ -1335,8 +1335,12 @@ const InvoiceModal = ({
     const qty = Number(r.quantity ?? 1);
     const gstPercent = Number(r.gst ?? r.gstPercent ?? 0);
     const total = Number(r.total || 0);
-    const baseAmount = gstPercent > 0 ? total / (1 + gstPercent / 100) : total;
-    const gstAmount = total - baseAmount;
+    // booking_rooms.total is the PRE-TAX base (₹500 room, 5% GST → the
+    // room's real charge is ₹525). GST is added on top — the dashboard's
+    // "Rooms incl. GST" uses this same model, so the invoice preview must
+    // too (the old back-out, total/(1+pct), under-reported every tax line).
+    const baseAmount = total;
+    const gstAmount = total > 0 ? total * (gstPercent / 100) : 0;
     return {
       id: `room-${idx}-${r.room_number || r.roomNumber || r.roomNo || idx}`,
       name: `Room ${r.room_number || r.roomNumber || r.roomNo || idx + 1}`,
@@ -1384,10 +1388,15 @@ const InvoiceModal = ({
     ];
   }
 
-  const itemsTotal = items.reduce(
-    (sum, it) => sum + (Number(it.total ?? it.price ?? 0) || 0),
-    0,
-  );
+  // Room item totals are the PRE-TAX base (booking_rooms.total = tariff ×
+  // nights, tax kept in the separate gst percent) — GST is ADDED on top,
+  // matching the dashboard's "Rooms incl. GST" and the booking's stored
+  // total_amount. Folio extra charges carry no GST.
+  const itemsTotal = items.reduce((sum, it) => {
+    const base = Number(it.total ?? it.price ?? 0) || 0;
+    const pct = Number(it.gst ?? it.gstPercent ?? 0) || 0;
+    return sum + (it.isRoom ? base * (1 + pct / 100) : base);
+  }, 0);
 
   const roomItemsTotal = items
     .filter((it) => it.isRoom)
@@ -1564,22 +1573,22 @@ const InvoiceModal = ({
             0,
           )
       : 0;
-  const perNightGrossTotal =
+  // Per-night math: rooms total (roomGrossTotal) is the PRE-TAX base, so
+  // GST is ADDED on top of each night's share — same model as the dashboard
+  // "Rooms incl. GST". The old back-out (base = total/(1+pct)) showed
+  // 476.19 taxable / 11.91+11.91 tax for a ₹500 room instead of 500 / 12.50+12.50.
+  const perNightBase =
     stayDatesArr.length > 0
       ? Number((roomGrossTotal / stayDatesArr.length).toFixed(2))
       : 0;
-  const perNightTaxable =
-    weightedRoomGstPercent > 0
-      ? Number(
-          (perNightGrossTotal / (1 + weightedRoomGstPercent / 100)).toFixed(2),
-        )
-      : perNightGrossTotal;
-  const perNightSgst = Number(
-    ((perNightGrossTotal - perNightTaxable) / 2).toFixed(2),
+  const perNightTaxable = perNightBase;
+  const perNightTaxAmount = Number(
+    (perNightBase * (weightedRoomGstPercent / 100)).toFixed(2),
   );
+  const perNightSgst = Number((perNightTaxAmount / 2).toFixed(2));
   const perNightCgst = perNightSgst;
-  const perNightTotal = perNightGrossTotal;
-  const perNightTariff = perNightTaxable;
+  const perNightTotal = Number((perNightBase + perNightTaxAmount).toFixed(2));
+  const perNightTariff = perNightBase;
   const rType = String(roomType || "Room").toUpperCase();
   const dayRows = stayDatesArr.map((dt) => ({
     date: formatDate(dt),

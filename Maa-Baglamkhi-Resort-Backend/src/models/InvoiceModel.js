@@ -337,7 +337,11 @@ const getRoomItems = async (bookingId, nights = 1) => {
         1                                           AS quantity,
         COALESCE(br.rate_per_night, 0)             AS price,
         COALESCE(br.nights, ?)                      AS nights,
-        COALESCE(NULLIF(br.room_charge, 0), br.rate_per_night) AS perNightBase
+        COALESCE(NULLIF(br.room_charge, 0), br.rate_per_night) AS perNightBase,
+        -- Rows written before gst_percent landed read 0; the resort bills
+        -- room rent at 5% GST, so read those back as 5 (getFullBooking's
+        -- same convention).
+        COALESCE(NULLIF(br.gst_percent, 0), 5) AS gstPercent
       FROM booking_rooms br
       JOIN rooms r ON r.id = br.room_id
       LEFT JOIN room_categories rc ON rc.id = br.category_id
@@ -359,6 +363,7 @@ const getRoomItems = async (bookingId, nights = 1) => {
       quantity: 1,
       nights: nightsUsed,
       total,
+      gst: Number(row.gstPercent || 5),
     };
   });
 };

@@ -361,9 +361,21 @@ exports.sendInvoiceWhatsApp = async (req, res) => {
     // advance payment or folio charges shown on the Booking Details page).
     invoice.folioCharges = folioChargesTotal;
 
-    // Remaining = total amount - (advance paid + folio payments + advance discount + folio discount)
+    // The passed-in totalAmount is the PRE-TAX tariff (the booking's
+    // subtotal). The item rows carry their own gstPercent, so add that tax
+    // here — the balance must match the dashboard's "Total (incl. GST)",
+    // or a ₹525 bill with ₹500 paid would print "Balance 0.00 / Paid".
+    const itemRows = Array.isArray(invoice.items) ? invoice.items : [];
+    const itemBase = itemRows.reduce((s, it) => s + Number(it.total ?? it.price ?? 0) * Number(it.quantity ?? 1), 0);
+    const itemTax = itemRows.reduce(
+      (s, it) => s + Number((Number(it.total ?? it.price ?? 0) * Number(it.quantity ?? 1) * (Number(it.gstPercent ?? it.gst ?? 0) / 100)).toFixed(2)),
+      0
+    );
+    const billingTotal = itemRows.length > 0 ? round2(itemBase + itemTax) : Number(invoice.totalAmount || 0);
+
+    // Remaining = (base + GST on the item rows) - (advance paid + folio payments + advance discount + folio discount)
     const totalPaid = advanceAmount + folioPayments + advanceDiscount + folioDiscounts;
-    const remainingAmount = round2(Number(invoice.totalAmount || 0) - totalPaid);
+    const remainingAmount = round2(billingTotal - totalPaid);
     const isPaid = remainingAmount <= 0;
     const paymentStatus = isPaid ? "Paid" : "Pending";
     const paymentMethod = invoice.paymentMode || "Cash";
@@ -374,6 +386,10 @@ exports.sendInvoiceWhatsApp = async (req, res) => {
     // the FULL total as "paid" and hardcoded "Balance" to 0.00 — a booking
     // with only a partial advance (e.g. ₹500 of ₹2,000 paid) looked fully
     // settled on the invoice even though ₹1,500 was still due.
+    // Total shown in the WhatsApp message = tax-inclusive billing total
+    // (base + GST on the item rows), so Total / Advance / Balance agree
+    // with the dashboard instead of the pre-tax tariff.
+    invoice.totalAmount = billingTotal;
     invoice.paidAmount = round2(totalPaid);
     invoice.remainingAmount = remainingAmount;
     invoice.paymentStatus = paymentStatus;

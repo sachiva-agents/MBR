@@ -332,26 +332,26 @@ const drawTaxInvoice = (doc, booking) => {
   doc.font("Helvetica").fontSize(8);
   items.forEach((item) => {
     const rowY = y;
-    // 🐛 FIX: this used to ALWAYS add a flat 5% (2.5% SGST + 2.5% CGST) on
-    // top of every line item, regardless of that room/item's actual GST
-    // rate. `item.total` from the caller is already GST-INCLUSIVE (the real
-    // amount the guest is being charged) — a room configured with 0% GST
-    // still had 5% tacked on here, so a real ₹2,000 charge printed as
-    // ₹2,100 on the invoice. Now the taxable amount and tax split are
-    // derived from the item's own gst percentage (default 0%) instead of
-    // an assumed 5%.
+    // GST model: ADDED ON TOP of the item base (the same model the booking
+    // dashboard uses: tariff × (1 + gst%), so a ₹500 room at 5% totals ₹525).
+    // item.total from booking_rooms is the pre-tax base and the item's gst
+    // percent is stored separately (booking_rooms.gst_percent), so tax is
+    // computed on the base — NOT backed out of an assumed inclusive total.
+    // (The previous back-out produced 476.19 + 11.91 + 11.91 = 500 for a
+    // ₹500/5% room — ₹25 short of the real charge.)
     const gstPercent = Number(item.gstPercent ?? item.gst ?? 0);
     const grossTotal = Number(
       item.total != null ? item.total : Number(item.price || 0) * Number(item.quantity || 1),
     );
     const disc = Number(item.discount || 0);
-    const taxable = gstPercent > 0 ? grossTotal / (1 + gstPercent / 100) : grossTotal;
-    const totalTax = grossTotal - taxable;
+    const taxable = Math.max(0, grossTotal - disc);
+    const totalTax = Number((taxable * (gstPercent / 100)).toFixed(2));
     const sgst = totalTax / 2;
     const cgst = totalTax / 2;
     const tariff = Number(
-      item.price != null ? Number(item.price) * Number(item.quantity || 1) : taxable,
+      item.price != null ? Number(item.price) * Number(item.quantity || 1) : grossTotal,
     );
+    const rowGross = grossTotal + totalTax - disc; // tax-inclusive line total
 
     tariffTotal += taxable;
     sgstTotal += sgst;
@@ -365,7 +365,7 @@ const drawTaxInvoice = (doc, booking) => {
       formatINR(taxable),
       formatINR(sgst),
       formatINR(cgst),
-      formatINR(grossTotal),
+      formatINR(rowGross),
     ];
     rowValues.forEach((val, i) => {
       doc.text(val, colEnds[i] + 4, rowY + 4, { width: colEnds[i + 1] - colEnds[i] - 6 });
@@ -426,7 +426,12 @@ const drawTaxInvoice = (doc, booking) => {
   const roomTotal = taxableAmount + sgst + cgst;
   const roundOff = 0;
   const serviceTotal = Number(booking.extraCharge || 0);
-  const finalTotal = Number(booking.totalAmount != null ? booking.totalAmount : roomTotal + serviceTotal - roundOff);
+  // Final total is ALWAYS derived from the line items (taxable + SGST + CGST),
+  // so the header words line and the payment-detail block agree with the
+  // billing table above. The passed-in booking.totalAmount was the
+  // pre-tax tariff (500) — trusting it is what printed "Final Total 500"
+  // while the table's tax-inclusive line was 525.
+  const finalTotal = Number((roomTotal + serviceTotal - roundOff).toFixed(2));
 
   const totalsRows = [
     ["Tariff Total",   formatINR(tariffTotal),     false],
