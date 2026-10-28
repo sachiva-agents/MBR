@@ -190,10 +190,41 @@ const guestIdJoin = `
 
 const bookingRoomsTotalJoin = `
   LEFT JOIN (
-    SELECT booking_id, SUM(total) AS totalAmount
+    -- Stored booking_rooms.total is PRE-tax; every screen and the invoice
+    -- bill GST-inclusive, so the join adds each row's own rate back
+    -- (legacy rows read 0 → 5%, matching the getFullBooking reader).
+    SELECT booking_id,
+           SUM(total * (1 + COALESCE(NULLIF(gst_percent, 0), 5) / 100)) AS totalAmount
     FROM booking_rooms
     GROUP BY booking_id
   ) bt ON bt.booking_id = b.id`;
+
+// Keep the bookings row's money rollups in sync with its room lines.
+// booking_rooms stays pre-tax (the no-double-tax invariant); this persists
+// the inclusive totals so balance_amount / total_amount stop reading 0.
+const recomputeBookingTotals = async (bookingId) => {
+  const rows = await query(
+    `SELECT
+       COALESCE(SUM(total), 0) AS preTax,
+       COALESCE(SUM(total * (1 + COALESCE(NULLIF(gst_percent, 0), 5) / 100)), 0) AS inclTax
+     FROM booking_rooms
+     WHERE booking_id = ?`,
+    [bookingId],
+  );
+  const preTax = Number(rows[0]?.preTax || 0);
+  const inclTax = Number(rows[0]?.inclTax || 0);
+  // MySQL evaluates SET left to right, so the later columns see the new
+  // subtotal/total_amount within this same statement.
+  await query(
+    `UPDATE bookings
+       SET subtotal = ?,
+           total_amount = ?,
+           tax_amount = GREATEST(total_amount - subtotal, 0),
+           balance_amount = GREATEST(total_amount - advance_amount, 0)
+     WHERE id = ?`,
+    [preTax, inclTax, bookingId],
+  );
+};
 
 const resolveGuestName = `COALESCE(NULLIF(brg.guest_name, ''), NULLIF(pg.guest_name, ''), '')`;
 
@@ -666,6 +697,8 @@ exports.createGuest = async (req, res) => {
         );
       }
     }
+
+    await recomputeBookingTotals(bookingId);
 
     const result = { insertId: bookingId, bookingCode };
 
@@ -1175,6 +1208,8 @@ exports.updateTariff = async (req, res) => {
         ],
       );
     }
+
+    await recomputeBookingTotals(bookingId);
 
     res.json({ message: "Tariff Added" });
   } catch (error) {
@@ -1705,6 +1740,8 @@ exports.updateFullBooking = async (req, res) => {
         );
       }
     }
+
+    await recomputeBookingTotals(id);
 
     const updatedBooking = await getBookingSummaryById(id);
     const syncedRoomNumbers = roomList.length

@@ -2956,7 +2956,7 @@ const InvoiceModal = ({
       <div className="flex justify-between">
         <span>{(paymentMode || "UPI").toUpperCase()}</span>
         <span className="tabular-nums">
-          {formatMoney(finalTotal)}
+          {formatMoney(paid)}
         </span>
       </div>
 
@@ -3997,7 +3997,7 @@ const BookingFlow = () => {
       );
       const history = Array.isArray(phRes.data) ? phRes.data : [];
       const total = history
-        .filter((p) => p.payment_type !== "Refund")
+        .filter((p) => String(p.payment_type || "").toLowerCase() !== "refund")
         .reduce((sum, p) => sum + (Number(p.amount) || 0), 0);
       setTotalPaid(total);
     } catch (err) {
@@ -5061,7 +5061,9 @@ const BookingFlow = () => {
     const guestName = d.guest_name || b.guest_name || "AMAR SHARMA";
     const printCompanyName = d.company_name || b.company_name || "";
     const printCompanyGstin = d.company_gst || b.company_gst || "";
-    const roomType = d.room_type || b.room_type || b.roomType || "Single";
+    const roomType =
+      (Array.isArray(d.rooms) && d.rooms[0] && (d.rooms[0].roomType || d.rooms[0].room_type)) ||
+      d.room_type || b.room_type || b.roomType || "Single";
     const roomNo =
       d.room_no ||
       d.roomNumber ||
@@ -5696,7 +5698,7 @@ const BookingFlow = () => {
     <div class="payment-content">
       <div class="row">
         <span>${(paymentMode || "UPI").toUpperCase()}</span>
-        <span>${fmtMoney(finalTotal)}</span>
+        <span>${fmtMoney(effectivePaid)}</span>
       </div>
 
       <div class="divider"></div>
@@ -6802,10 +6804,18 @@ const BookingFlow = () => {
             Room Type
           </div>
           <div className="text-lg sm:text-xl font-bold text-slate-800 wrap-break-word">
-            {formData.rooms[0]?.roomType ||
-              formData.roomCategory ||
-              formData.roomType ||
-              "—"}
+            {(() => {
+              const rawCat = String(
+                formData.rooms[0]?.categoryId ||
+                  formData.roomCategory ||
+                  formData.roomType ||
+                  "",
+              );
+              const cat = categorySetup.find(
+                (c) => String(c.id) === rawCat,
+              );
+              return cat?.name || rawCat || "—";
+            })()}
           </div>
         </div>
 
@@ -6890,17 +6900,20 @@ const BookingFlow = () => {
     // Stored booking_rooms totals are PRE-tax (the form saves rowTotal
     // before GST), so the GST shown on the new-booking screen and on the
     // invoice has to be added back here instead of hidden.
+    // No rooms on the detail → the list-level totalAmount is already
+    // GST-inclusive, so nothing more to add (adding a flat 5% here would
+    // tax the total twice).
     const roomsGstAmount = roomsList.length
-      ? Math.round(
+      ? Number(
           roomsList.reduce(
             (sum, r) =>
               sum +
               (Number(r.total) || 0) *
                 ((Number(r.gst ?? r.gstPercent ?? 5) || 0) / 100),
             0,
-          ),
-        ) / 100
-      : Math.round(roomChargesTotal * 5) / 100;
+          ).toFixed(2),
+        )
+      : 0;
 
     const folioChargesTotal = folioCharges.reduce(
       (sum, e) => sum + (Number(e.amount) || 0),
