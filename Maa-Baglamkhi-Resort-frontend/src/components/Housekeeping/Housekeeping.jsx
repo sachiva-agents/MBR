@@ -10,6 +10,15 @@ import {
   FaBed,
 } from "react-icons/fa";
 import API from "../../api";
+import { housekeepingService } from "../../services/housekeepingService";
+import AmenitiesConsumptionModal from "./AmenitiesConsumptionModal";
+import CheckoutReportModal from "./CheckoutReportModal";
+import InspectionChecklistModal from "./InspectionChecklistModal";
+import LostFoundModal from "./LostFoundModal";
+import RoomCostingModal from "./RoomCostingModal";
+import ShiftRosterModal from "./ShiftRosterModal";
+import HousekeepingRow from "./HousekeepingRow";
+import CleaningLogPanel from "./CleaningLogPanel";
 
 const normalizeNotification = (row) => ({
   id: row.id,
@@ -73,6 +82,15 @@ export default function Housekeeping() {
   const [rooms, setRooms] = useState([]);
   const [notifications, setNotifications] = useState([]);
   const [blockedRooms, setBlockedRooms] = useState([]);
+  const [housekeepers, setHousekeepers] = useState([]);
+  const [cleaningLogs, setCleaningLogs] = useState([]);
+  const [activeModal, setActiveModal] = useState(null);
+  const [logSearch, setLogSearch] = useState("");
+  const [logStatus, setLogStatus] = useState("All");
+  const [logAssignee, setLogAssignee] = useState("All");
+  const [roomMessageDrafts, setRoomMessageDrafts] = useState({});
+  const [actionBusy, setActionBusy] = useState(false);
+  const [actionMsg, setActionMsg] = useState("");
   const [assignmentPage, setAssignmentPage] = useState(1);
   const [checkoutPage, setCheckoutPage] = useState(1);
   const PAGE_SIZE = 10;
@@ -109,6 +127,29 @@ export default function Housekeeping() {
       setRooms(roomsData);
       setNotifications(notifData.map(normalizeNotification));
       setBlockedRooms(blocksData);
+
+      const [usersRes, logsRes] = await Promise.allSettled([
+        API.get("/users"),
+        API.get("/housekeeping/logs"),
+      ]);
+      const userRows =
+        usersRes.status === "fulfilled" && Array.isArray(usersRes.value?.data)
+          ? usersRes.value.data
+          : [];
+      setHousekeepers(
+        Array.from(
+          new Set(
+            userRows
+              .filter((u) => String(u.role || "").toLowerCase().includes("housekeeping"))
+              .map((u) => String(u.name || "").trim())
+              .filter(Boolean)
+          )
+        )
+      );
+      if (logsRes.status === "fulfilled" && Array.isArray(logsRes.value?.data)) {
+        setCleaningLogs(logsRes.value.data);
+      }
+
       setAssignmentPage(1);
       setCheckoutPage(1);
     } catch (err) {
@@ -124,6 +165,164 @@ export default function Housekeeping() {
   useEffect(() => {
     const id = globalThis.setInterval(fetchData, 30000);
     return () => globalThis.clearInterval(id);
+  }, [fetchData]);
+
+  const notify = (text) => {
+    setActionMsg(text);
+    globalThis.setTimeout(() => setActionMsg(""), 3500);
+  };
+
+  const handleStatusChange = useCallback(async (roomId, status) => {
+    if (!roomId || !status) return;
+    setActionBusy(true);
+    try {
+      await housekeepingService.updateRoomStatus(roomId, status);
+      await fetchData();
+    } catch (err) {
+      notify(err?.response?.data?.message || "Status update failed");
+    } finally {
+      setActionBusy(false);
+    }
+  }, [fetchData]);
+
+  const handleAssigneeChange = useCallback(async (roomId, assignee) => {
+    if (!roomId || !assignee) return;
+    setActionBusy(true);
+    try {
+      await housekeepingService.updateRoomAssignee(roomId, assignee);
+      await fetchData();
+    } catch (err) {
+      notify(err?.response?.data?.message || "Assignee update failed");
+    } finally {
+      setActionBusy(false);
+    }
+  }, [fetchData]);
+
+  const assigneeOptions = useMemo(() => {
+    const seen = new Set(["No Housekeeper", ...housekeepers]);
+    rooms.forEach((room) => {
+      const name = String(room.assignee || "").trim();
+      if (name) seen.add(name);
+    });
+    return Array.from(seen);
+  }, [housekeepers, rooms]);
+
+  const logRows = useMemo(() => {
+    const taskMap = new Map();
+    notifications.forEach((n) => {
+      const key = String(n.roomNo || n.roomId || "").trim();
+      if (key) taskMap.set(key, n);
+    });
+    return rooms.map((room) => {
+      const task = taskMap.get(String(room.roomNo || "").trim()) || null;
+      const due = task?.dueAt ? new Date(task.dueAt) : null;
+      const remainingMs = due ? due.getTime() - Date.now() : null;
+      return {
+        ...room,
+        task,
+        remainingMs,
+        isOverdue: remainingMs !== null && remainingMs < 0,
+        progress: 34,
+      };
+    }).filter((room) => room.task || String(room.status || "").toLowerCase().includes("dirty") || String(room.status || "").toLowerCase().includes("progress"));
+  }, [rooms, notifications]);
+
+  const warningRows = useMemo(
+    () => logRows.filter((room) => room.isOverdue),
+    [logRows]
+  );
+
+  const completedTodayRows = useMemo(() => {
+    const today = new Date().toDateString();
+    return logRows.filter((room) => {
+      if (String(room.status || "").toLowerCase().includes("clean") && !String(room.status || "").toLowerCase().includes("dirty")) {
+        const done = room.completedAt ? new Date(room.completedAt) : null;
+        return done && done.toDateString() === today;
+      }
+      return false;
+    });
+  }, [logRows]);
+
+  const filteredLogRows = useMemo(() => {
+    const q = logSearch.trim().toLowerCase();
+    const s = logStatus.toLowerCase();
+    const a = logAssignee.toLowerCase();
+    return logRows.filter((room) => {
+      if (q && !String(room.roomNo || "").toLowerCase().includes(q) && !String(room.assignee || "").toLowerCase().includes(q)) return false;
+      if (s !== "all" && !String(room.status || "").toLowerCase().includes(s)) return false;
+      if (a !== "all" && String(room.assignee || "No Housekeeper") !== logAssignee) return false;
+      return true;
+    });
+  }, [logRows, logSearch, logStatus, logAssignee]);
+
+  const handleSendCleaningMessage = useCallback(async (room) => {
+    const key = String(room.id || room.roomNo || room.roomNumber);
+    const draft = (roomMessageDrafts[key] ?? room.task?.message ?? "").trim();
+    if (!draft) {
+      notify("Write a message before sending.");
+      return;
+    }
+    setActionBusy(true);
+    try {
+      await API.post("/housekeeping/message", {
+        roomNo: room.roomNo,
+        roomId: room.id,
+        assignedTo: room.assignee || "No Housekeeper",
+        message: draft,
+        dueAt: room.task?.dueAt || null,
+      });
+      setRoomMessageDrafts((prev) => {
+        const next = { ...prev };
+        delete next[key];
+        return next;
+      });
+      await fetchData();
+    } catch (err) {
+      notify(err?.response?.data?.message || "Could not send the message");
+    } finally {
+      setActionBusy(false);
+    }
+  }, [roomMessageDrafts, fetchData]);
+
+  const handleExtendCleaningTime = useCallback(async (room, minutes) => {
+    const due = room.task?.dueAt ? new Date(room.task.dueAt) : new Date();
+    const extended = new Date(due.getTime() + minutes * 60000).toISOString();
+    setActionBusy(true);
+    try {
+      await API.post("/housekeeping/message", {
+        roomNo: room.roomNo,
+        roomId: room.id,
+        assignedTo: room.assignee || "No Housekeeper",
+        message: `Cleaning window extended by ${minutes} minute(s).`,
+        taskLabel: room.task?.taskLabel || "Room Cleaning",
+        dueAt: extended,
+      });
+      await fetchData();
+    } catch (err) {
+      notify(err?.response?.data?.message || "Could not extend cleaning time");
+    } finally {
+      setActionBusy(false);
+    }
+  }, [fetchData]);
+
+  const handleMarkCleaningComplete = useCallback(async (room) => {
+    setActionBusy(true);
+    try {
+      await housekeepingService.updateRoomStatus(room.id, "Vacant Clean");
+      await housekeepingService.createCompletedCleaningLog({
+        roomId: room.id,
+        roomNo: room.roomNo,
+        assignee: room.assignee || "No Housekeeper",
+        guestStatus: room.guestStatus || "",
+        finalStatus: "Vacant Clean",
+        completedAt: new Date().toISOString(),
+      });
+      await fetchData();
+    } catch (err) {
+      notify(err?.response?.data?.message || "Could not mark cleaning complete");
+    } finally {
+      setActionBusy(false);
+    }
   }, [fetchData]);
 
   const stats = useMemo(() => ({
@@ -344,6 +543,84 @@ export default function Housekeeping() {
           ))}
         </div>
 
+        {/* Tools */}
+        <div className="mb-5 rounded-2xl border border-slate-100 bg-white p-4 shadow-sm sm:px-5">
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="mr-2 text-xs font-bold uppercase tracking-wide text-slate-400">Tools</span>
+            {[
+              { key: "amenities", label: "Amenities", icon: FaBroom },
+              { key: "inspection", label: "Inspection", icon: FaClipboardList },
+              { key: "roster", label: "Shift Roster", icon: FaUsers },
+              { key: "lostFound", label: "Lost & Found", icon: FaExclamationTriangle },
+              { key: "costing", label: "Room Costing", icon: FaBed },
+              { key: "checkoutReport", label: "Checkout Report", icon: FaCheckCircle },
+            ].map((tool) => (
+              <button
+                key={tool.key}
+                type="button"
+                onClick={() => setActiveModal(tool.key)}
+                className="inline-flex items-center gap-2 rounded-xl border border-blue-100 bg-blue-50 px-4 py-2.5 text-sm font-bold text-blue-700 transition hover:-translate-y-0.5 hover:bg-blue-100"
+              >
+                <tool.icon className="text-base" />
+                {tool.label}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {actionMsg && (
+          <div className="mb-5 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-semibold text-amber-700 shadow-sm">
+            {actionMsg}
+          </div>
+        )}
+
+        {/* Room Status Controls */}
+        <div className="mb-5">
+          <div className="mb-3 flex items-center justify-between">
+            <h2 className="text-lg font-black text-slate-900 sm:text-xl">Room Status Controls</h2>
+            {actionBusy && <span className="text-xs font-bold uppercase tracking-wide text-slate-400">Saving…</span>}
+          </div>
+          {rooms.length === 0 ? (
+            <div className="rounded-2xl border border-dashed border-slate-300 bg-white p-6 text-center text-slate-400 shadow-sm">
+              No rooms found.
+            </div>
+          ) : (
+            <div className="grid gap-4 xl:grid-cols-2">
+              {rooms.map((room) => (
+                  <HousekeepingRow
+                    key={room.id}
+                    room={room}
+                    housekeepers={housekeepers}
+                    onStatusChange={handleStatusChange}
+                    onAssigneeChange={handleAssigneeChange}
+                  />
+                ))}
+            </div>
+          )}
+        </div>
+
+        {/* Cleaning Log Panel */}
+        <div className="mb-5">
+          <CleaningLogPanel
+            logs={cleaningLogs}
+            rows={filteredLogRows}
+            warningRows={warningRows}
+            completedTodayRows={completedTodayRows}
+            logSearch={logSearch}
+            setLogSearch={setLogSearch}
+            logStatus={logStatus}
+            setLogStatus={setLogStatus}
+            logAssignee={logAssignee}
+            setLogAssignee={setLogAssignee}
+            housekeepers={housekeepers}
+            roomMessageDrafts={roomMessageDrafts}
+            setRoomMessageDrafts={setRoomMessageDrafts}
+            onSendCleaningMessage={handleSendCleaningMessage}
+            onExtendCleaningTime={handleExtendCleaningTime}
+            onMarkCleaningComplete={handleMarkCleaningComplete}
+          />
+        </div>
+
         {/* Blocked Rooms Banner */}
         {blockedRooms.length > 0 && (
           <div className="mb-5 rounded-2xl border border-rose-200 bg-rose-50 px-4 py-4 shadow-sm sm:px-5">
@@ -501,6 +778,25 @@ Access room assignment details, room type, duration of stay, assigned by informa
           />
         </div>
 
+        {/* Tool modals */}
+        {activeModal === "amenities" && (
+          <AmenitiesConsumptionModal rooms={rooms} onClose={() => setActiveModal(null)} apiBase={API} />
+        )}
+        {activeModal === "inspection" && (
+          <InspectionChecklistModal rooms={rooms} onClose={() => setActiveModal(null)} apiBase={API} />
+        )}
+        {activeModal === "roster" && (
+          <ShiftRosterModal housekeepers={housekeepers} onClose={() => setActiveModal(null)} apiBase={API} />
+        )}
+        {activeModal === "lostFound" && (
+          <LostFoundModal rooms={rooms} onClose={() => setActiveModal(null)} apiBase={API} />
+        )}
+        {activeModal === "costing" && (
+          <RoomCostingModal rooms={rooms} onClose={() => setActiveModal(null)} apiBase={API} />
+        )}
+        {activeModal === "checkoutReport" && (
+          <CheckoutReportModal onClose={() => { setActiveModal(null); fetchData(); }} apiBase={API} />
+        )}
       </div>
     </div>
   );
