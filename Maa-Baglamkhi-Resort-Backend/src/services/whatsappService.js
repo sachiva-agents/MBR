@@ -471,13 +471,59 @@ const sendInvoiceNotifications = async (invoice, attachment, options = {}) => {
   const invoiceUrl = String(options.invoiceUrl || "").trim();
   const invoiceLink = invoiceUrl ? `\n\nDownload invoice PDF:\n${invoiceUrl}` : "";
 
+  // Brand the default invoice message to match the BOOKING CONFIRMATION
+  // template exactly: same 🏨/📍 header, *bold* section labels, 💰 payment
+  // summary, 📌 notes, and the warm-regards footer — so the customer sees
+  // one consistent resort style across confirmation and invoice messages.
+  const checkInLabel = invoice.checkIn ? formatDateShort(invoice.checkIn) : "";
+  const checkOutLabel = invoice.checkOut ? formatDateShort(invoice.checkOut) : "";
+  const roomNoLabel = invoice.roomNumber ? String(invoice.roomNumber) : "";
+  const rupee = (v) => `₹ ${Number(v || 0).toFixed(2)}`;
+  const invTotal = Number(invoice.totalAmount ?? invoice.subtotal ?? invoice.total ?? 0);
+  const invAdvance = Number(invoice.paidAmount ?? 0);
+  const invBalance =
+    invoice.remainingAmount != null
+      ? Number(invoice.remainingAmount)
+      : Math.max(invTotal - invAdvance, 0);
+  const invStatus =
+    invoice.paymentStatus || (invBalance > 0 ? "Pending" : "Paid");
+
+  const stayLines = [];
+  const stayDetails = [];
+  if (checkInLabel) stayDetails.push(`• Check-In Date: *${checkInLabel}*`);
+  if (checkOutLabel) stayDetails.push(`• Check-Out Date: *${checkOutLabel}*`);
+  if (roomNoLabel) stayDetails.push(`• Room No: *${roomNoLabel}*`);
+  if (stayDetails.length) stayLines.push("📅 *Stay Details:*", ...stayDetails);
+  stayLines.push(
+    "💰 *Payment Summary:*",
+    `• Total Amount: *${rupee(invTotal)}*`,
+    `• Advance Paid: *${rupee(invAdvance)}*`,
+    `• Balance Due: *${rupee(invBalance)}*`,
+    `• Status: *${invStatus}*`
+  );
+
   const customerMessage =
     options.customerMessage ||
-    `Dear ${guestName},\n\nThank you for staying at Maa Baglamukhi Resort.\n\nHere is your invoice ${invoiceNo}.\n${detailsBlock}${invoiceLink}\n\nRegards,\nMaa Baglamukhi Resort`;
+    `🏨 *MAA BAGLAMUKHI RESORT*\n` +
+      `📍 Nalkheda\n\n` +
+      `🧾 *INVOICE ${invoiceNo}*\n\n` +
+      `Dear *${guestName}*,\n` +
+      `Thank you for staying at Maa Baglamukhi Resort. Here is your invoice.\n\n` +
+      `${stayLines.join("\n")}\n\n` +
+      `📌 *Important Notes:*\n` +
+      `• Balance (if any) to be paid at the counter.\n` +
+      `• Please carry a valid ID proof at the time of check-in.\n` +
+      `• For any queries, please contact us.\n\n` +
+      `Warm regards,\n*Maa Baglamukhi Resort*\n📞 Nalkheda` +
+      invoiceLink;
 
   const adminMessage =
     options.adminMessage ||
-    `New invoice generated for booking ${invoiceNo}.\nGuest: ${guestName}\nPhone: ${formatPhoneDisplay(customerNumber)}\n${detailsBlock}${invoiceLink}`;
+    `🧾 *New Invoice — ${invoiceNo}*\n\n` +
+      `Guest: *${guestName}*\n` +
+      `Phone: ${formatPhoneDisplay(customerNumber)}\n\n` +
+      `${stayLines.join("\n")}\n` +
+      `• Notification copy for resort`;
 
   const [customerWa, customerSms, adminWa, adminSms] = await Promise.all([
     customerNumber

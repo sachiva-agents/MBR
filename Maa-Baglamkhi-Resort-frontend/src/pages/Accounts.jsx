@@ -2148,16 +2148,38 @@ const Accounts = () => {
       raw: booking,
     })),
   ].sort((left, right) => String(right.date).localeCompare(String(left.date)));
-  const billingTotalPages = Math.max(1, Math.ceil(combinedBillingRecords.length / BILLING_PAGE_SIZE));
-  const paginatedBillingRecords = combinedBillingRecords.slice(
+
+  // The top search bar is labelled "Search by party, guest or narration…",
+  // so it also narrows the Customer Billing rows — not just the ledger below.
+  const billingSearchTerm = String(nameSearch || "").trim().toLowerCase();
+  const searchFilteredBillingRecords = billingSearchTerm
+    ? combinedBillingRecords.filter((row) =>
+        [
+          row.reference,
+          row.customerName,
+          row.billType,
+          row.source,
+          row.locationLabel,
+          row.narration,
+          row.date,
+        ]
+          .filter(Boolean)
+          .join(" ")
+          .toLowerCase()
+          .includes(billingSearchTerm),
+      )
+    : combinedBillingRecords;
+
+  const billingTotalPages = Math.max(1, Math.ceil(searchFilteredBillingRecords.length / BILLING_PAGE_SIZE));
+  const paginatedBillingRecords = searchFilteredBillingRecords.slice(
     (billingPage - 1) * BILLING_PAGE_SIZE,
     billingPage * BILLING_PAGE_SIZE,
   );
   const paymentModeSummary = {
     recordsCount: filteredRecords.length,
     recordsAmount: filteredRecords.reduce((sum, record) => sum + toNumber(record.amount), 0),
-    invoiceCount: combinedBillingRecords.length,
-    invoiceAmount: combinedBillingRecords.reduce((sum, row) => sum + toNumber(row.total), 0),
+    invoiceCount: searchFilteredBillingRecords.length,
+    invoiceAmount: searchFilteredBillingRecords.reduce((sum, row) => sum + toNumber(row.total), 0),
   };
   paymentModeSummary.combinedCount =
     paymentModeSummary.recordsCount + paymentModeSummary.invoiceCount;
@@ -2362,35 +2384,47 @@ const Accounts = () => {
   }, [groupedTransactions, selectedPaymentMode]);
 
   const searchTerm = String(nameSearch || "").trim().toLowerCase();
-  const searchMatchedKeys = useMemo(() => {
-    if (!searchTerm) return null;
-    const matched = new Set();
-    (records || []).forEach((record) => {
-      const { key, label } = getGroupKey(record);
-      if (!matched.has(key)) {
-        const searchable = [
-          key,
-          label,
-          record.customerMobile,
-          record.customerName,
-          record.narration,
-          record.description,
-        ]
-          .filter(Boolean)
-          .join(" ")
-          .toLowerCase();
-        if (searchable.includes(searchTerm)) {
-          matched.add(key);
-        }
-      }
-    });
-    return matched;
-  }, [records, searchTerm]);
 
+  // A record matches the search when its group key/label, customer name/phone,
+  // narration, or description contains the term (case-insensitive).
+  const recordMatchesSearch = (record) => {
+    if (!searchTerm) return true;
+    const { key, label } = getGroupKey(record);
+    const searchable = [
+      key,
+      label,
+      record.customerMobile,
+      record.customerName,
+      record.narration,
+      record.description,
+    ]
+      .filter(Boolean)
+      .join(" ")
+      .toLowerCase();
+    return searchable.includes(searchTerm);
+  };
+
+  // When a search is active, narrow each group to ONLY its matching records
+  // (and drop groups left with none), recomputing the group totals. Without
+  // this the "Other" group — which bundles many unrelated records under one
+  // shared key — would show or hide as a whole block based on just its first
+  // record, so most searches returned nothing.
   const searchFilteredGroupedTransactions = useMemo(() => {
-    if (!searchMatchedKeys) return filteredGroupedTransactions;
-    return filteredGroupedTransactions.filter((group) => searchMatchedKeys.has(group.key));
-  }, [filteredGroupedTransactions, searchMatchedKeys]);
+    if (!searchTerm) return filteredGroupedTransactions;
+    return filteredGroupedTransactions
+      .map((group) => {
+        const records_ = group.records.filter(recordMatchesSearch);
+        if (records_.length === 0) return null;
+        const income = records_
+          .filter((r) => r.type === "Income")
+          .reduce((sum, r) => sum + toNumber(r.amount), 0);
+        const expense = records_
+          .filter((r) => r.type === "Expense")
+          .reduce((sum, r) => sum + toNumber(r.amount), 0);
+        return { ...group, records: records_, income, expense };
+      })
+      .filter(Boolean);
+  }, [filteredGroupedTransactions, searchTerm]);
 
   React.useEffect(() => {
     setTransactionPage(1);
@@ -2438,6 +2472,7 @@ const Accounts = () => {
     selectedRestaurantTable,
     selectedBanquetHall,
     selectedPaymentMode,
+    nameSearch,
   ]);
 
   useEffect(() => {
@@ -3188,18 +3223,14 @@ const Accounts = () => {
                             <td colSpan={8} className="px-4 py-2.5">
                               <div className="flex items-center justify-between">
                                 <div className="flex items-center gap-2.5">
-                                  {group.key !== "__ungrouped" ? (
-                                    <button
-                                      type="button"
-                                      onClick={() => toggleGroup(group.key)}
-                                      className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md border border-slate-300 bg-white text-xs font-bold text-slate-700 shadow-2xs hover:bg-slate-100 transition-colors"
-                                      aria-label={isOpen ? "Collapse group" : "Expand group"}
-                                    >
-                                      {isOpen ? "−" : "+"}
-                                    </button>
-                                  ) : (
-                                    <span className="inline-block h-6 w-6 shrink-0" />
-                                  )}
+                                  <button
+                                    type="button"
+                                    onClick={() => toggleGroup(group.key)}
+                                    className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md border border-slate-300 bg-white text-xs font-bold text-slate-700 shadow-2xs hover:bg-slate-100 transition-colors"
+                                    aria-label={isOpen ? "Collapse group" : "Expand group"}
+                                  >
+                                    {isOpen ? "−" : "+"}
+                                  </button>
                                   <span className="text-sm font-black text-slate-900">
                                     {group.name}
                                   </span>
@@ -3256,32 +3287,28 @@ const Accounts = () => {
                             </td>
                             <td className="px-4 py-3 text-center">
                               <div className="flex flex-wrap justify-center gap-1.5">
-                                {group.key !== "__ungrouped" && (
-                                  <>
-                                    <button
-                                      type="button"
-                                      className="inline-flex items-center gap-1 rounded-lg border border-blue-200 bg-blue-50 px-2.5 py-1 text-[11px] font-bold text-blue-700 hover:bg-blue-100 transition-colors"
-                                      onClick={() => handlePrintGroup(group)}
-                                      title="Print this group"
-                                    >
-                                      <FaPrint className="text-[10px]" />
-                                      Print
-                                    </button>
-                                    <button
-                                      type="button"
-                                      className="rounded-lg border border-slate-200 bg-white px-2.5 py-1 text-xs font-semibold text-slate-700 hover:bg-slate-50 shadow-2xs transition-colors"
-                                      onClick={() => toggleGroup(group.key)}
-                                    >
-                                      {isOpen ? "Hide Items" : "View Items"}
-                                    </button>
-                                  </>
-                                )}
+                                <button
+                                  type="button"
+                                  className="inline-flex items-center gap-1 rounded-lg border border-blue-200 bg-blue-50 px-2.5 py-1 text-[11px] font-bold text-blue-700 hover:bg-blue-100 transition-colors"
+                                  onClick={() => handlePrintGroup(group)}
+                                  title="Print this group"
+                                >
+                                  <FaPrint className="text-[10px]" />
+                                  Print
+                                </button>
+                                <button
+                                  type="button"
+                                  className="rounded-lg border border-slate-200 bg-white px-2.5 py-1 text-xs font-semibold text-slate-700 hover:bg-slate-50 shadow-2xs transition-colors"
+                                  onClick={() => toggleGroup(group.key)}
+                                >
+                                  {isOpen ? "Hide Items" : "View Items"}
+                                </button>
                               </div>
                             </td>
                           </tr>
 
                           {/* Expanded Child Rows */}
-                          {isOpen && group.key !== "__ungrouped" ? (
+                          {isOpen ? (
                             group.records.map((r) => (
                               <tr key={r.id} className="border-t border-slate-100 bg-slate-50/30 transition-colors hover:bg-blue-50/30">
                                 <td className="pl-12 pr-4 py-2.5 font-medium text-slate-700">
@@ -3364,15 +3391,13 @@ const Accounts = () => {
                     <div key={group.key} className="rounded-xl border border-slate-200 bg-white p-3.5 shadow-xs">
                       <div className="flex items-center justify-between gap-2">
                         <div className="flex items-center gap-2">
-                          {group.key !== "__ungrouped" && (
-                            <button
-                              type="button"
-                              onClick={() => toggleGroup(group.key)}
-                              className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md border border-slate-300 bg-slate-50 text-xs font-bold text-slate-700"
-                            >
-                              {isOpen ? "−" : "+"}
-                            </button>
-                          )}
+                          <button
+                            type="button"
+                            onClick={() => toggleGroup(group.key)}
+                            className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md border border-slate-300 bg-slate-50 text-xs font-bold text-slate-700"
+                          >
+                            {isOpen ? "−" : "+"}
+                          </button>
                           <div>
                             <div className="text-sm font-bold text-slate-900">{group.name}</div>
                             <div className="text-[11px] text-slate-400">
@@ -3381,16 +3406,14 @@ const Accounts = () => {
                           </div>
                         </div>
                         <div className="flex items-center gap-1.5">
-                          {group.key !== "__ungrouped" && (
-                            <button
-                              type="button"
-                              onClick={() => handlePrintGroup(group)}
-                              className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md border border-blue-200 bg-blue-50 text-blue-700"
-                              title="Print"
-                            >
-                              <FaPrint className="text-[10px]" />
-                            </button>
-                          )}
+                          <button
+                            type="button"
+                            onClick={() => handlePrintGroup(group)}
+                            className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md border border-blue-200 bg-blue-50 text-blue-700"
+                            title="Print"
+                          >
+                            <FaPrint className="text-[10px]" />
+                          </button>
                           <div className="text-right">
                             <div className="text-xs font-bold text-slate-900">
                               {formatINR(group.income - group.expense)}
@@ -3403,7 +3426,7 @@ const Accounts = () => {
                         </div>
                       </div>
 
-                      {isOpen && group.key !== "__ungrouped" && (
+                      {isOpen && (
                         <div className="mt-3 space-y-2 border-t border-slate-100 pt-3">
                           {group.records.map((r) => (
                             <div key={r.id} className="rounded-lg border border-slate-200/80 bg-slate-50/50 p-2.5">
