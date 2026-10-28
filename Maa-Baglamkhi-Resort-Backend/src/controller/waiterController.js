@@ -199,7 +199,7 @@ exports.markServed = async (req, res) => {
       }
     }
 
-    const updated = await db.query(
+    const [updated] = await db.query(
       `UPDATE kitchen_orders
        SET status = 'Served', served_at = NOW(), waiter_name = COALESCE(?, waiter_name)
        WHERE id = ?`,
