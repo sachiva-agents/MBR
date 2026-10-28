@@ -1,4 +1,5 @@
 const db = require("../config/db");
+const RoomCategories = require("./RoomCategoriesModel");
 
 const runQuery = (sql, params = []) =>
   new Promise((resolve, reject) => {
@@ -88,23 +89,37 @@ exports.ensureSchema = async () => {
 
 /* ================= ROOMS ================= */
 
-exports.addRoom = (data, callback) => {
-  // Table uses column `room_number` in the rest of the codebase; use it for compatibility.
-  // On a fresh schema this table may be owned by the hotel inventory, which adds a
-  // NOT NULL category_id, so fall back to that shape when the simple insert is
-  // rejected and mark the result explicitly (INSERT IGNORE yields affectedRows 0
-  // when the room already exists, which the caller reports as "already exists").
+exports.addRoom = async (data, callback) => {
+  // The room-service rooms table can be the shared hotel `rooms` table, which
+  // carries a NOT NULL category_id foreign key (owner: RoomsModel). That owner
+  // never seeds room_categories from this mount, so a bare insert fails with
+  // "Field 'category_id' doesn't have a default value". Fall back to inserting
+  // under the categories shape: guarantee the categories table exists and has a
+  // row (MIN(id) would be NULL on an empty table), then insert with that id.
   const runSimple = (cb) =>
     db.query("INSERT INTO rooms (room_number) VALUES (?)", [data.number], cb);
 
   runSimple((err, result, fields) => {
     if (!err || !/category_id/i.test(String(err.message || "")))
       return callback(err, result, fields);
-    db.query(
-      "INSERT INTO rooms (category_id, room_number) VALUES ((SELECT MIN(id) FROM room_categories), ?)",
-      [data.number],
-      (e2, r2, f2) => callback(e2 || err, r2, f2)
-    );
+    RoomCategories.ensureSchema()
+      .then(async () => {
+        const rows = await runQuery("SELECT COUNT(*) AS cnt FROM room_categories");
+        if (!rows || !rows.length || Number(rows[0].cnt) === 0) {
+          await runQuery(
+            "INSERT IGNORE INTO room_categories (name, slug, default_price) VALUES (?, ?, 0)",
+            ["Standard Room", "standard-room"]
+          );
+        }
+      })
+      .then(() =>
+        db.query(
+          "INSERT INTO rooms (category_id, room_number) VALUES ((SELECT MIN(id) FROM room_categories), ?)",
+          [data.number],
+          (e2, r2, f2) => callback(e2, r2, f2)
+        )
+      )
+      .catch((seedErr) => callback(seedErr || err, undefined, undefined));
   });
 };
 
