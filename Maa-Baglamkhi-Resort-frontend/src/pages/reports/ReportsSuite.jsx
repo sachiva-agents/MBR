@@ -108,17 +108,17 @@ function ReportTable({ columns, rows, summary }) {
           ))}
         </div>
       ) : null}
-      <div className="overflow-x-auto rounded-2xl border border-[#E7EEFC] bg-white shadow-[0_14px_36px_-18px_rgba(11,30,77,0.18)]">
+      <div className="max-h-[65vh] overflow-auto rounded-2xl border border-[#E7EEFC] bg-white shadow-[0_14px_36px_-18px_rgba(11,30,77,0.18)]">
         {rows.length === 0 ? (
           <div className="px-4 py-10 text-center text-[15px] font-semibold text-slate-500">No rows in this window.</div>
         ) : (
           <table className="w-full text-left text-[15px]">
-            <thead className="border-b border-[#E7EEFC] bg-[#F5F9FF]">
-              <tr>{columns.map((c) => <th key={c} className="px-3.5 py-3 text-[13px] font-bold uppercase tracking-[0.05em] text-[#0B1E4D]">{c}</th>)}</tr>
+            <thead className="sticky top-0 z-10 border-b border-[#E7EEFC] bg-[#F5F9FF]">
+              <tr>{columns.map((c) => <th key={c} className="bg-[#F5F9FF] px-3.5 py-3 text-[13px] font-bold uppercase tracking-[0.05em] text-[#0B1E4D]">{c}</th>)}</tr>
             </thead>
             <tbody>
               {rows.map((row, i) => (
-                <tr key={i} className="border-t border-[#EEF3FD] transition-colors hover:bg-[#F6F9FF]">
+                <tr key={i} className={`border-t border-[#EEF3FD] transition-colors hover:bg-[#F6F9FF] ${i % 2 === 1 ? "bg-[#FAFCFF]" : "bg-white"}`}>
                   {columns.map((c) => (
                     <td key={c} className="px-3.5 py-2.5 font-medium text-[#1f2a44]">
                       {renderCell(row[c], c) === "—" ? <span className="text-slate-400">—</span> : renderCell(row[c], c)}

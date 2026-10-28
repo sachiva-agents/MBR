@@ -1,4 +1,5 @@
 const { pool, getConnection } = require('../utils/poolPromise')
+const { addColumnIfMissing } = require('../utils/schemaMigrations')
 
 class PaymentMethods {
   constructor() {
@@ -8,8 +9,6 @@ class PaymentMethods {
   async ensureSchema() {
     const conn = await getConnection()
     try {
-      await conn.beginTransaction()
-
       await conn.query(`CREATE TABLE IF NOT EXISTS \`payment_methods\` (
             \`id\` INT UNSIGNED NOT NULL AUTO_INCREMENT,
   \`name\` VARCHAR(50) NOT NULL UNIQUE,
@@ -21,31 +20,18 @@ class PaymentMethods {
 
       // The gateway settings form posts more than name/code/is_active. Without
       // these columns every extra field was silently dropped and saving looked
-      // like a no-op. Added one by one so a partially migrated db still boots.
-      const additions = [
-        'ALTER TABLE `payment_methods` ADD COLUMN `department` VARCHAR(100)',
-        'ALTER TABLE `payment_methods` ADD COLUMN `provider_name` VARCHAR(255)',
-        'ALTER TABLE `payment_methods` ADD COLUMN `upi_id` VARCHAR(255)',
-        'ALTER TABLE `payment_methods` ADD COLUMN `account_holder_name` VARCHAR(255)',
-        'ALTER TABLE `payment_methods` ADD COLUMN `bank_name` VARCHAR(255)',
-        'ALTER TABLE `payment_methods` ADD COLUMN `qr_image_url` TEXT',
-        'ALTER TABLE `payment_methods` ADD COLUMN `notes` TEXT',
-        // A picked QR now rides in the JSON body as a data URL; B64TEXT is
-        // about 44 bytes over 64KB so base64-encoded images fit headroom.
-        "ALTER TABLE `payment_methods` MODIFY COLUMN `qr_image_url` B64TEXT",
-      ]
-      for (const sql of additions) {
-        try {
-          await conn.query(sql)
-        } catch (err) {
-          if (err.code === 'ER_DUP_FIELDNAME' || /already exists/i.test(err.message || '')) continue
-          throw err
-        }
-      }
-
-      await conn.commit()
+      // like a no-op. Each is added only when actually missing (information_schema
+      // pre-check via addColumnIfMissing) so the migration is idempotent on both
+      // MariaDB and MySQL. The old "ADD COLUMN …" loop re-ran every boot and its
+      // B64TEXT MODIFY (an invalid type) was a syntax error logged on every start.
+      await addColumnIfMissing(conn, 'payment_methods', 'department', 'VARCHAR(100)')
+      await addColumnIfMissing(conn, 'payment_methods', 'provider_name', 'VARCHAR(255)')
+      await addColumnIfMissing(conn, 'payment_methods', 'upi_id', 'VARCHAR(255)')
+      await addColumnIfMissing(conn, 'payment_methods', 'account_holder_name', 'VARCHAR(255)')
+      await addColumnIfMissing(conn, 'payment_methods', 'bank_name', 'VARCHAR(255)')
+      await addColumnIfMissing(conn, 'payment_methods', 'qr_image_url', 'LONGTEXT')
+      await addColumnIfMissing(conn, 'payment_methods', 'notes', 'TEXT')
     } catch (err) {
-      await conn.rollback()
       console.error('Schema error for payment_methods:', err.message)
     } finally {
       conn.release()
