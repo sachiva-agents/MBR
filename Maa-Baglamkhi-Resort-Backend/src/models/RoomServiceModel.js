@@ -146,6 +146,10 @@ exports.getMenuItems = (callback) => {
   db.query(sql, callback);
 };
 
+exports.deleteMenuItem = (id, callback) => {
+  db.query("DELETE FROM room_menu_items WHERE id = ?", [id], callback);
+};
+
 /* ================= ORDERS ================= */
 
 exports.createOrder = (roomNumber, callback) => {

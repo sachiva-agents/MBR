@@ -88,6 +88,23 @@ exports.getOrderItems = (req, res) => {
   });
 };
 
+exports.deleteMenuItem = (req, res) => {
+  const id = req.params.id;
+  if (!id) {
+    return res.status(400).json({ message: "Menu item id required" });
+  }
+
+  RoomService.deleteMenuItem(id, (err, result) => {
+    if (err) return res.status(500).json(err);
+
+    if (!result || !result.affectedRows) {
+      return res.status(404).json({ message: "Menu item not found" });
+    }
+
+    res.json({ message: "Room menu item deleted", id: Number(id) });
+  });
+};
+
 /* ================= ORDER ================= */
 
 exports.addOrderItem = (req, res) => {

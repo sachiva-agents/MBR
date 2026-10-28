@@ -19,6 +19,7 @@ router.get("/rooms", controller.getRooms);
 // ROOM MENU
 router.post("/menu", controller.addMenuItem);
 router.get("/menu", controller.getMenuItems);
+router.delete("/menu/:id", controller.deleteMenuItem);
 
 // ROOM ORDER
 router.post("/order/add", controller.addOrderItem);
