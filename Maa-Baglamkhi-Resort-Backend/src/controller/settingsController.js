@@ -260,6 +260,15 @@ exports.updateSettings = async (req, res) => {
       }
     }
 
+    // An empty {} or whitespace-only body (and one carrying only unknown
+    // keys) used to 200 without touching anything; reject it instead.
+    if (!Object.keys(patch).length) {
+      return res.status(400).json({
+        error:
+          "Request body must contain at least one settings field to update",
+      });
+    }
+
     if (patch.adminWhatsappNumber) {
       const digits = String(patch.adminWhatsappNumber).replace(/\D+/g, "");
       if (digits.length < 10 || digits.length > 15) {
