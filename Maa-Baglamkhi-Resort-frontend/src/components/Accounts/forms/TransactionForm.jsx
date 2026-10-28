@@ -5,6 +5,9 @@ import "./TransactionForm.css";
 
 const todayISO = () => localDate();
 
+// Quick-suggestion chips for Description / Party Name. Anything the resort
+// buys or pays FOR from outside (vendors, market, services) is an expense
+// that should be recordable in one tap — flower, grocery, beverages, etc.
 const DESCRIPTION_SUGGESTIONS = {
   Expense: [
     "Vendor payment",
@@ -13,6 +16,12 @@ const DESCRIPTION_SUGGESTIONS = {
     "Electricity bill",
     "Staff expense",
     "Laundry expense",
+    "Flower purchase",
+    "Grocery & vegetables",
+    "Beverages / soft drinks",
+    "Cleaning supplies",
+    "Stationery",
+    "Fuel / transport",
   ],
   Income: [
     "Room booking payment",
@@ -21,6 +30,7 @@ const DESCRIPTION_SUGGESTIONS = {
     "Banquet booking",
     "Invoice collection",
     "Settlement received",
+    "Flower sales",
   ],
 };
 

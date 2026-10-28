@@ -20,6 +20,8 @@ import {
   FaTimes,
   FaArrowUp,
   FaArrowDown,
+  FaArrowRight,
+  FaHistory,
   FaLayerGroup,
   FaUndoAlt,
   FaChevronDown,
@@ -30,6 +32,7 @@ import {
 import PaymentSettingsManager from "../components/Accounts/PaymentSettingsManager";
 import InvoiceForm from "../components/Accounts/forms/InvoiceForm";
 import TransactionForm from "../components/Accounts/forms/TransactionForm";
+import CustomerHistoryModal from "../components/Accounts/CustomerHistoryModal";
 import API from "../api";
 
 const formatINR = (amount) =>
@@ -626,6 +629,7 @@ const Accounts = () => {
 
   const [showIncome, setShowIncome] = useState(false);
   const [showExpense, setShowExpense] = useState(false);
+  const [showCustomerHistory, setShowCustomerHistory] = useState(false);
   const [showInvoice, setShowInvoice] = useState(false);
   const [showView, setShowView] = useState(false);
   const [showEdit, setShowEdit] = useState(false);
@@ -2151,10 +2155,15 @@ const Accounts = () => {
 
   // The top search bar is labelled "Search by party, guest or narration…",
   // so it also narrows the Customer Billing rows — not just the ledger below.
+  // Matches bill/invoice numbers, guest or party names, amounts (plain number
+  // and formatted ₹), dates, room/table/hall labels, payment mode and status.
   const billingSearchTerm = String(nameSearch || "").trim().toLowerCase();
   const searchFilteredBillingRecords = billingSearchTerm
-    ? combinedBillingRecords.filter((row) =>
-        [
+    ? combinedBillingRecords.filter((row) => {
+        const total = toNumber(row.total);
+        const paid = toNumber(row.paidAmount);
+        const remaining = toNumber(row.remainingAmount);
+        const searchable = [
           row.reference,
           row.customerName,
           row.billType,
@@ -2162,12 +2171,17 @@ const Accounts = () => {
           row.locationLabel,
           row.narration,
           row.date,
+          row.paymentMode,
+          row.paymentStatus,
+          total ? `${total} ${formatINR(total)}` : "",
+          paid ? `${paid} ${formatINR(paid)}` : "",
+          remaining ? `${remaining} ${formatINR(remaining)}` : "",
         ]
           .filter(Boolean)
           .join(" ")
-          .toLowerCase()
-          .includes(billingSearchTerm),
-      )
+          .toLowerCase();
+        return searchable.includes(billingSearchTerm);
+      })
     : combinedBillingRecords;
 
   const billingTotalPages = Math.max(1, Math.ceil(searchFilteredBillingRecords.length / BILLING_PAGE_SIZE));
@@ -2293,6 +2307,22 @@ const Accounts = () => {
       return { key: name, label: name };
     }
 
+    // Fall back to the customer party captured in the Add Income / Add Expense
+    // form (the "Customer / Party Name" + "Mobile Number" fields), so a record
+    // like description "Flower purchase" + customer "kapil" groups under
+    // kapil instead of the catch-all "Other". Keyed by name when present so
+    // name-only and name+mobile rows for the same party stay in one group.
+    const customerName = String(record.customerName || "").trim();
+    const customerMobile = String(record.customerMobile || "").trim();
+    const customerKey = customerName || customerMobile;
+    if (customerKey) {
+      const customerLabel =
+        customerName && customerMobile
+          ? `${customerName} (${customerMobile})`
+          : customerKey;
+      return { key: customerKey, label: customerLabel };
+    }
+
     return { key: '__ungrouped', label: 'Other' };
   };
 
@@ -2385,11 +2415,16 @@ const Accounts = () => {
 
   const searchTerm = String(nameSearch || "").trim().toLowerCase();
 
-  // A record matches the search when its group key/label, customer name/phone,
-  // narration, or description contains the term (case-insensitive).
+  // A record matches the search when any of its fields contain the term
+  // (case-insensitive): party/customer name, mobile number, the amount,
+  // transaction number, date, type, payment mode, department, source module,
+  // description and narration/notes. Amounts are included as plain numbers
+  // (and with a "₹" prefix variant) so typing "500" finds a ₹500 entry.
   const recordMatchesSearch = (record) => {
     if (!searchTerm) return true;
     const { key, label } = getGroupKey(record);
+    const amount = toNumber(record.amount);
+    const amountText = amount ? `${amount} ${formatINR(amount)}` : "";
     const searchable = [
       key,
       label,
@@ -2397,6 +2432,14 @@ const Accounts = () => {
       record.customerName,
       record.narration,
       record.description,
+      record.transaction_no,
+      record.transactionNo,
+      record.department,
+      record.paymentMode,
+      record.sourceModule,
+      record.type,
+      record.date,
+      amountText,
     ]
       .filter(Boolean)
       .join(" ")
@@ -2836,7 +2879,7 @@ const Accounts = () => {
                 <input
                   value={nameSearch}
                   onChange={(event) => setNameSearch(event.target.value)}
-                  placeholder="Search by party, guest or narration..."
+                  placeholder="Search name, number, amount, note or bill no..."
                   className="w-full rounded-full border border-white/20 bg-white/10 pl-9 pr-8 py-2.5 text-xs sm:text-sm text-white placeholder-slate-400 outline-none backdrop-blur-md focus:border-sky-400 focus:bg-white/15 transition-all"
                 />
                 {nameSearch && (
@@ -2864,11 +2907,23 @@ const Accounts = () => {
                 </select>
               </div>
 
-              <div className="sm:col-span-2 lg:col-span-1 flex items-center justify-between sm:justify-end gap-3 text-xs text-slate-300">
-                <span className="text-slate-400 font-semibold uppercase tracking-wider">Active Mode</span>
-                <span className="rounded-full bg-sky-500/20 border border-sky-400/30 px-3 py-1 font-bold text-sky-200">
-                  {selectedPaymentMode === "all" ? "All Modes" : selectedPaymentMode}
-                </span>
+              <div className="sm:col-span-2 lg:col-span-1 flex flex-col items-stretch sm:items-end gap-2 text-xs text-slate-300">
+                <div className="flex items-center justify-between gap-3 w-full">
+                  <span className="text-slate-400 font-semibold uppercase tracking-wider">Active Mode</span>
+                  <span className="rounded-full bg-sky-500/20 border border-sky-400/30 px-3 py-1 font-bold text-sky-200">
+                    {selectedPaymentMode === "all" ? "All Modes" : selectedPaymentMode}
+                  </span>
+                </div>
+                <button
+                  type="button"
+                  disabled={!String(nameSearch || "").trim()}
+                  onClick={() => setShowCustomerHistory(true)}
+                  title={String(nameSearch || "").trim() ? "Open complete history for the current search" : "Type a name or number in the search box to open a customer's complete history"}
+                  className="inline-flex w-full sm:w-auto items-center justify-center gap-2 rounded-full bg-gradient-to-r from-sky-500 to-blue-600 px-4 py-2.5 text-xs sm:text-sm font-bold text-white shadow-md shadow-sky-950/20 transition-all duration-200 hover:-translate-y-0.5 active:translate-y-0 disabled:cursor-not-allowed disabled:opacity-40 disabled:from-slate-500 disabled:to-slate-600 disabled:shadow-none disabled:hover:translate-y-0"
+                >
+                  <FaHistory className="text-xs" />
+                  Complete History
+                </button>
               </div>
             </div>
           </div>
@@ -3021,7 +3076,7 @@ const Accounts = () => {
             {[
               { id: "ledger", label: "Accounts Ledger", count: searchFilteredGroupedTransactions.length },
               { id: "daily", label: "Daily Income Breakdown", count: dailyBreakdown.rows.length },
-              { id: "billing", label: "Customer Billing", count: combinedBillingRecords.length },
+              { id: "billing", label: "Customer Billing", count: searchFilteredBillingRecords.length },
               { id: "centers", label: "Profit Centers", count: (extendedSummary.profitCenters || []).length },
               { id: "payments", label: "Payment History", count: paymentHistory.length },
             ].map((tab) => (
@@ -3172,7 +3227,7 @@ const Accounts = () => {
                   <input
                     value={nameSearch}
                     onChange={(event) => setNameSearch(event.target.value)}
-                    placeholder="Search ledger by name or phone..."
+                    placeholder="Search by name, number, amount or note..."
                     className="w-full rounded-xl border border-slate-200 bg-slate-50/50 pl-9 pr-8 py-2 text-xs sm:text-sm font-medium text-slate-900 placeholder:text-slate-400 outline-none transition-all focus:border-blue-500 focus:bg-white focus:ring-2 focus:ring-blue-100"
                   />
                   {nameSearch && (
@@ -3210,8 +3265,24 @@ const Accounts = () => {
                 <tbody className="divide-y divide-slate-100">
                   {paginatedTransactionRecords.length === 0 ? (
                     <tr>
-                      <td colSpan={8} className="px-4 py-12 text-center text-sm font-medium text-slate-400">
-                        No transaction records match the current filter or search criteria.
+                      <td colSpan={8} className="px-4 py-12 text-center">
+                        <div className="text-sm font-medium text-slate-400">
+                          No manual income/expense entries match this search.
+                        </div>
+                        {searchTerm && (
+                          <div className="mt-2 text-xs text-slate-500">
+                            <span className="font-semibold text-slate-700">"{nameSearch}"</span> may
+                            belong to a booking/invoice instead of the ledger.
+                            <button
+                              type="button"
+                              onClick={() => setActiveViewSection("billing")}
+                              className="ml-2 inline-flex items-center gap-1 rounded-full border border-blue-200 bg-blue-50 px-2.5 py-1 font-bold text-blue-700 hover:bg-blue-100 transition-colors"
+                            >
+                              Check Customer Billing ({searchFilteredBillingRecords.length})
+                              <FaArrowRight className="text-[10px]" />
+                            </button>
+                          </div>
+                        )}
                       </td>
                     </tr>
                   ) : (
@@ -3942,6 +4013,19 @@ const Accounts = () => {
               <InvoiceForm onSuccess={handleGenerateInvoice} onCancel={() => setShowInvoice(false)} />
             </div>
           </div>
+        )}
+
+        {showCustomerHistory && (
+          <CustomerHistoryModal
+            query={nameSearch}
+            records={records}
+            customerInvoices={customerInvoices}
+            hotelBookings={hotelBookings}
+            restaurantBills={restaurantBills}
+            banquetBookings={banquetBookings}
+            paymentHistory={paymentHistory}
+            onClose={() => setShowCustomerHistory(false)}
+          />
         )}
 
         {showView && selectedRecord && (

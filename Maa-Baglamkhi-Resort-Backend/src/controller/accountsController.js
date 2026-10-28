@@ -198,6 +198,8 @@ const LEDGER_ROW_SELECT = `
     t.transaction_no,
     t.transaction_date,
     t.description,
+    t.customer_name,
+    t.customer_mobile,
     t.reference_type,
     t.created_by,
     t.created_at,
@@ -259,8 +261,8 @@ const ledgerRowToRecord = (row) => {
     narration: row.entry_narration || "",
     amount: round2(amount),
     paymentMode: row.asset_account ? (row.asset_account === "Cash" ? "Cash" : "Bank Transfer") : "Cash",
-    customerName: null,
-    customerMobile: null,
+    customerName: row.customer_name || null,
+    customerMobile: row.customer_mobile || null,
   };
 };
 
@@ -437,7 +439,9 @@ const getTransactionById = async (req, res) => {
 
 // Shared insert used by addIncome / addExpense / createTransaction.
 // Writes a balanced two-leg journal entry into the v4 ledger.
-const recordLedgerTransaction = async ({ date, type, description, amount, paymentMode, department, narration, createdBy }) => {
+const recordLedgerTransaction = async ({
+  date, type, description, amount, paymentMode, department, narration, createdBy, customerName, customerMobile,
+}) => {
   await ensureChartOfAccounts();
 
   const entryDate = normalizeDateInput(date, toInputDate(new Date()));
@@ -463,9 +467,20 @@ const recordLedgerTransaction = async ({ date, type, description, amount, paymen
   const transactionNo = `TXN-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
 
   const [header] = await query(
-    `INSERT INTO transactions (transaction_no, transaction_date, description, reference_type, created_by)
-     VALUES (?, ?, ?, ?, ?)`,
-    [transactionNo, entryDate, String(description).slice(0, 255), referenceType, createdBy || null],
+    `INSERT INTO transactions (
+       transaction_no, transaction_date, description, reference_type, created_by,
+       customer_name, customer_mobile
+     )
+     VALUES (?, ?, ?, ?, ?, ?, ?)`,
+    [
+      transactionNo,
+      entryDate,
+      String(description).slice(0, 255),
+      referenceType,
+      createdBy || null,
+      customerName ? String(customerName).slice(0, 200) : null,
+      customerMobile ? String(customerMobile).slice(0, 30) : null,
+    ],
   );
 
   const transactionId = header.insertId;
@@ -505,17 +520,31 @@ const createTransaction = async (req, res) => {
 };
 
 const updateTransaction = async (req, res) => {
-  const { date, description, amount, paymentMode, department, type } = req.body;
+  const {
+    date, description, amount, paymentMode, department, type, narration,
+    customerName, customer_name, customerMobile, customer_mobile,
+  } = req.body;
   const id = req.params.id;
 
   try {
     const existing = await queryOne("SELECT id FROM transactions WHERE id = ?", [id]);
     if (!existing) return res.status(404).json({ message: "Transaction not found" });
 
-    // Header fields (date/description) are directly updatable.
+    // Header fields (date/description/customer) are directly updatable.
     await query(
-      "UPDATE transactions SET transaction_date = COALESCE(?, transaction_date), description = COALESCE(?, description) WHERE id = ?",
-      [normalizeDateInput(date), description ? String(description).slice(0, 255) : null, id],
+      `UPDATE transactions SET
+         transaction_date = COALESCE(?, transaction_date),
+         description = COALESCE(?, description),
+         customer_name = COALESCE(?, customer_name),
+         customer_mobile = COALESCE(?, customer_mobile)
+       WHERE id = ?`,
+      [
+        normalizeDateInput(date),
+        description ? String(description).slice(0, 255) : null,
+        customerName || customer_name ? String(customerName || customer_name).slice(0, 200) : null,
+        customerMobile || customer_mobile ? String(customerMobile || customer_mobile).slice(0, 30) : null,
+        id,
+      ],
     );
 
     // If the amount or classification changed, rebuild the two legs so the
@@ -535,11 +564,21 @@ const updateTransaction = async (req, res) => {
         if (assetAccount && counterAccount) {
           const debitAccount = isIncome ? assetAccount : counterAccount;
           const creditAccount = isIncome ? counterAccount : assetAccount;
+          // Keep the existing narration unless a new one is supplied — the
+          // ledger UI shows the narration as the "note" column and searches
+          // it, so blanking it here made notes disappear on every edit.
+          const existingNarration =
+            narration !== undefined
+              ? narration
+              : legs.find((l) => l.description)?.description ?? null;
           await query("DELETE FROM transaction_entries WHERE transaction_id = ?", [id]);
           await query(
             `INSERT INTO transaction_entries (transaction_id, account_id, entry_type, amount, description)
              VALUES (?, ?, 'debit', ?, ?), (?, ?, 'credit', ?, ?)`,
-            [id, debitAccount.id, value, null, id, creditAccount.id, value, null],
+            [
+              id, debitAccount.id, value, existingNarration || null,
+              id, creditAccount.id, value, existingNarration || null,
+            ],
           );
         }
       }
@@ -2219,7 +2258,10 @@ const getSourceModules = async (req, res) => {
 // ledger (transactions + transaction_entries).
 // ---------------------------------------------------------------------------
 const addIncome = async (req, res) => {
-  const { date, description, amount, paymentMode, payment_mode, department, narration } = req.body;
+  const {
+    date, description, amount, paymentMode, payment_mode, department, narration,
+    customerName, customer_name, customerMobile, customer_mobile,
+  } = req.body;
   try {
     const created = await recordLedgerTransaction({
       date,
@@ -2230,6 +2272,8 @@ const addIncome = async (req, res) => {
       department,
       narration,
       createdBy: req.user?.id || null,
+      customerName: customerName || customer_name,
+      customerMobile: customerMobile || customer_mobile,
     });
     res.status(201).json({ message: "Income recorded", id: created.id, transaction_no: created.transaction_no });
   } catch (error) {
@@ -2238,7 +2282,10 @@ const addIncome = async (req, res) => {
 };
 
 const addExpense = async (req, res) => {
-  const { date, description, amount, paymentMode, payment_mode, department, narration } = req.body;
+  const {
+    date, description, amount, paymentMode, payment_mode, department, narration,
+    customerName, customer_name, customerMobile, customer_mobile,
+  } = req.body;
   try {
     const created = await recordLedgerTransaction({
       date,
@@ -2249,6 +2296,8 @@ const addExpense = async (req, res) => {
       department,
       narration,
       createdBy: req.user?.id || null,
+      customerName: customerName || customer_name,
+      customerMobile: customerMobile || customer_mobile,
     });
     res.status(201).json({ message: "Expense recorded", id: created.id, transaction_no: created.transaction_no });
   } catch (error) {

@@ -75,6 +75,12 @@ const ACCOUNTS_MIGRATIONS = [
   ["payments", "bank_name", "VARCHAR(191) NULL"],
   ["payments", "reconciliation_status", "VARCHAR(50) NULL"],
   ["payments", "notes", "TEXT NULL"],
+  // The Add Income/Expense form asks for a party name and mobile number, but
+  // the v4 `transactions` header had nowhere to store them — the controller
+  // hard-coded customerName/customerMobile to null, so searching the ledger
+  // by customer name or phone could never match anything.
+  ["transactions", "customer_name", "VARCHAR(200) NULL"],
+  ["transactions", "customer_mobile", "VARCHAR(30) NULL"],
 ];
 
 let accountsSchemaReady = null;
