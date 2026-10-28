@@ -230,7 +230,7 @@ const AssignmentNotification = () => {
       ),
     );
     try {
-      await API.put(`/assignments/${item.id}`, { status: "Completed" });
+      await API.patch(`/assignments/${item.id}/status`, { status: "Completed" });
     } catch {
       setAllAssignments(previous);
       setError("Task completion could not be updated. Please retry.");
