@@ -771,6 +771,18 @@ const Reports = () => {
         { key: "status", label: "Status" },
         { key: "type", label: "Type" },
       ];
+    } else if (reportType === "attendance") {
+      columns = [
+        { key: "date", label: "Date" },
+        { key: "employee", label: "Employee" },
+        { key: "department", label: "Department" },
+        { key: "designation", label: "Designation" },
+        { key: "checkIn", label: "Check In" },
+        { key: "checkOut", label: "Check Out" },
+        { key: "status", label: "Status" },
+        { key: "method", label: "Method" },
+        { key: "amount", label: "Earned Pay", format: fmtCurrency },
+      ];
     }
 
     // Build table rows
