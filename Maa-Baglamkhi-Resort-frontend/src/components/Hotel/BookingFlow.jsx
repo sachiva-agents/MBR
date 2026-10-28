@@ -2790,7 +2790,7 @@ const WhatsAppSendModal = ({
               Send Invoice via WhatsApp
             </h3>
             <p className="text-white/75 text-xs sm:text-sm mt-0.5">
-              Invoice will be sent with PDF attachment
+              Invoice details will be sent by WhatsApp
             </p>
           </div>
         </div>
@@ -2958,7 +2958,7 @@ const WhatsAppSendModal = ({
                 {customerPhone}
               </div>
               <div className="mt-1.5 inline-block rounded-full bg-emerald-100 px-2 py-0.5 text-[11px] font-bold text-emerald-700">
-                Will receive PDF
+                Will receive invoice details
               </div>
             </div>
             <div className="rounded-2xl border-2 border-slate-200 bg-slate-50 p-3.5">
@@ -4604,14 +4604,14 @@ const BookingFlow = () => {
     try {
       let invoice = null;
       try {
-        const existing = await API.get(`/invoice/by-booking/${bid}`);
+        const existing = await API.get(`/invoice/by-booking/${bid}`, { timeout: 10000 });
         if (existing.data?.id) invoice = existing.data;
       } catch {
         /* not found, will generate */
       }
 
       if (!invoice) {
-        const generated = await API.get(`/invoice/${bid}`);
+        const generated = await API.get(`/invoice/${bid}`, { timeout: 10000 });
         invoice = generated.data || null;
       }
       if (!invoice) {
@@ -4649,7 +4649,7 @@ const BookingFlow = () => {
       // Try to load folio charges for accurate totals
       let folioEntries = [];
       try {
-        const folioRes = await API.get(`/hotel/folio/${bid}`);
+        const folioRes = await API.get(`/hotel/folio/${bid}`, { timeout: 10000 });
         folioEntries = Array.isArray(folioRes.data) ? folioRes.data : [];
       } catch {
         /* best-effort */
@@ -4712,9 +4712,40 @@ const BookingFlow = () => {
       ];
 
       const customerMobile = b.mobile || d.mobile || "";
+      const response = await API.post(
+        "/hotel/invoice/pdf",
+        {
+          bookingId: bid,
+          customerNumber: customerMobile,
+          invoiceData: {
+            invoiceNo: invoice.invoiceNo || invoice.invoice_no || `INV-${bid}`,
+            totalAmount: computedTotal,
+            subtotal: computedSubtotal,
+            tax: computedTax,
+            advancePaid: Number(totalPaid) || 0,
+            balanceLeft: Math.max(computedTotal - (Number(totalPaid) || 0), 0),
+            customerName: invoice.customerName || d.guest_name || b.guest_name || "Guest",
+            phone: customerMobile,
+            roomNumber: bookingRooms
+              .map((room) => room.room_number || room.roomNumber || room.roomNo)
+              .filter(Boolean)
+              .join(", "),
+            checkIn: invoice.checkIn || invoice.check_in || b.check_in || "",
+            checkOut: invoice.checkOut || invoice.check_out || b.check_out || "",
+            items: liveItems,
+          },
+        },
+        { timeout: 20_000 },
+      );
+      const customerSent = response.data?.customer?.whatsapp?.ok;
+      const customerSkipped = response.data?.customer?.whatsapp?.skipped;
       setWaResult({
-        type: "info",
-        message: "WhatsApp send is disabled. Use the Print Invoice button to download the PDF.",
+        type: customerSent || customerSkipped ? "success" : "error",
+        message: customerSent
+          ? "Invoice details sent successfully on WhatsApp."
+          : customerSkipped
+            ? `Invoice details were not sent: ${response.data.customer.whatsapp.reason || "customer WhatsApp is unavailable"}.`
+            : response.data?.customer?.whatsapp?.error || "Invoice URL could not be sent.",
       });
     } catch (err) {
       setWaResult({

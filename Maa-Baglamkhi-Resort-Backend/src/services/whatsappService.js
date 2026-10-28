@@ -65,6 +65,7 @@ const DEFAULT_BASE_URL =
     .replace(/\?.*$/, "");
 
 const API_KEY = process.env.wasachiva_key || process.env.WASACHIVA_KEY || "";
+const GATEWAY_TIMEOUT_MS = Number(process.env.WASACHIVA_TIMEOUT_MS) || 10000;
 
 const normalizePhoneNumber = (raw) => {
   if (raw === null || raw === undefined) return null;
@@ -157,7 +158,7 @@ const requestGateway = (method, pathname, queryParams = {}, extraHeaders = {}) =
         port: baseUrl.port || (isHttps ? 443 : 80),
         path: fullPath,
         headers,
-        timeout: 60000,
+        timeout: GATEWAY_TIMEOUT_MS,
       },
       (res) => {
         let data = "";
@@ -214,7 +215,7 @@ const postMultipart = async (pathname, fields, fileBuffer, fileName) => {
         port: baseUrl.port || (isHttps ? 443 : 80),
         path: pathname,
         headers,
-        timeout: 60000,
+        timeout: GATEWAY_TIMEOUT_MS,
       },
       (res) => {
         let data = "";
@@ -467,42 +468,31 @@ const sendInvoiceNotifications = async (invoice, attachment, options = {}) => {
   const guestName = invoice.customerName || "Valued Guest";
   const invoiceNo = invoice.invoiceNo || `#${invoice.bookingId || invoice.customerId || ""}`;
   const detailsBlock = buildInvoiceDetailsBlock(invoice);
+  const invoiceUrl = String(options.invoiceUrl || "").trim();
+  const invoiceLink = invoiceUrl ? `\n\nDownload invoice PDF:\n${invoiceUrl}` : "";
 
   const customerMessage =
     options.customerMessage ||
-    `Dear ${guestName},\n\nThank you for staying at Maa Baglamukhi Resort.\n\nHere is your invoice ${invoiceNo}.\n${detailsBlock}\n\nRegards,\nMaa Baglamukhi Resort`;
+    `Dear ${guestName},\n\nThank you for staying at Maa Baglamukhi Resort.\n\nHere is your invoice ${invoiceNo}.\n${detailsBlock}${invoiceLink}\n\nRegards,\nMaa Baglamukhi Resort`;
 
   const adminMessage =
     options.adminMessage ||
-    `New invoice generated for booking ${invoiceNo}.\nGuest: ${guestName}\nPhone: ${formatPhoneDisplay(customerNumber)}\n${detailsBlock}`;
+    `New invoice generated for booking ${invoiceNo}.\nGuest: ${guestName}\nPhone: ${formatPhoneDisplay(customerNumber)}\n${detailsBlock}${invoiceLink}`;
 
-  let customerWa = { skipped: true, reason: "PDF delivery disabled" };
-  if (customerNumber) {
-    customerWa = await sendWhatsAppMessage({
-      number: customerNumber,
-      message: customerMessage,
-      type: "text",
-    });
-  }
-
-  let customerSms = { skipped: true, reason: "No customer phone number" };
-  if (customerNumber) {
-    customerSms = await sendSmsMessage({ number: customerNumber, message: customerMessage });
-  }
-
-  let adminWa = { skipped: true, reason: "PDF delivery disabled" };
-  if (adminNumber) {
-    adminWa = await sendWhatsAppMessage({
-      number: adminNumber,
-      message: adminMessage,
-      type: "text",
-    });
-  }
-
-  let adminSms = { skipped: true, reason: "Admin number not configured" };
-  if (adminNumber) {
-    adminSms = await sendSmsMessage({ number: adminNumber, message: adminMessage });
-  }
+  const [customerWa, customerSms, adminWa, adminSms] = await Promise.all([
+    customerNumber
+      ? sendWhatsAppMessage({ number: customerNumber, message: customerMessage, type: "text" })
+      : { skipped: true, reason: "No customer phone number" },
+    customerNumber
+      ? sendSmsMessage({ number: customerNumber, message: customerMessage })
+      : { skipped: true, reason: "No customer phone number" },
+    adminNumber
+      ? sendWhatsAppMessage({ number: adminNumber, message: adminMessage, type: "text" })
+      : { skipped: true, reason: "Admin number not configured" },
+    adminNumber
+      ? sendSmsMessage({ number: adminNumber, message: adminMessage })
+      : { skipped: true, reason: "Admin number not configured" },
+  ]);
 
   return {
     customer: { whatsapp: customerWa, sms: customerSms },

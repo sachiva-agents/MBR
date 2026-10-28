@@ -12,29 +12,17 @@
 
 const Invoice = require("../models/InvoiceModel");
 const WhatsAppService = require("../services/whatsappService");
-const InvoicePdfService = require("../services/invoicePdfService");
 const UserModel = require("../models/UsersModel");
 const db = require("../config/db");
 
-/**
- * Resolve the public base URL for serving invoice PDFs.
- */
-const getPublicBaseUrl = () => {
-  const env =
-    process.env.PUBLIC_BASE_URL ||
-    process.env.PUBLIC_URL ||
-    process.env.CLIENT_URL ||
-    "";
-
-  if (env) {
-    return env.replace(/\/+$/, "");
-  }
-
-  const port = process.env.PORT || 5002;
-  return `http://localhost:${port}`;
-};
-
 const round2 = (value) => Number((Number(value || 0)).toFixed(2));
+const withTimeout = (promise, milliseconds, message) =>
+  Promise.race([
+    promise,
+    new Promise((_, reject) =>
+      setTimeout(() => reject(new Error(message)), milliseconds),
+    ),
+  ]);
 
 /**
  * POST /api/hotel/invoice/send-whatsapp/:bookingId
@@ -304,16 +292,21 @@ exports.sendInvoiceWhatsApp = async (req, res) => {
       });
     }
 
-    // 1b. Fetch advance payment info to calculate remaining amount correctly
+    const hasFrontendInvoice = req.body?.invoiceData && typeof req.body.invoiceData === "object";
+    // The local details-only flow already has the current totals from the
+    // booking page. Avoid additional database queries that can block a send
+    // when the local MySQL connection is unavailable.
     let advanceAmount = 0;
     let advanceDiscount = 0;
     try {
+      if (!hasFrontendInvoice) {
       const advanceRows = await new Promise((resolve, reject) => {
         db.query("SELECT amount, discount_amount FROM advance_payment WHERE booking_id = ? LIMIT 1", [bookingId], (err, rows) => (err ? reject(err) : resolve(rows)));
       });
       if (advanceRows.length) {
         advanceAmount = Number(advanceRows[0].amount || 0);
         advanceDiscount = Number(advanceRows[0].discount_amount || 0);
+      }
       }
     } catch {
       // advance_payment table may not exist; continue without advance info
@@ -326,6 +319,9 @@ exports.sendInvoiceWhatsApp = async (req, res) => {
     let folioDiscounts = 0;
     let folioChargesTotal = 0;
     try {
+      if (hasFrontendInvoice) {
+        throw new Error("frontend totals supplied");
+      }
       const FolioModel = require("../models/folioModel");
       const folioTotals = await FolioModel.getFolioTotals(bookingId);
       folioPayments = Number(folioTotals.payments || 0);
@@ -394,24 +390,12 @@ exports.sendInvoiceWhatsApp = async (req, res) => {
     invoice.remainingAmount = remainingAmount;
     invoice.paymentStatus = paymentStatus;
 
-    // 2. Generate the PDF — best-effort only. WhatsApp delivery is
-    // text-only (the message body carries the full invoice breakdown), so
-    // a PDF failure or a missing/changed ngrok PUBLIC_BASE_URL must never
-    // block the message from being sent.
-    let pdfResult;
-    try {
-      pdfResult = await InvoicePdfService.generateInvoicePdf(invoice);
-    } catch (pdfErr) {
-      console.error("Invoice PDF generation failed (message still sends):", pdfErr.message);
-    }
-
-    // 3. Public file URL (informational — not used for WhatsApp delivery).
-    const publicBase = getPublicBaseUrl();
-    const fileUrl = pdfResult ? `${publicBase}/uploads/invoices/${pdfResult.fileName}` : null;
-    // 3a. Resolve admin number: request body → DB lookup (prefer admin WITH phone) → env fallback → empty
+    // Text-only delivery is used because this local installation has no public URL.
+    // The complete invoice breakdown is included in the WhatsApp/SMS message.
+    // 2. Resolve admin number: request body → DB lookup (prefer admin WITH phone) → env fallback → empty
     let adminNumber = req.body?.adminNumber || "";
     console.log("[send-whatsapp] adminNumber from request body:", adminNumber || "(empty)");
-    if (!adminNumber) {
+    if (!adminNumber && !hasFrontendInvoice) {
       try {
         const adminRow = await new Promise((resolve, reject) => {
           UserModel.findAdminWithPhone((err, row) => (err ? reject(err) : resolve(row)));
@@ -437,15 +421,15 @@ exports.sendInvoiceWhatsApp = async (req, res) => {
     // Text-only by design: no PDF attachment, no ngrok dependency — the
     // message body carries the full invoice breakdown. (The `attachment`
     // slot is accepted for signature compatibility but intentionally unused.)
-    const { customer, admin } = await WhatsAppService.sendInvoiceNotifications(
-      invoice,
-      null,
-      {
+    const { customer, admin } = await withTimeout(
+      WhatsAppService.sendInvoiceNotifications(invoice, null, {
         customerNumber: req.body?.customerNumber,
         adminNumber,
         customerMessage: req.body?.customerMessage,
         adminMessage: req.body?.adminMessage,
-      },
+      }),
+      8000,
+      "WhatsApp provider did not respond within 8 seconds",
     );
 
     // New shape: {customer:{whatsapp, sms}, admin:{whatsapp, sms}}
@@ -475,7 +459,6 @@ exports.sendInvoiceWhatsApp = async (req, res) => {
         whatsapp: admin?.whatsapp,
         sms: admin?.sms,
       },
-      fileUrl,
     });
   } catch (error) {
     console.error("sendInvoiceWhatsApp error:", error);
