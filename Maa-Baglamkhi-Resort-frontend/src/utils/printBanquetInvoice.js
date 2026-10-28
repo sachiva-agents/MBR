@@ -1,38 +1,92 @@
 /**
  * printBanquetInvoice.js — Prints a Banquet invoice as a standalone A4
- * document via a hidden off-screen iframe (same proven strategy as
- * printKOT.js — window.print() on the main app page gave blank previews,
- * so only the iframe's document ever reaches the print dialog).
+ * document, laid out EXACTLY like the hotel "Tax Invoice" design in
+ * BookingFlow.jsx (handlePrintInvoiceDirect): framed box, centered title,
+ * resort block, guest/event meta-grid, Billing Details table with
+ * SGST/CGST columns, Remarks + Totals, amount-in-words, Invoice Note +
+ * Payment Detail, and the signature block.
  *
- * The invoice HTML is built here (not captured from the modal's React
- * DOM) so the printout is a clean, print-styled A4 page with the resort
- * header, independent of whatever modal/scroll state it was opened from.
+ * Printing is done through a hidden off-screen iframe (same proven
+ * strategy as printKOT.js — window.print() / window.open() on the main
+ * app page gave blank previews and popup-blocker issues), so only this
+ * invoice's document ever reaches the print dialog.
  */
-import { formatINR } from "../pages/banquetUtils";
-import API from "../api";
 
-const escapeHtml = (value) => {
-  return String(value ?? "")
+// ── Resort constants (identical to the hotel invoice renders) ─────────
+const RESORT_NAME_INVOICE = "MAA BAGLAMUKHI RESORT";
+const RESORT_ADDRESS_LINE_1 = "Maa Baglamukhi Mandir Raod, Nalkheda";
+const RESORT_ADDRESS_LINE_2 = "Agar Malwa, 465445";
+const RESORT_PHONE_INVOICE = "9522238777, 9522239777";
+const RESORT_EMAIL_INVOICE = "maabaglamukhiresort@gmail.com";
+const RESORT_GSTIN_INVOICE = "23AVDPR2928J1ZG";
+const RESORT_WEBSITE = "www.maabaglamukhiresort.com";
+
+const escapeHtml = (value) =>
+  String(value ?? "")
     .replace(/&/g, "&amp;")
     .replace(/</g, "&lt;")
     .replace(/>/g, "&gt;")
     .replace(/"/g, "&quot;")
     .replace(/'/g, "&#39;");
-};
 
-const loadBrandInfo = async () => {
-  try {
-    const res = await API.get("/settings");
-    const s = res?.data?.settings ?? res?.data ?? {};
-    return {
-      name: s.businessName || "Maa Baglamkhi Resort",
-      contact: s.businessContact || "",
-    };
-  } catch {
-    return { name: "Maa Baglamkhi Resort", contact: "" };
+// ── Same helpers the hotel invoice uses ───────────────────────────────
+const fmtMoney = (v) =>
+  Number(v || 0).toLocaleString("en-IN", {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  });
+
+const formatDate = (value) => {
+  if (!value) return "-";
+  // Parse YYYY-MM-DD as LOCAL midnight so timezone offsets don't shift the day
+  if (typeof value === "string" && /^\d{4}-\d{2}-\d{2}/.test(value)) {
+    const [y, m, d] = String(value).slice(0, 10).split("-").map(Number);
+    return new Date(y, m - 1, d).toLocaleDateString("en-GB", {
+      day: "2-digit",
+      month: "short",
+      year: "numeric",
+    });
   }
+  const d = new Date(value);
+  if (Number.isNaN(d.getTime())) return String(value).slice(0, 10);
+  return d.toLocaleDateString("en-GB", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+  });
 };
 
+const toWords = (amount) => {
+  if (!amount || amount <= 0) return "Rupees Zero Only";
+  const ones = [
+    "", "One", "Two", "Three", "Four", "Five", "Six", "Seven", "Eight",
+    "Nine", "Ten", "Eleven", "Twelve", "Thirteen", "Fourteen", "Fifteen",
+    "Sixteen", "Seventeen", "Eighteen", "Nineteen",
+  ];
+  const tens = [
+    "", "", "Twenty", "Thirty", "Forty", "Fifty",
+    "Sixty", "Seventy", "Eighty", "Ninety",
+  ];
+  const words = (n) => {
+    if (n === 0) return "";
+    if (n < 20) return ones[n] + " ";
+    if (n < 100) return tens[Math.floor(n / 10)] + " " + words(n % 10);
+    if (n < 1000)
+      return ones[Math.floor(n / 100)] + " Hundred " + words(n % 100);
+    if (n < 1e5)
+      return words(Math.floor(n / 1000)) + " Thousand " + words(n % 1000);
+    if (n < 1e7) return words(Math.floor(n / 1e5)) + " Lakh " + words(n % 1e5);
+    return words(Math.floor(n / 1e7)) + " Crore " + words(n % 1e7);
+  };
+  const rounded = Math.round(amount * 100) / 100;
+  const whole = Math.floor(rounded);
+  const paise = Math.round((rounded - whole) * 100);
+  let result = "Rupees " + words(whole).trim();
+  if (paise > 0) result += " and " + words(paise).trim() + " Paise";
+  return result + " Only";
+};
+
+// ── Totals: computed the same way BanquetBill.jsx displays them ──────
 const computeInvoiceTotals = (booking, halls, menuPackages, lightingOptions) => {
   const hall = halls.find((h) => String(h.id) === String(booking.hallId));
   const menuPackage = menuPackages.find((p) => p.id === booking.menuPackageId);
@@ -62,7 +116,7 @@ const computeInvoiceTotals = (booking, halls, menuPackages, lightingOptions) => 
     Number(booking.subtotalAmount || booking.subtotal_amount) ||
     hallCharge + foodCharge + customMenuCharge + lightingCharge + eventSupportCharge + decoration;
   const taxableAmount = Math.max(0, subTotal - discount);
-  const gstPercent = booking.gstPercent ?? booking.gst_percent ?? 5;
+  const gstPercent = Number(booking.gstPercent ?? booking.gst_percent ?? 5) || 0;
   const gst =
     Number(booking.gstAmount || booking.gst_amount) ||
     Math.round(taxableAmount * (gstPercent / 100));
@@ -100,192 +154,362 @@ const computeInvoiceTotals = (booking, halls, menuPackages, lightingOptions) => 
     netReceived,
     balance,
     hours,
+    hallName: hall?.name || booking.hallName || "",
+    menuPackageName: menuPackage?.name || "",
+    lightingName: lighting?.name || "",
   };
 };
 
-const buildInvoiceHtml = ({ booking, brand, totals }) => {
-  const invoiceNo = booking.invoiceNo || `BNQ-${String(booking.id ?? "").padStart(6, "0")}`;
-  const dateStr = booking.billedAt || booking.date || new Date().toLocaleDateString("en-IN");
-  const paymentMode = booking.paymentMode || booking.payment_mode || "Pending";
-  const paymentStatus = booking.paymentStatus || booking.payment_status || "Pending";
+const buildInvoiceHtml = ({ booking, totals, invoiceNo, invoiceDate, eventDate }) => {
+  const halfPct = Number((totals.gstPercent / 2).toFixed(2));
+  const halfLabel = (pct) => String(pct).replace(/\.?0+$/, "");
+  const sgstHalf = totals.gst / 2;
+  const cgstHalf = totals.gst - sgstHalf;
+
+  const particularsFor = (label, detail) =>
+    `${label.toUpperCase()}${detail ? ` - ${detail.toUpperCase()}` : ""}`;
+
+  const rows = [];
+  const pushRow = (particulars, tariff) => {
+    const gstOnRow = Number(((tariff * totals.gstPercent) / 100).toFixed(2));
+    rows.push({
+      date: eventDate,
+      particulars,
+      tariff,
+      disc: 0,
+      taxable: tariff,
+      sgst: Number((gstOnRow / 2).toFixed(2)),
+      cgst: Number((gstOnRow / 2).toFixed(2)),
+      total: Number((tariff + gstOnRow).toFixed(2)),
+    });
+  };
+
+  if (totals.hallCharge > 0)
+    pushRow(
+      particularsFor(
+        `Hall Charges (${totals.hours} HRS)`,
+        totals.hallName
+      ),
+      totals.hallCharge,
+    );
+  if (totals.foodCharge > 0)
+    pushRow(
+      particularsFor(
+        "Food Charges",
+        [totals.menuPackageName, `${booking.guests || 0} Guests`]
+          .filter(Boolean)
+          .join(" - "),
+      ),
+      totals.foodCharge,
+    );
+  if (totals.customMenuCharge > 0) pushRow("Custom Menu Charges", totals.customMenuCharge);
+  if (totals.lightingCharge > 0)
+    pushRow(particularsFor("Lighting", totals.lightingName), totals.lightingCharge);
+  if (totals.eventSupportCharge > 0) pushRow("Event Support", totals.eventSupportCharge);
+  if (totals.decoration > 0) pushRow("Decoration", totals.decoration);
+
+  const customerName = (booking.customerName || booking.customer_name || "—").toUpperCase();
+  const guestContact = booking.phone || booking.mobile || "-";
+  const eventType = booking.eventType || booking.event_type || "";
+  const paymentMode = booking.paymentMode || booking.payment_mode || "Cash";
   const paymentReference =
     booking.paymentReferenceNo || booking.payment_reference_no || booking.paymentReferenceId || "";
-  const contactBlock = brand.contact
-    ? `<div style="font-size:11px;color:#475569;">${escapeHtml(brand.contact)}</div>`
-    : "";
-  const refBlock = paymentReference ? escapeHtml(paymentReference) : "—";
+  const generatedBy = booking.generatedBy || booking.staff_name || "Front Desk";
+  const amountInWordsClean = toWords(totals.grandTotal)
+    .replace(/^Rupees\s+/i, "")
+    .replace(/\s*Only$/i, "");
 
-  const moneyRows = [
-    { label: "Hall Charges", value: totals.hallCharge, sub: `${totals.hours} hrs` },
-    { label: "Food Charges", value: totals.foodCharge },
-    { label: "Custom Menu Charges", value: totals.customMenuCharge },
-    { label: "Lighting", value: totals.lightingCharge },
-    { label: "Event Support", value: totals.eventSupportCharge },
-    { label: "Decoration", value: totals.decoration },
-  ]
-    .filter((r) => r.value > 0)
-    .map(
-      (r) => `
+  const renderInvoiceRow = (item) => `
       <tr>
-        <td>${escapeHtml(r.label)}${r.sub ? ` <span style="color:#64748b;font-size:11px;">(${escapeHtml(r.sub)})</span>` : ""}</td>
-        <td class="amt">${formatINR(r.value)}</td>
-      </tr>`
-    )
-    .join("");
+        <td class="td-date">${item.date}</td>
+        <td class="td-particulars">${escapeHtml(item.particulars)}</td>
+        <td class="text-right">${fmtMoney(item.tariff)}</td>
+        <td class="text-right">${item.disc > 0 ? fmtMoney(item.disc) : "0.00"}</td>
+        <td class="text-right">${fmtMoney(item.taxable)}</td>
+        <td class="text-right">${fmtMoney(item.sgst)}</td>
+        <td class="text-right">${fmtMoney(item.cgst)}</td>
+        <td class="text-right td-total">${fmtMoney(item.total)}</td>
+      </tr>`;
 
-  const discountRow =
-    totals.discount > 0
-      ? `<tr>
-        <td>Discount</td>
-        <td class="amt">- ${formatINR(totals.discount)}</td>
-      </tr>`
-      : "";
+  return `
+        <div class="invoice">
 
-  const itemRows = `
-    ${moneyRows}
-    ${discountRow}
-    <tr>
-      <td>Subtotal</td>
-      <td class="amt">${formatINR(totals.subTotal)}</td>
-    </tr>
-    <tr>
-      <td>Taxable Amount</td>
-      <td class="amt">${formatINR(totals.taxableAmount)}</td>
-    </tr>
-    <tr>
-      <td>GST (${totals.gstPercent}%)</td>
-      <td class="amt">${formatINR(totals.gst)}</td>
-    </tr>
-    <tr class="total">
-      <td>Grand Total</td>
-      <td class="amt">${formatINR(totals.grandTotal)}</td>
-    </tr>
-    <tr>
-      <td>Advance Paid</td>
-      <td class="amt pos">${formatINR(totals.advance)}</td>
-    </tr>
-    <tr>
-      <td>Refunded</td>
-      <td class="amt neg">${formatINR(totals.refundAmount)}</td>
-    </tr>
-    <tr>
-      <td>Net Received</td>
-      <td class="amt pos">${formatINR(totals.netReceived)}</td>
-    </tr>
-    <tr class="balance">
-      <td>Balance</td>
-      <td class="amt bal">${formatINR(totals.balance)}</td>
-    </tr>`;
+          <div class="title-row">
+            <h1>Tax Invoice</h1>
+          </div>
 
-  return `<div class="page">
-    <div class="head">
-      <div class="brand">
-        <div class="brand-name">${escapeHtml(brand.name)}</div>
-        ${contactBlock}
-      </div>
-      <div class="doc">
-        <div class="doc-title">BANQUET INVOICE</div>
-        <div class="doc-meta">Invoice No: <span class="v">${escapeHtml(invoiceNo)}</span></div>
-        <div class="doc-meta">Date: <span class="v">${escapeHtml(dateStr)}</span></div>
-      </div>
-    </div>
+          <div class="resort-block">
+            <div>
+              <span class="leaf">❀</span><span class="name">${RESORT_NAME_INVOICE}</span>
+            </div>
+            <div class="sub">${RESORT_ADDRESS_LINE_1}</div>
+            <div class="sub">District: ${RESORT_ADDRESS_LINE_2}</div>
+            <div class="sub">Ph: ${RESORT_PHONE_INVOICE}</div>
+            <div class="sub">${RESORT_EMAIL_INVOICE} | ${RESORT_WEBSITE}</div>
+            <div class="gst">GSTN: ${RESORT_GSTIN_INVOICE}</div>
+          </div>
 
-    <table class="parties">
-      <tr>
-        <td>
-          <div class="p-label">Billed To</div>
-          <div class="p-val">${escapeHtml(booking.customerName || "—")}</div>
-          <div class="p-sub">${escapeHtml(booking.phone || "")}</div>
-          ${booking.eventType ? `<div class="p-sub">Event: ${escapeHtml(booking.eventType)}</div>` : ""}
-        </td>
-        <td>
-          <div class="p-label">Event Details</div>
-          <div class="p-val">${escapeHtml(booking.hallName || "—")}</div>
-          <div class="p-sub">${escapeHtml(booking.date || "")} &nbsp; ${escapeHtml(
-            `${booking.startTime || ""} – ${booking.endTime || ""}`
-          )}</div>
-        </td>
-      </tr>
-    </table>
+          <div class="divider"></div>
 
-    <table class="items">
-      <thead>
-        <tr>
-          <th>Description</th>
-          <th class="amt">Amount</th>
-        </tr>
-      </thead>
-      <tbody>${itemRows}</tbody>
-    </table>
+          <div class="meta-grid">
+            <div class="meta-cell">
+              <div class="meta-row-line"><span class="lbl">Invoice No.</span><span class="val">${escapeHtml(invoiceNo)}</span></div>
+              <div class="meta-row-line"><span class="lbl">Customer Name</span><span class="val">${escapeHtml(customerName)}</span></div>
+              <div class="meta-row-line"><span class="lbl">Contact #</span><span class="val">${escapeHtml(guestContact)}</span></div>
+              ${eventType ? `<div class="meta-row-line"><span class="lbl">Event Type</span><span class="val">${escapeHtml(eventType.toUpperCase())}</span></div>` : ""}
+            </div>
+            <div class="meta-cell">
+              <div class="meta-row-line"><span class="lbl">Invoice Date</span><span class="val">${invoiceDate}</span></div>
+              <div class="meta-row-line"><span class="lbl">Hall Name</span><span class="val">${escapeHtml((totals.hallName || "-").toUpperCase())}</span></div>
+              <div class="meta-row-line"><span class="lbl">Event Date</span><span class="val">${eventDate}</span></div>
+              <div class="meta-row-line"><span class="lbl">Event Time</span><span class="val">${escapeHtml(`${booking.startTime || "--"} - ${booking.endTime || "--"}`)}</span></div>
+              <div class="meta-row-line"><span class="lbl">Guests</span><span class="val">${booking.guests || 0}</span></div>
+            </div>
+          </div>
+          <div class="divider"></div>
 
-    <div class="payrow">
-      <div>Payment: <span class="v">${escapeHtml(paymentMode)}</span></div>
-      <div>Status: <span class="v">${escapeHtml(paymentStatus)}</span></div>
-      <div>Ref: <span class="v">${refBlock}</span></div>
-    </div>
+          <div class="section-label">Billing Details</div>
 
-    <div class="footer">
-      <div>Thank you for your booking!</div>
-      <div class="printed">Printed from Maa Baglamkhi Resort POS &mdash; ${new Date().toLocaleString("en-IN")}</div>
-    </div>
-  </div>`;
+          <table class="items">
+            <thead>
+              <tr>
+                <th style="width:11%">Date</th>
+                <th style="width:38%">Particulars</th>
+                <th style="width:9%" class="text-right">Tariff</th>
+                <th style="width:7%" class="text-right">Disc</th>
+                <th style="width:9%" class="text-right">Taxable</th>
+                <th style="width:9%" class="text-right">SGST ${halfLabel(halfPct)}%</th>
+                <th style="width:9%" class="text-right">CGST ${halfLabel(halfPct)}%</th>
+                <th style="width:8%" class="text-right">Total</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${rows.length > 0 ? rows.map(renderInvoiceRow).join("") : `<tr><td colspan="8" style="text-align:center;padding:10px">No charges recorded</td></tr>`}
+            </tbody>
+          </table>
+
+          <div class="bottom-grid">
+            <div class="remarks-cell">
+              <div class="lbl">Remarks</div>
+              <div style="font-size:10px;color:#64748b;min-height:120px">&nbsp;</div>
+            </div>
+            <div class="remarks-cell" style="border-right:0">
+              <div class="totals-list">
+                <div class="row"><span>Subtotal</span><span>${fmtMoney(totals.subTotal)}</span></div>
+                <div class="row"><span>Discount</span><span>${fmtMoney(totals.discount)}</span></div>
+                <div class="row"><span>Taxable Amount</span><span>${fmtMoney(totals.taxableAmount)}</span></div>
+                <div class="row"><span>GST (SGST ${halfLabel(halfPct)}%)</span><span>${fmtMoney(sgstHalf)}</span></div>
+                <div class="row"><span>GST (CGST ${halfLabel(halfPct)}%)</span><span>${fmtMoney(cgstHalf)}</span></div>
+                <div class="row bold"><span>Grand Total</span><span>${fmtMoney(totals.grandTotal)}</span></div>
+                <div class="row"><span>Advance Paid</span><span>${fmtMoney(totals.advance)}</span></div>
+                <div class="row"><span>Refunded</span><span>${fmtMoney(totals.refundAmount)}</span></div>
+                <div class="row"><span>Net Received</span><span>${fmtMoney(totals.netReceived)}</span></div>
+                <div class="row bold"><span>Balance</span><span>${fmtMoney(totals.balance)}</span></div>
+              </div>
+            </div>
+          </div>
+
+          <div class="words-row">
+            <div class="words-cell">Rupees ${amountInWordsClean} Only</div>
+            <div class="final-cell"><span class="lbl">Final Total</span><span class="val">Rs. ${fmtMoney(totals.grandTotal)}</span></div>
+          </div>
+
+          <div class="footer-row">
+            <div class="note-cell">
+              <div class="section-header">INVOICE NOTE</div>
+              <div class="note-content">Thanks Pl Visit Again!!!</div>
+            </div>
+            <div class="payment-detail">
+              <div class="section-header">PAYMENT DETAIL</div>
+              <div class="payment-content">
+                <div class="row">
+                  <span>${escapeHtml(paymentMode.toUpperCase())}${paymentReference ? ` - ${escapeHtml(paymentReference)}` : ""}</span>
+                  <span>${fmtMoney(totals.netReceived)}</span>
+                </div>
+                <div class="divider"></div>
+                <div class="row bold">
+                  <span>Balance</span>
+                  <span>${fmtMoney(totals.balance)}</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="invoice-bottom"></div>
+
+          <div class="signature-area">
+            <div class="sig-row">
+              <div class="for">
+                For ${RESORT_NAME_INVOICE}
+              </div>
+              <div class="sig-line-block authorized">
+                <div class="line">Authorized Signature</div>
+              </div>
+              <div class="sig-line-block guest">
+                <div class="line">Customer Signature</div>
+              </div>
+            </div>
+            <div class="generated-by">
+              <span class="lbl">Invoice Generated By:</span> ${escapeHtml(generatedBy)}
+            </div>
+          </div>
+        </div>`;
 };
 
-/**
- * Print a banquet invoice for the given booking via a hidden off-screen
- * iframe. Safe to call repeatedly (reuses one iframe per page).
- */
-export const printBanquetInvoice = async (booking, { halls = [], menuPackages = [], lightingOptions = [] } = {}) => {
-  const brand = await loadBrandInfo();
-  const totals = computeInvoiceTotals(booking, halls, menuPackages, lightingOptions);
-  const inner = buildInvoiceHtml({ booking, brand, totals });
+const INVOICE_CSS = `
+          @page { size: A4; margin: 6mm; }
+          html, body {
+            background: #ffffff !important;
+            color: #000000;
+            margin: 0; padding: 0;
+          }
+          * { box-sizing: border-box; }
+          body {
+            font-family: "Helvetica", Arial, sans-serif;
+            color: #000000;
+            background: #ffffff !important;
+            padding: 0;
+            font-size: 10px;
+            line-height: 1.35;
+          }
+          .invoice { border: 1.5px solid #000000; padding: 0; width: 100%; }
+          .title-row { text-align: center; padding: 6px 0 4px 0; }
+          .title-row h1 { margin: 0; font-size: 22px; font-weight: 800; letter-spacing: 0.02em; }
+          .resort-block { text-align: center; padding: 2px 0 6px 0; }
+          .resort-block .leaf {
+            display: inline-flex; align-items: center; justify-content: center;
+            width: 18px; height: 18px; background: #16a34a; color: #fff;
+            border-radius: 50%; font-size: 11px; margin-right: 4px; vertical-align: middle;
+          }
+          .resort-block .name {
+            display: inline-block; vertical-align: middle;
+            font-size: 13px; font-weight: 800; letter-spacing: 0.03em;
+          }
+          .resort-block .sub { font-size: 10px; margin-top: 2px; line-height: 1.45; }
+          .resort-block .gst { font-weight: 800; font-size: 10px; margin-top: 2px; }
+          .divider { border-top: 1.5px solid #000000; margin: 0; }
+          .meta-grid { display: grid; grid-template-columns: 1fr 1fr; width: 100%; }
+          .meta-cell { padding: 6px 10px; }
+          .meta-cell + .meta-cell { border-left: 1px solid #000000; }
+          .meta-row-line { font-size: 10px; line-height: 1.6; }
+          .meta-row-line .lbl { display: inline-block; min-width: 110px; font-weight: 700; }
+          .meta-row-line .val { font-weight: 500; }
+          .section-label { padding: 4px 10px; font-weight: 800; font-size: 10px; }
+          table.items { width: 100%; border-collapse: collapse; font-size: 9.5px; }
+          table.items thead th {
+            background: #ffffff; color: #000;
+            border-top: 1px solid #000000; border-bottom: 1px solid #000000;
+            padding: 4px 5px; font-weight: 700; font-size: 9px; text-align: left;
+            border-left: 1px solid #000000; border-right: 1px solid #000000;
+          }
+          table.items tbody td {
+            padding: 4px 5px; border-bottom: 1px solid #000000;
+            vertical-align: middle; font-size: 9.5px;
+            border-left: 1px solid #000000; border-right: 1px solid #000000;
+          }
+          .td-date { white-space: nowrap; }
+          .td-particulars { line-height: 1.3; }
+          .td-total { font-weight: 800; }
+          .text-right { text-align: right; }
+          .bottom-grid {
+            display: grid; grid-template-columns: 1.05fr 0.95fr;
+            width: 100%; border-top: 1px solid #000000;
+          }
+          .remarks-cell { padding: 8px 10px; border-right: 1px solid #000000; min-height: 150px; }
+          .remarks-cell .lbl { font-size: 9px; font-weight: 800; letter-spacing: 0.06em; margin-bottom: 4px; }
+          .totals-list { font-size: 10px; line-height: 1.6; }
+          .totals-list .row { display: flex; justify-content: space-between; padding: 1px 4px; }
+          .totals-list .row.bold { font-weight: 800; }
+          .words-row {
+            display: grid; grid-template-columns: 1.05fr 0.95fr;
+            border-top: 1px solid #000000; width: 100%;
+          }
+          .words-cell {
+            padding: 8px 10px; font-weight: 700; font-size: 11px;
+            border-right: 1px solid #000000;
+          }
+          .final-cell {
+            display: flex; justify-content: space-between; align-items: center;
+            padding: 6px 10px; font-weight: 800; font-size: 12px;
+          }
+          .final-cell .lbl { font-size: 12px; }
+          .final-cell .val { font-size: 14px; }
+          .footer-row {
+            display: grid; grid-template-columns: 1.05fr 0.95fr;
+            border-top: 1px solid #000000; width: 100%; min-height: 58px;
+          }
+          .note-cell { border-right: 1px solid #000000; padding: 0; font-size: 10px; }
+          .payment-detail { padding: 0; font-size: 10px; }
+          .footer-row .section-header {
+            height: 22px; box-sizing: border-box;
+            display: flex; align-items: center; padding: 3px 10px;
+            border-bottom: 1px solid #000000; font-size: 10px; font-weight: 800;
+          }
+          .note-content { padding: 7px 10px; font-size: 10px; font-weight: 600; }
+          .payment-content { padding: 5px 10px; font-size: 9px; }
+          .payment-detail .row {
+            display: flex; justify-content: space-between; align-items: center;
+            padding: 1px 4px;
+          }
+          .payment-detail .row.bold { font-weight: 800; }
+          .payment-detail .divider { border-top: 1px solid #000000; margin: 2px 0; }
+          .invoice-bottom { border-top: 1.5px solid #000000; }
+          .signature-area {
+            position: relative; height: 160px; box-sizing: border-box;
+            padding: 8px 10px; border-top: 1px solid #000000;
+          }
+          .sig-row { position: relative; width: 100%; height: 100%; margin: 0; }
+          .sig-row .for {
+            position: absolute; top: 0; left: 2px;
+            font-size: 11px; font-weight: 800; white-space: nowrap;
+          }
+          .sig-row .sig-line-block.authorized {
+            position: absolute; left: 2px; bottom: 35px; width: 180px; text-align: center;
+          }
+          .sig-row .sig-line-block.authorized .line {
+            display: block; border-top: 1px solid #000000;
+            padding-top: 4px; font-size: 9px; font-weight: 600;
+          }
+          .sig-row .sig-line-block.guest {
+            position: absolute; right: 2px; top: 0; width: 180px; text-align: center;
+          }
+          .sig-row .sig-line-block.guest .line {
+            display: block; margin-top: 55px; border-top: 1px solid #000000;
+            padding-top: 4px; font-size: 9px; font-weight: 600;
+          }
+          .generated-by {
+            position: absolute; left: 12px; bottom: 6px;
+            text-align: left; font-size: 9px; font-weight: 700;
+            margin: 0; padding: 0; white-space: nowrap;
+          }
+          .generated-by .lbl { font-weight: 600; }
+`;
 
-  const invoiceNo = booking.invoiceNo || `BNQ-${String(booking.id ?? "").padStart(6, "0")}`;
-  const invoiceCss = `
-    * { box-sizing: border-box; }
-    body { margin: 0; font-family: 'Segoe UI', system-ui, -apple-system, sans-serif; color: #0f172a; }
-    .page { width: 190mm; margin: 0 auto; padding: 10mm; }
-    .head { display: flex; justify-content: space-between; align-items: flex-start; gap: 16px;
-      border-bottom: 3px solid #1e40af; padding-bottom: 10px; }
-    .brand-name { font-size: 17px; font-weight: 800; letter-spacing: 0.04em; text-transform: uppercase; }
-    .doc { text-align: right; }
-    .doc-title { font-size: 14px; font-weight: 800; letter-spacing: 0.14em; color: #1e40af; }
-    .doc-meta { font-size: 11px; color: #475569; margin-top: 3px; }
-    .doc-meta .v, .payrow .v { font-weight: 700; color: #0f172a; }
-    .parties { width: 100%; border-collapse: collapse; margin-top: 12px; }
-    .parties td { width: 50%; vertical-align: top; padding-right: 16px; }
-    .p-label { font-size: 9px; font-weight: 700; letter-spacing: 0.14em; text-transform: uppercase; color: #64748b; }
-    .p-val { font-size: 13px; font-weight: 700; margin-top: 2px; }
-    .p-sub { font-size: 11px; color: #475569; margin-top: 2px; }
-    .items { width: 100%; border-collapse: collapse; margin-top: 14px; font-size: 11.5px; }
-    .items th { background: #eff6ff; color: #1e3a8a; text-align: left; padding: 7px 10px; font-size: 10.5px;
-      letter-spacing: 0.08em; text-transform: uppercase; border-bottom: 2px solid #1e40af; }
-    .items td { padding: 6px 10px; border-bottom: 1px solid #e2e8f0; }
-    .items .amt, .items th.amt { text-align: right; white-space: nowrap; }
-    .items .total td { font-weight: 800; font-size: 13px; border-top: 2px solid #1e40af; }
-    .items .pos { color: #059669; font-weight: 700; }
-    .items .neg { color: #d97706; font-weight: 700; }
-    .items .balance td { background: #f8fafc; font-weight: 800; }
-    .items .balance .bal { color: #dc2626; }
-    .payrow { margin-top: 14px; font-size: 11px; color: #475569; display: flex; gap: 24px; flex-wrap: wrap; }
-    .footer { margin-top: 44px; text-align: center; }
-    .footer div:first-child { font-size: 14px; font-weight: 700; color: #1e40af; }
-    .printed { font-size: 9px; color: #94a3b8; margin-top: 10px; }
-  `;
+/**
+ * Print a banquet invoice for the given booking in the hotel "Tax Invoice"
+ * layout, via a hidden off-screen iframe (reused across calls).
+ */
+export const printBanquetInvoice = async (
+  booking,
+  { halls = [], menuPackages = [], lightingOptions = [] } = {},
+) => {
+  const totals = computeInvoiceTotals(booking, halls, menuPackages, lightingOptions);
+  const invoiceNo =
+    booking.invoiceNo || `BNQ-${String(booking.id ?? "").padStart(6, "0")}`;
+  const invoiceDate = formatDate(booking.billedAt || booking.date || new Date());
+  const eventDate = formatDate(booking.date || new Date());
 
   const html = `<!DOCTYPE html>
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <title>Invoice ${escapeHtml(invoiceNo)}</title>
+    <title>${escapeHtml(invoiceNo)} - ${RESORT_NAME_INVOICE}</title>
     <style>
       * { box-sizing: border-box; margin: 0; padding: 0; }
-      @page { size: A4; margin: 0; }
-      html, body { background: #fff; }
-      ${invoiceCss}
+      ${INVOICE_CSS}
     </style>
   </head>
-  <body>${inner}</body>
+  <body>${buildInvoiceHtml({ booking, totals, invoiceNo, invoiceDate, eventDate })}</body>
 </html>`;
 
   // Same off-screen iframe strategy as printKOT.js: a real, non-zero
