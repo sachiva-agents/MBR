@@ -68,7 +68,7 @@ const KitchenDashboard = () => {
     meta: `${orders.length} orders`,
     columns: [
       { key: "ref", label: "Order", render: (row) => row.orderId || row.id || "--" },
-      { key: "tableRef", label: "Ref", render: (row) => row.tableNumber || row.roomNumber || row.entityRef || "--" },
+      { key: "tableRef", label: "Ref", render: (row) => row.table || row.table_number || row.entityType || "--" },
       { key: "itemCount", label: "Items", render: (row) => row.itemCount || row.items?.length || row.qty || "--" },
       { key: "status", label: "Status" },
       { key: "updatedAt", label: "Updated", render: (row) => row.updatedAt || row.createdAt || "--" },
