@@ -153,9 +153,11 @@ check("groupByShift merges in/out of one shift window", () => {
   ];
   const groups = groupByShift(parseLogLines(lines), shifts);
   eq(groups.length, 2, "two shift days");
+  // lone punch (first ≈ last, <60s gap) → checkOut nulled by the single-touch
+  // guard, so a one-finger day is NOT closed the instant it opens.
   eq(groups[0], {
     employeeId: "1", shiftDay: "2026-10-23", shift: "night",
-    punches: 1, checkIn: "08:55:01", checkOut: "08:55:01",
+    punches: 1, checkIn: "08:55:01", checkOut: null,
     firstTime: "2026-10-24 08:55:01", lastTime: "2026-10-24 08:55:01",
   });
   eq(groups[1].shiftDay, "2026-10-24", "second group day");
