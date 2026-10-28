@@ -103,6 +103,18 @@ const resolveEmployeeId = async (userId) => {
   return row ? row.id : null;
 };
 
+// ZK sync appends a marker like "ZK <machine> device <id> (<shift> shift)" to
+// the row's notes (and writes the method column only when it exists). With no
+// method column on the live schema the notes marker is the only signal that a
+// row came from a biometric device, not a manual entry.
+const deriveMethod = (row) => {
+  const stored = String(row.method || "").trim();
+  if (stored && stored.toLowerCase() !== "manual") return stored;
+  const notes = String(row.notes || "");
+  if (/ZK\s+.*device.*\(\w+\s+shift\)/i.test(notes)) return "ZK fingerprint";
+  return "Manual";
+};
+
 /**
  * Wire shape for one attendance record.
  *
@@ -145,7 +157,7 @@ const shapeRecord = (row, enrich = {}, multipliers = SALARY_STATUS_MULTIPLIER) =
     out_time: toTime(row.check_out),
     leave_type: row.leave_type || null,
     notes: row.notes || null,
-    method: "Manual",
+    method: deriveMethod(row),
     createdAt: row.created_at || null,
     updatedAt: row.updated_at || null,
   };

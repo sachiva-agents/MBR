@@ -10,6 +10,7 @@ const STATUS_COLORS = {
 
 const METHOD_COLORS = {
   Biometric: "bg-gradient-to-r from-violet-500 to-purple-600 text-white shadow-violet-200",
+  "ZK fingerprint": "bg-gradient-to-r from-teal-500 to-cyan-600 text-white shadow-teal-200",
   Manual: "bg-gradient-to-r from-slate-500 to-slate-700 text-white shadow-slate-200",
 };
 
@@ -39,9 +40,10 @@ const formatCurrency = (amount) => {
 const AttendanceRow = ({ employee, isAdmin = true, onCheckIn, onCheckOut }) => {
   const status = normalizeLabel(employee.statusLabel || employee.status);
   const method = employee.method || null;
+  const notes = employee.notes || null;
   const statusClass = STATUS_COLORS[status] || "bg-slate-200 text-slate-700";
   const methodClass = METHOD_COLORS[method] || "bg-slate-200 text-slate-700";
-  const colCount = isAdmin ? 7 : 6;
+  const colCount = isAdmin ? 8 : 7;
 
   return (
     <tr
@@ -232,6 +234,19 @@ const AttendanceRow = ({ employee, isAdmin = true, onCheckIn, onCheckOut }) => {
               >
                 {method || "--"}
               </span>
+            </div>
+
+            {/* Notes */}
+            <div className="min-w-0">
+              <div className="text-[13px] font-bold uppercase tracking-[0.06em] text-slate-500">
+                Notes
+              </div>
+              <div
+                className="mt-1 truncate text-[13px] font-medium text-slate-600"
+                title={notes}
+              >
+                {notes || "--"}
+              </div>
             </div>
 
             {/* Daily Salary */}
@@ -511,6 +526,20 @@ const AttendanceRow = ({ employee, isAdmin = true, onCheckIn, onCheckOut }) => {
         >
           {method || "--"}
         </span>
+      </td>
+
+      {/* Notes */}
+      <td className="hidden md:table-cell px-4 py-4 xl:px-6 xl:py-5">
+        {notes ? (
+          <span
+            className="block max-w-[220px] truncate text-[12px] xl:text-[13px] font-medium text-slate-500"
+            title={notes}
+          >
+            {notes}
+          </span>
+        ) : (
+          <span className="text-[13px] text-slate-400">--</span>
+        )}
       </td>
 
       {/* Daily Salary */}

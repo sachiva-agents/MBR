@@ -498,6 +498,7 @@ const Attendance = () => {
               <th className="px-4 py-4">Check Out</th>
               <th className="px-4 py-4">Status</th>
               <th className="px-4 py-4">Method</th>
+              <th className="px-4 py-4">Notes</th>
               <th className="px-4 py-4">Daily Salary</th>
               {isAdmin && <th className="px-4 py-4">Action</th>}
             </tr>
@@ -517,7 +518,7 @@ const Attendance = () => {
             {currentRecords.length === 0 && (
               <tr>
                 <td
-                  colSpan={isAdmin ? 7 : 6}
+                  colSpan={isAdmin ? 8 : 7}
                   className="text-center p-6"
                 >
                   No data found
