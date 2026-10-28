@@ -10,8 +10,10 @@ import {
   FaListAlt,
   FaMoneyBillWave,
   FaPrint,
+  FaSearch,
   FaStar,
   FaSyncAlt,
+  FaTimes,
   FaUserFriends,
   FaUtensils,
 } from "react-icons/fa";
@@ -93,7 +95,7 @@ function DateControls({ from, to, onFrom, onTo, onReload, disabled }) {
   );
 }
 
-function ReportTable({ columns, rows, summary }) {
+function ReportTable({ columns, rows, summary, totalRows = null, filtered = false }) {
   return (
     <div className="space-y-3">
       {summary && Object.keys(summary).length > 0 ? (
@@ -110,7 +112,9 @@ function ReportTable({ columns, rows, summary }) {
       ) : null}
       <div className="max-h-[65vh] overflow-auto rounded-2xl border border-[#E7EEFC] bg-white shadow-[0_14px_36px_-18px_rgba(11,30,77,0.18)]">
         {rows.length === 0 ? (
-          <div className="px-4 py-10 text-center text-[15px] font-semibold text-slate-500">No rows in this window.</div>
+          <div className="px-4 py-10 text-center text-[15px] font-semibold text-slate-500">
+            {filtered && totalRows ? "No rows match your search." : "No rows in this window."}
+          </div>
         ) : (
           <table className="w-full text-left text-[15px]">
             <thead className="sticky top-0 z-10 border-b border-[#E7EEFC] bg-[#F5F9FF]">
@@ -224,8 +228,24 @@ export default function ReportsSuite() {
   const [downloading, setDownloading] = useState(false);
   const [printAllData, setPrintAllData] = useState(null);
   const [printAllBusy, setPrintAllBusy] = useState(false);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [appliedSearch, setAppliedSearch] = useState("");
 
   const current = useMemo(() => REPORTS.find((r) => r.key === reportKey) || REPORTS[0], [reportKey]);
+
+  // Client-side row filter: matches the typed term against ANY cell of the
+  // loaded rows (rendered values, case-insensitive). Cleared automatically
+  // when the report or its data changes.
+  const filteredRows = useMemo(() => {
+    if (!appliedSearch) return rows;
+    const term = appliedSearch.toLowerCase();
+    return rows.filter((row) =>
+      columns.some((col) => String(renderCell(row[col], col) ?? "").toLowerCase().includes(term))
+    );
+  }, [rows, columns, appliedSearch]);
+
+  const runSearch = () => setAppliedSearch(searchTerm.trim());
+  const clearSearch = () => { setSearchTerm(""); setAppliedSearch(""); };
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -246,6 +266,10 @@ export default function ReportsSuite() {
   }, [reportKey, from, to]);
 
   useEffect(() => { load(); }, [load]);
+
+  // A fresh report loads fresh data — a stale search term from the previous
+  // report would filter an unrelated set of rows, so clear it on switch.
+  useEffect(() => { clearSearch(); }, [reportKey]);
 
   // Fetches every report for the selected window, then prints the whole set.
   const printAll = async () => {
@@ -409,6 +433,38 @@ export default function ReportsSuite() {
           <DateControls from={from} to={to} onFrom={setFrom} onTo={setTo} onReload={load} disabled={loading} />
         </div>
 
+        <div className="flex flex-wrap items-center gap-2 rounded-xl border border-slate-200 bg-slate-50/60 p-3.5 sm:p-4">
+          <div className="relative min-w-[240px] flex-1">
+            <FaSearch size={14} className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
+            <input
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              onKeyDown={(e) => e.key === "Enter" && runSearch()}
+              placeholder={`Search ${current.label} rows… (matches any column)`}
+              className="w-full rounded-xl border border-[#DCE6FB] bg-white py-2.5 pl-10 pr-10 text-[15px] font-semibold text-slate-800 outline-none transition placeholder:font-medium placeholder:text-slate-400 focus:border-[#2563eb] focus:ring-2 focus:ring-[#2563eb]/15"
+            />
+            {searchTerm && (
+              <button type="button" onClick={clearSearch} aria-label="Clear search"
+                className="absolute right-2.5 top-1/2 -translate-y-1/2 rounded-full p-1 text-slate-400 transition hover:bg-slate-100 hover:text-slate-600">
+                <FaTimes size={13} />
+              </button>
+            )}
+          </div>
+          <button
+            type="button"
+            onClick={runSearch}
+            disabled={loading}
+            className="flex items-center gap-2 rounded-xl bg-[#0B1E4D] px-4 py-2.5 text-[14px] font-bold text-white shadow-[0_8px_20px_rgba(11,30,77,0.18)] transition-all duration-200 hover:bg-[#16305f] disabled:opacity-50 sm:px-5"
+          >
+            <FaSearch size={14} /> Search
+          </button>
+          {appliedSearch && !loading ? (
+            <span className="text-[14px] font-semibold text-slate-600">
+              Showing <b className="text-[#0B1E4D]">{filteredRows.length}</b> of {rows.length} rows
+            </span>
+          ) : null}
+        </div>
+
         {loading ? (
           <div className="rounded-xl border border-slate-200 bg-white p-10 text-center text-[15px] font-semibold text-slate-500">Loading {current.label}…</div>
         ) : error ? (
@@ -416,7 +472,7 @@ export default function ReportsSuite() {
             <FaFileAlt size={16} /> {error}
           </div>
         ) : (
-          <ReportTable columns={columns} rows={rows} summary={summary} />
+          <ReportTable columns={columns} rows={filteredRows} summary={summary} totalRows={rows.length} filtered={Boolean(appliedSearch)} />
         )}
       </div>
 
