@@ -386,8 +386,94 @@ exports.markAttendance = async (req, res) => {
   });
 };
 
-// Compat alias: older calls named `markMyAttendance`.
-exports.markMyAttendance = exports.markAttendance;
+// Self-service mark: any authenticated owner saves their own check-in/out.
+// Ignores all impersonation fields (employeeId / actAsUserId / userId / name)
+// so a user can only ever write their own row.
+exports.markMyAttendance = async (req, res) => {
+  const id = req.user?.id;
+  if (!id) {
+    return res.status(401).json({ message: "Authentication required" });
+  }
+
+  const body = req.body || {};
+  const normalized = normalizeStatus(body.status);
+  if (!STATUSES.includes(normalized)) {
+    return res.status(400).json({ message: "Invalid attendance status" });
+  }
+
+  const dateStr = isDateStr(body.date) ? body.date.trim() : todayStr();
+  const nowTime = new Date().toISOString().slice(11, 16);
+  const checkInVal = isTimeStr(body.checkIn)
+    ? body.checkIn.trim()
+    : isTimeStr(body.check_in)
+      ? body.check_in.trim()
+      : dateStr === todayStr()
+        ? nowTime
+        : null;
+  const checkOutVal = isTimeStr(body.checkOut)
+    ? body.checkOut.trim()
+    : isTimeStr(body.check_out)
+      ? body.check_out.trim()
+      : null;
+  const rawLeave = String(body.leaveType || body.leave_type || "").toLowerCase();
+  const leaveTypeVal = LEAVE_TYPES.includes(rawLeave) ? rawLeave : null;
+  const notesVal = typeof body.notes === "string" && body.notes.trim() ? body.notes.trim() : null;
+
+  return withAttendanceSchema(res, async () => {
+    const employeeId = await resolveEmployeeId(id);
+    if (!employeeId) {
+      return res.status(400).json({
+        message: "No employee record is linked to this user; cannot mark attendance.",
+      });
+    }
+
+    const [existingRows] = await db.query(
+      "SELECT id FROM attendance_records WHERE employee_id = ? AND DATE(date) = ? LIMIT 1",
+      [employeeId, dateStr]
+    );
+    const existing = Array.isArray(existingRows) ? existingRows[0] : null;
+
+    if (existing) {
+      const [result] = await db.query(
+        `UPDATE attendance_records
+         SET status = ?, check_in = ?, check_out = ?, leave_type = ?, notes = ?, updated_at = NOW()
+         WHERE id = ?`,
+        [normalized, checkInVal, checkOutVal, leaveTypeVal, notesVal, existing.id]
+      );
+      return res.json({
+        message: "Attendance updated",
+        id: existing.id,
+        employeeId,
+        date: dateStr,
+        status: normalized,
+        statusLabel: STATUS_LABEL[normalized],
+        checkIn: checkInVal,
+        checkOut: checkOutVal,
+        updated: true,
+        affectedRows: result?.affectedRows || 0,
+      });
+    }
+
+    const [result] = await db.query(
+      `INSERT INTO attendance_records (employee_id, date, status, check_in, check_out, leave_type, notes, created_at, updated_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, NOW(), NOW())`,
+      [employeeId, dateStr, normalized, checkInVal, checkOutVal, leaveTypeVal, notesVal]
+    );
+
+    return res.json({
+      message: "Attendance marked successfully",
+      id: result.insertId,
+      employeeId,
+      date: dateStr,
+      status: normalized,
+      statusLabel: STATUS_LABEL[normalized],
+      checkIn: checkInVal,
+      checkOut: checkOutVal,
+      method: "Manual",
+      inserted: true,
+    });
+  });
+};
 
 /**
  * PUT|PATCH /api/attendance/:id

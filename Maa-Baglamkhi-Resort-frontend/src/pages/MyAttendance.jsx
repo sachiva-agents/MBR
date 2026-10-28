@@ -105,7 +105,7 @@ const MyAttendance = () => {
       } else if (status === "half_day") {
         if (markIn) payload.checkIn = markIn;
       }
-      const res = await API.post("/attendance", payload);
+      const res = await API.post("/attendance/mark-own", payload);
       setSaveNotice({ message: res.data?.message || "Attendance saved", tone: "success" });
       fetchToday();
       fetchMonthly();

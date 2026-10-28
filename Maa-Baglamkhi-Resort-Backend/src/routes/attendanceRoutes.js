@@ -16,6 +16,8 @@ router.get("/", authMiddleware, attendanceController.getAllAttendance);
 // Mark attendance for self or, with employeeId/userId in the body, anyone.
 router.post("/", authMiddleware, roleMiddleware(["admin"]), attendanceController.markAttendance);
 router.post("/mark", authMiddleware, roleMiddleware(["admin"]), attendanceController.markAttendance);
+// Self-service: any signed-in owner saves their own check-in/out (never others').
+router.post("/mark-own", authMiddleware, attendanceController.markMyAttendance);
 
 // Festival / holiday handling: mark every active employee as holiday for a
 // date (so payroll pays it in full) and read the holiday calendar.
