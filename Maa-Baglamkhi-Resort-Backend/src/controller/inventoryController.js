@@ -1565,6 +1565,10 @@ exports.getStockLedger = async (req, res) => {
            DATE_FORMAT(l.entry_date, '%Y-%m-%d') AS entryDate,
            l.created_at AS createdAt
          FROM inventory_stock_ledger l
+         -- Chef issue/return events are already unioned from
+         -- inventory_chef_issues below; excluding them here stops the double
+         -- count (each such event is written to both tables).
+         WHERE l.reference_type NOT IN ('chef_issue', 'chef_return')
          UNION ALL
          SELECT
            ci.id,
@@ -1631,7 +1635,7 @@ exports.getStockFlowReport = async (req, res) => {
       ),
       db.query(
         `SELECT * FROM (
-           SELECT l.item_id AS itemId, l.item_name AS itemName, l.reference_type AS referenceType, l.direction, l.quantity, l.unit, l.balance_after AS balanceAfter, DATE_FORMAT(l.entry_date, '%Y-%m-%d') AS entryDate, l.created_at AS createdAt FROM inventory_stock_ledger l
+           SELECT l.item_id AS itemId, l.item_name AS itemName, l.reference_type AS referenceType, l.direction, l.quantity, l.unit, l.balance_after AS balanceAfter, DATE_FORMAT(l.entry_date, '%Y-%m-%d') AS entryDate, l.created_at AS createdAt FROM inventory_stock_ledger l WHERE l.reference_type NOT IN ('chef_issue', 'chef_return')
            UNION ALL
            SELECT ci.item_id AS itemId, ci.item_name AS itemName, 'chef_issue' AS referenceType, 'OUT' AS direction, ci.quantity_issued AS quantity, ci.unit, NULL AS balanceAfter, DATE_FORMAT(ci.issued_at, '%Y-%m-%d') AS entryDate, ci.issued_at AS createdAt FROM inventory_chef_issues ci WHERE ci.status IN ('issued', 'partially_returned', 'fully_returned')
            UNION ALL
