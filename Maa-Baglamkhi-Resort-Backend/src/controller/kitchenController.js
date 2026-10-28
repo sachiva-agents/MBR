@@ -40,6 +40,20 @@ const normalizePrepTime = (value) => {
   return Math.min(120, Math.max(5, Math.round(parsed)));
 };
 
+const KITCHEN_STATUSES = ["Pending", "Preparing", "Ready", "Cancelled", "Served"];
+
+// Shared with chefController: returns the canonical status or null; sends 400 when the value is not a known kitchen status.
+exports.resolveKitchenStatus = (res, status) => {
+  const canonical = KITCHEN_STATUSES.find((s) => s.toLowerCase() === String(status || "").toLowerCase());
+  if (!canonical) {
+    res.status(400).json({
+      message: `Invalid kitchen status '${status}'. Allowed: ${KITCHEN_STATUSES.join(", ")}`,
+    });
+    return null;
+  }
+  return canonical;
+};
+
 const inferEntityType = (orderLike = {}) => {
   if (String(orderLike.entity_type || orderLike.entityType || "").toLowerCase() === "room") {
     return "Room";
@@ -173,8 +187,15 @@ exports.updateOrderStatus = async (req, res) => {
       return res.status(404).json({ message: "Kitchen order not found" });
     }
 
+    let canonicalStatus = status;
+    if (status !== undefined) {
+      const resolved = resolveKitchenStatus(res, status);
+      if (!resolved) return;
+      canonicalStatus = resolved;
+    }
+
     const fields = [], vals = [];
-    if (status !== undefined) { fields.push("status = ?"); vals.push(status); }
+    if (status !== undefined) { fields.push("status = ?"); vals.push(canonicalStatus); }
     if (readyMessage !== undefined) { fields.push("ready_message = ?"); vals.push(readyMessage); }
     if (prepTimeMinutes !== undefined) {
       const normalizedPrepTime = normalizePrepTime(prepTimeMinutes);
@@ -184,7 +205,7 @@ exports.updateOrderStatus = async (req, res) => {
       fields.push("expected_ready_at = ?");
       vals.push(expectedAt);
     }
-    if (status === "Ready") {
+    if (canonicalStatus === "Ready") {
       fields.push("ready_at = NOW()");
     }
     if (!fields.length) return res.status(400).json({ message: "Nothing to update" });
@@ -202,7 +223,7 @@ exports.updateOrderStatus = async (req, res) => {
       prepTimeMinutes: updatedOrder.prepTimeMinutes,
       expectedReadyAt: updatedOrder.expectedReadyAt,
     });
-    if (String(status || "").toLowerCase() === "ready") {
+    if (canonicalStatus === "Ready") {
       global.io?.emit("kitchen-order-ready", {
         id: updatedOrder.id,
         table: updatedOrder.table,

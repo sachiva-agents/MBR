@@ -3,6 +3,7 @@ const { getRequestActor, isWaiterActor } = require("../utils/requestActor");
 const { ensureSchema: ensureKitchenSchema } = require("../models/KotOrdersModel");
 const { ensureSchema: ensureNotificationSchema } = require("../models/NotificationsModel");
 const notificationController = require("../controller/notificationController");
+const { resolveKitchenStatus } = require("../controller/kitchenController");
 const { syncRestaurantOrdersToKitchen } = require("../utils/kitchenOrderSync");
 
 
@@ -41,6 +42,7 @@ const normalizePrepTime = (value) => {
   return Math.min(120, Math.max(5, Math.round(parsed)));
 };
 
+
 // ── KITCHEN ORDERS ──────────────────────────────────────────────────────────
 
 exports.getKitchenOrders = async (req, res) => {
@@ -71,8 +73,15 @@ exports.updateOrderStatus = async (req, res) => {
       return res.status(404).json({ message: "Kitchen order not found" });
     }
 
+    let canonicalStatus = status;
+    if (status !== undefined) {
+      const resolved = resolveKitchenStatus(res, status);
+      if (!resolved) return;
+      canonicalStatus = resolved;
+    }
+
     const fields = [], vals = [];
-    if (status !== undefined) { fields.push("status = ?"); vals.push(status); }
+    if (status !== undefined) { fields.push("status = ?"); vals.push(canonicalStatus); }
     if (readyMessage !== undefined) { fields.push("ready_message = ?"); vals.push(readyMessage); }
     if (prepTimeMinutes !== undefined) {
       const normalizedPrepTime = normalizePrepTime(prepTimeMinutes);
@@ -82,7 +91,7 @@ exports.updateOrderStatus = async (req, res) => {
       fields.push("expected_ready_at = ?");
       vals.push(expectedAt);
     }
-    if (String(status || "").toLowerCase() === "ready") {
+    if (canonicalStatus === "Ready") {
       fields.push("ready_at = NOW()");
     }
     if (!fields.length) return res.status(400).json({ message: "Nothing to update" });
@@ -102,7 +111,7 @@ exports.updateOrderStatus = async (req, res) => {
       prepTimeMinutes: updatedOrder.prepTimeMinutes,
       expectedReadyAt: updatedOrder.expectedReadyAt,
     });
-    if (String(status || "").toLowerCase() === "ready") {
+    if (canonicalStatus === "Ready") {
       global.io?.emit("kitchen-order-ready", {
         id: updatedOrder.id,
         table: updatedOrder.table,
