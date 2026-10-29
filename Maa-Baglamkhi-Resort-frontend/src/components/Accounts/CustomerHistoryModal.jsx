@@ -1,6 +1,7 @@
 import { useMemo } from "react";
 import {
   FaTimes,
+  FaArrowDown,
   FaUser,
   FaPhone,
   FaCalendar,
@@ -257,7 +258,7 @@ const CustomerHistoryModal = ({
     title: r.description || r.narration || "Ledger entry",
     meta: [
       { icon: FaCalendar, text: r.date || formatDay(r.created_at) },
-      { icon: r.type === "Income" ? FaMoneyBillWave : FaTimes, text: r.type || "Entry" },
+      { icon: r.type === "Income" ? FaMoneyBillWave : FaArrowDown, text: r.type || "Entry" },
       { text: r.paymentMode || "Cash" },
     ],
     total: formatINR(r.amount),
