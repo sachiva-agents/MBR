@@ -99,13 +99,26 @@ function ReportTable({ columns, rows, summary, totalRows = null, filtered = fals
   return (
     <div className="space-y-3">
       {summary && Object.keys(summary).length > 0 ? (
-        <div className="flex flex-wrap gap-2.5">
-          {Object.entries(summary).map(([k, v]) => (
+        <div className="space-y-2.5">
+          {filtered ? (
+            <div className="text-[12px] font-semibold text-slate-500">
+              Tiles show full period totals — search filters the table rows only.
+            </div>
+          ) : null}
+          <div className="flex flex-wrap gap-2.5">
+            {Object.entries(summary).filter(([k, v]) => typeof v === "string" ? v.length <= 60 : true).map(([k, v]) => (
+              <div key={k} className="rounded-xl border border-[#CFE0FC] bg-[#EAF2FE] px-4 py-2.5">
+                <div className="text-[12px] font-bold uppercase tracking-wide text-[#425273]">{k.replace(/_/g, " ")}</div>
+                <div className="text-[18px] font-bold text-[#0B1E4D]">
+                  {typeof v === "number" || isMoneyCol(k) ? formatINR(typeof v === "number" ? v : Number(v) || 0) : String(v)}
+                </div>
+              </div>
+            ))}
+          </div>
+          {Object.entries(summary).filter(([k, v]) => typeof v === "string" && v.length > 60).map(([k, v]) => (
             <div key={k} className="rounded-xl border border-[#CFE0FC] bg-[#EAF2FE] px-4 py-2.5">
               <div className="text-[12px] font-bold uppercase tracking-wide text-[#425273]">{k.replace(/_/g, " ")}</div>
-              <div className="text-[18px] font-bold text-[#0B1E4D]">
-                {typeof v === "number" || isMoneyCol(k) ? formatINR(typeof v === "number" ? v : Number(v) || 0) : String(v)}
-              </div>
+              <div className="text-[13px] font-medium leading-snug text-[#1f2a44]">{v}</div>
             </div>
           ))}
         </div>
