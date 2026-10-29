@@ -861,22 +861,38 @@ exports.createGuest = async (req, res) => {
           const customerNumber = invoice.phone || invoice.mobileNumber || "";
           let adminNumber = "";
           try {
+            // `register` is the money ledger, not a user table — the old query
+            // "FROM register WHERE role='admin'" always errored and was
+            // silently ignored. The real admin phone lives in users/roles.
             const adminRows = await new Promise((resolve, reject) => {
               db.query(
-                "SELECT id, name, email, phone FROM register WHERE LOWER(role) = 'admin' AND phone IS NOT NULL AND TRIM(phone) <> '' ORDER BY id ASC LIMIT 1",
+                `SELECT u.phone
+                 FROM users u
+                 LEFT JOIN roles r ON r.id = u.role_id
+                 WHERE LOWER(IFNULL(r.name, '')) = 'admin'
+                   AND u.phone IS NOT NULL AND TRIM(u.phone) <> ''
+                 ORDER BY u.id ASC LIMIT 1`,
                 (err, rows) => (err ? reject(err) : resolve(rows)),
               );
             });
             adminNumber = adminRows?.[0]?.phone || "";
           } catch { /* ignore */ }
+          if (!adminNumber) {
+            adminNumber = process.env.ADMIN_WHATSAPP_NUMBER || "";
+          }
 
-          if (customerNumber) {
-            await WhatsAppService.sendWhatsAppMessage({ number: customerNumber, message: customerMessage });
-          }
-          if (adminNumber) {
-            await WhatsAppService.sendWhatsAppMessage({ number: adminNumber, message: adminMessage });
-          }
-          console.log(`[auto-confirm] booking ${bookingId} confirmation sent`);
+          // Text-only confirmation (no PDF/invoice attachment), per the
+          // resort's requirement: just the booking confirmation message.
+          const customerResult = customerNumber
+            ? await WhatsAppService.sendWhatsAppMessage({ number: customerNumber, message: customerMessage })
+            : { ok: false, skipped: true, reason: "No customer phone number" };
+          const adminResult = adminNumber
+            ? await WhatsAppService.sendWhatsAppMessage({ number: adminNumber, message: adminMessage })
+            : { ok: false, skipped: true, reason: "Admin number not configured" };
+          console.log(
+            `[auto-confirm] booking ${bookingId} — customer ${customerResult.ok ? "sent" : customerResult.skipped ? "skipped (" + (customerResult.reason || "no number") + ")" : "FAILED (" + (customerResult.error || customerResult.statusCode || "gateway") + ")"}` +
+            `, admin ${adminResult.ok ? "sent" : adminResult.skipped ? "skipped (" + (adminResult.reason || "not configured") + ")" : "FAILED (" + (adminResult.error || adminResult.statusCode || "gateway") + ")"}`,
+          );
         } catch (autoErr) {
           console.error("[auto-confirm] failed for booking", bookingId, autoErr.message || autoErr);
         }

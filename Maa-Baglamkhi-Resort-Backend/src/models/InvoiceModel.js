@@ -219,6 +219,24 @@ const ensureSchema = async () => {
     "updated_at",
     "TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP AFTER created_at",
   );
+
+  // `invoice_date` arrived on some deployments as NOT NULL with no default,
+  // and nothing in the INSERT statements below sets it — so every fresh
+  // invoice creation failed with "Field 'invoice_date' doesn't have a
+  // default value" (which is also why the auto WhatsApp confirmation on
+  // booking creation died silently). `ensureColumn` above only ADDS the
+  // column when it's missing, so relax it in place as well. MODIFY to
+  // "DATE NULL" is portable across MariaDB and plain MySQL (functional
+  // defaults like DATE DEFAULT (CURRENT_DATE) are not).
+  await ensureColumn("invoices", "invoice_date", "DATE NULL AFTER invoice_no");
+  try {
+    await runQuery("ALTER TABLE invoices MODIFY COLUMN invoice_date DATE NULL");
+    // Backfill so old invoices stop reading as "no date".
+    await runQuery("UPDATE invoices SET invoice_date = COALESCE(invoice_date, date, CURDATE()) WHERE invoice_date IS NULL");
+  } catch {
+    // If the column is still NOT NULL for some reason (e.g. a check
+    // constraint), never break invoice reads/creates for this.
+  }
 };
 
 // ROOT CAUSE (v1 -> v4 schema drift): this query used to read from

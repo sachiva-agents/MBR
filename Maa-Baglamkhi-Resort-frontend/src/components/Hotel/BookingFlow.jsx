@@ -4881,26 +4881,60 @@ const BookingFlow = () => {
       idoc.close();
       await new Promise((r) => setTimeout(r, 200));
 
+      // html2canvas ignores @page margins, and the shared document's frame
+      // (.invoice width:100%) sits flush against a zero-padded body — so
+      // without this the captured image has the invoice touching both edges
+      // and the PDF below would look cut off. Give the body real padding so
+      // the frame is surrounded by white space before rasterising.
+      const bodyStyle = idoc.createElement("style");
+      bodyStyle.textContent =
+        "html, body { background:#ffffff !important; margin:0; } body { padding:16px 12px; }";
+      idoc.head.appendChild(bodyStyle);
+      await new Promise((r) => setTimeout(r, 80));
+
       const canvas = await html2canvas(idoc.body, {
         scale: 2,
         useCORS: true,
         backgroundColor: "#ffffff",
+        windowWidth: 794,
       });
       const pdf = new jsPDF("p", "mm", "a4");
       const pageW = pdf.internal.pageSize.getWidth();
       const pageH = pdf.internal.pageSize.getHeight();
       const imgData = canvas.toDataURL("image/jpeg", 0.92);
-      const imgH = (canvas.height * pageW) / canvas.width;
-      if (imgH <= pageH + 1) {
-        pdf.addImage(imgData, "JPEG", 0, 0, pageW, imgH);
+
+      // Place the image with a page margin instead of edge-to-edge.
+      const margin = 8;
+      const contentW = pageW - margin * 2;
+      let imgH = (canvas.height * contentW) / canvas.width;
+      let imgW = contentW;
+
+      if (imgH <= pageH - margin * 2 + 1) {
+        pdf.addImage(imgData, "JPEG", margin, margin, imgW, imgH);
       } else {
-        let position = 0;
-        let pageNo = 0;
-        while (position < imgH) {
-          if (pageNo > 0) pdf.addPage();
-          pdf.addImage(imgData, "JPEG", 0, -position, pageW, imgH);
-          position += pageH;
-          pageNo += 1;
+        // Content is taller than one page: scale it to fit the printable
+        // height (keeps margins), or fall back to multi-page tiling.
+        const scaleFit = (pageH - margin * 2) / imgH;
+        if (scaleFit > 0.55) {
+          imgW = imgW * scaleFit;
+          imgH = (pageH - margin * 2);
+          pdf.addImage(
+            imgData,
+            "JPEG",
+            (pageW - imgW) / 2,
+            margin,
+            imgW,
+            imgH,
+          );
+        } else {
+          let position = 0;
+          let pageNo = 0;
+          while (position < imgH) {
+            if (pageNo > 0) pdf.addPage();
+            pdf.addImage(imgData, "JPEG", margin, margin - position, imgW, imgH);
+            position += pageH - margin * 2;
+            pageNo += 1;
+          }
         }
       }
       const docNo =
