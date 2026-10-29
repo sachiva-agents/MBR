@@ -102,6 +102,12 @@ function RecordList({ title, icon: Icon, rows, emptyLabel }) {
                       </span>
                     ))}
                   </div>
+                  {row.note ? (
+                    <div className="mt-1 truncate text-[11px] font-medium text-slate-600" title={row.note}>
+                      <span className="font-bold uppercase tracking-wider text-slate-400">Note:</span>{" "}
+                      {row.note}
+                    </div>
+                  ) : null}
                 </div>
                 <div className="flex shrink-0 flex-col items-end gap-1">
                   <div className="text-sm font-black text-slate-900">{row.total}</div>
@@ -204,6 +210,7 @@ const CustomerHistoryModal = ({
     total: formatINR(b.grandTotal ?? b.total),
     balance: toNumber(b.balanceDue ?? b.balance ?? 0),
     status: b.paymentStatus || b.payment_status || b.status,
+    note: b.notes || b.customMenuItems,
   }));
 
   const hotelRows = profile.hotel.map((b) => ({
@@ -216,6 +223,7 @@ const CustomerHistoryModal = ({
     total: formatINR(b.totalAmount ?? b.total_amount),
     balance: toNumber(b.remainingAmount ?? b.balanceAmount ?? 0),
     status: b.paymentStatus || b.status,
+    note: b.notes || b.remarks,
   }));
 
   const restaurantRows = profile.restaurant.map((b) => ({
@@ -228,6 +236,7 @@ const CustomerHistoryModal = ({
     total: formatINR(b.total),
     balance: Math.max(0, toNumber(b.total) - toNumber(b.paidAmount ?? b.netPaid ?? 0)),
     status: b.paymentStatus || b.invoiceStatus || b.status,
+    note: b.notes || b.notes_text,
   }));
 
   const invoiceRows = profile.invoices.map((i) => ({
@@ -240,6 +249,7 @@ const CustomerHistoryModal = ({
     total: formatINR(i.totalAmount ?? i.total_amount ?? i.final_total),
     balance: toNumber(i.remainingAmount ?? i.balanceAmount ?? 0),
     status: i.paymentStatus || i.payment_status || i.status,
+    note: i.notes || i.narration,
   }));
 
   const ledgerRows = profile.ledger.map((r) => ({
@@ -253,6 +263,8 @@ const CustomerHistoryModal = ({
     total: formatINR(r.amount),
     balance: 0,
     status: r.type === "Income" ? "Inflow" : "Outflow",
+    // Show the narration/notes only when it isn't already used as the title.
+    note: r.description ? r.narration : "",
   }));
 
   return (

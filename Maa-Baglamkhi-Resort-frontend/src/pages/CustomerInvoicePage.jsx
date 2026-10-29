@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { jsPDF } from "jspdf";
+import html2canvas from "html2canvas";
 
 import API from "../api";
 
@@ -66,6 +67,7 @@ const CustomerInvoicePage = () => {
   const [settlingPayment, setSettlingPayment] = useState(false);
   const [settleMessage, setSettleMessage] = useState("");
   const [settleStatus, setSettleStatus] = useState("idle");
+  const [pdfBusy, setPdfBusy] = useState(false);
   const [printTimestamp] = useState(() => new Date());
 
   useEffect(() => {
@@ -173,179 +175,55 @@ const CustomerInvoicePage = () => {
     window.print();
   };
 
-  const handleDownloadPdf = () => {
-    if (!invoice) return;
-
-    const doc = new jsPDF({ unit: "mm", format: "a4", orientation: "portrait" });
-    const pageWidth = doc.internal.pageSize.getWidth(); // 210mm
-    const pageHeight = doc.internal.pageSize.getHeight(); // 297mm
-    const margin = 10;
-    const contentWidth = pageWidth - margin * 2; // 190mm
-    const rightEdge = pageWidth - margin;
-    const center = pageWidth / 2;
-    let y = margin;
-
-    const ensureSpace = (needed) => {
-      if (y + needed <= pageHeight - margin) return;
-      doc.addPage();
-      y = margin;
-    };
-
-    // ── Header: Resort info ────────────────────────────────────
-    doc.setFont("helvetica", "bold");
-    doc.setFontSize(18);
-    doc.setTextColor(15, 23, 42);
-    doc.text(RESORT_NAME, center, y + 7, { align: "center" });
-
-    doc.setFont("helvetica", "normal");
-    doc.setFontSize(9);
-    doc.setTextColor(60, 60, 60);
-    doc.text(RESORT_ADDRESS, center, y + 12, { align: "center" });
-    doc.text(`${RESORT_DISTRICT} | Ph: ${RESORT_PHONE} | ${RESORT_EMAIL}`, center, y + 17, { align: "center" });
-    doc.text(`GSTIN: ${RESORT_GSTIN} | State: ${RESORT_STATE_CODE} | ${RESORT_WEBSITE}`, center, y + 22, { align: "center" });
-
-    y += 28;
-    doc.setDrawColor(0, 0, 0);
-    doc.setLineWidth(0.5);
-    doc.line(margin, y, rightEdge, y);
-    y += 5;
-
-    // ── Invoice title + meta ────────────────────────────────────
-    doc.setFont("helvetica", "bold");
-    doc.setFontSize(16);
-    doc.setTextColor(0, 0, 0);
-    doc.text("TAX INVOICE", center, y + 5, { align: "center" });
-    y += 10;
-
-    doc.setFont("helvetica", "normal");
-    doc.setFontSize(9);
-    doc.setTextColor(40, 40, 40);
-
-    doc.text(`Invoice No: ${invoiceNoDisplay}`, margin, y);
-    doc.text(`Date: ${formatDate(printTimestamp)}  Time: ${formatTime(printTimestamp)}`, center, y, { align: "center" });
-    doc.text(`Table No: ${invoice?.roomNumber || "ROOM " + (invoice?.bookingId || "-")}`, rightEdge, y, { align: "right" });
-    y += 6;
-
-    doc.text(`Captain: RECEPTION`, margin, y);
-    doc.text(`KOT No: ${invoice?.bookingId || "-"}`, center, y, { align: "center" });
-    y += 8;
-
-    // ── Bill To ─────────────────────────────────────────────────
-    doc.setFillColor(245, 247, 250);
-    doc.roundedRect(margin, y, contentWidth, 22, 1, 1, "F");
-    doc.setFont("helvetica", "bold");
-    doc.setFontSize(9);
-    doc.setTextColor(60, 60, 60);
-    doc.text("BILL TO", margin + 3, y + 5);
-    doc.setFont("helvetica", "normal");
-    doc.setFontSize(10);
-    doc.setTextColor(0, 0, 0);
-    doc.text(invoice?.customerName || "Guest", margin + 3, y + 11);
-    doc.setFontSize(9);
-    doc.setTextColor(60, 60, 60);
-    doc.text(`Phone: ${invoice?.phone || "--"}`, margin + 3, y + 16);
-    doc.text(`Booking ID: ${invoice?.bookingId || "--"}`, margin + 3, y + 21);
-    const companyNamePdf = invoice?.companyName;
-    const companyGstinPdf = invoice?.companyGstin;
-    const billToTextLines = [
-      `Guest: ${invoice?.customerName || "Guest"}`,
-      `Phone: ${invoice?.phone || "--"}`,
-      `Booking ID: ${invoice?.bookingId || "--"}`,
-      companyNamePdf ? `Company: ${companyNamePdf}` : null,
-      companyGstinPdf ? `Company GSTIN: ${companyGstinPdf}` : null,
-    ].filter(Boolean);
-    billToTextLines.forEach((line, idx) => {
-      doc.text(line, margin + 3, y + 7 + idx * 5);
-    });
-    y += Math.max(26, 7 + billToTextLines.length * 5);
-
-    // ── Items table ─────────────────────────────────────────────
-    doc.setFillColor(240, 242, 245);
-    doc.rect(margin, y, contentWidth, 7, "F");
-    doc.setFont("helvetica", "bold");
-    doc.setFontSize(9);
-    doc.setTextColor(0, 0, 0);
-
-    const colX = [margin + 2, margin + 40, margin + 130, margin + 155, rightEdge - 2];
-    doc.text("#", colX[0], y + 5);
-    doc.text("Description", colX[1], y + 5);
-    doc.text("Qty", colX[2], y + 5, { align: "center" });
-    doc.text("Rate", colX[3], y + 5, { align: "right" });
-    doc.text("Amount", colX[4], y + 5, { align: "right" });
-    y += 7;
-
-    doc.setFont("helvetica", "normal");
-    doc.setFontSize(9);
-    doc.setTextColor(30, 30, 30);
-
-    if (!itemRows.length) {
-      doc.text("No items.", margin + 2, y + 6);
-      y += 10;
-    } else {
-      itemRows.forEach((item, index) => {
-        const nameLines = doc.splitTextToSize(String(item.name || "Charge"), 88);
-        const rowHeight = Math.max(7, nameLines.length * 4.5 + 2);
-        ensureSpace(rowHeight + 3);
-
-        doc.setDrawColor(200, 200, 200);
-        doc.setLineWidth(0.2);
-        doc.line(margin, y, rightEdge, y);
-        y += 1;
-
-        doc.text(String(index + 1), colX[0], y + 4);
-        doc.text(nameLines, colX[1], y + 4);
-        doc.text(String(item.quantity || 1), colX[2], y + 4, { align: "center" });
-        doc.text(formatINR(item.price), colX[3], y + 4, { align: "right" });
-        doc.text(formatINR(item.total), colX[4], y + 4, { align: "right" });
-        y += rowHeight;
+  // Same PDF as "Print": instead of hand-drawing a separate jsPDF layout
+  // (which never matched the on-screen invoice), we capture the exact
+  // .invoice-a4-sheet the print button shows, with the print colour
+  // rules applied, and rasterise it into an A4 PDF page by page.
+  const handleDownloadPdf = async () => {
+    if (!invoice || pdfBusy) return;
+    setPdfBusy(true);
+    const sheet = document.querySelector(".invoice-a4-sheet");
+    if (!sheet) {
+      setPdfBusy(false);
+      return;
+    }
+    try {
+      // Mirror the @media print rules for the capture so the PDF looks
+      // identical to the printed / saved-as-PDF output.
+      sheet.classList.add("pdf-snapshot");
+      const canvas = await html2canvas(sheet, {
+        scale: 2,
+        backgroundColor: "#ffffff",
+        useCORS: true,
       });
+      sheet.classList.remove("pdf-snapshot");
+
+      const doc = new jsPDF({ unit: "mm", format: "a4", orientation: "portrait" });
+      const pageWidth = doc.internal.pageSize.getWidth();
+      const pageHeight = doc.internal.pageSize.getHeight();
+      const imgWidth = pageWidth;
+      const imgHeight = (canvas.height * imgWidth) / canvas.width;
+      const dataUrl = canvas.toDataURL("image/jpeg", 0.95);
+
+      let position = 0;
+      doc.addImage(dataUrl, "JPEG", 0, position, imgWidth, imgHeight);
+      let heightLeft = imgHeight - pageHeight;
+      while (heightLeft > 0) {
+        position -= pageHeight;
+        doc.addPage();
+        doc.addImage(dataUrl, "JPEG", 0, position, imgWidth, imgHeight);
+        heightLeft -= pageHeight;
+      }
+
+      doc.save(`${invoiceNoDisplay}.pdf`);
+    } catch (err) {
+      console.error("PDF download failed:", err);
+    } finally {
+      sheet.classList.remove("pdf-snapshot");
+      setPdfBusy(false);
     }
-
-    y += 2;
-    doc.setDrawColor(0, 0, 0);
-    doc.setLineWidth(0.4);
-    doc.line(margin, y, rightEdge, y);
-    y += 4;
-
-    // ── Totals ──────────────────────────────────────────────────
-    ensureSpace(40);
-    const totalsX = rightEdge - 75;
-    doc.setFont("helvetica", "normal");
-    doc.setFontSize(9);
-    doc.setTextColor(50, 50, 50);
-
-    const drawTotalRow = (label, value, isBold = false) => {
-      doc.setFont("helvetica", isBold ? "bold" : "normal");
-      doc.text(label, totalsX, y);
-      doc.text(formatINR(value), rightEdge - 2, y, { align: "right" });
-      y += 5;
-    };
-
-    drawTotalRow("Subtotal", subtotal);
-    drawTotalRow(`SGST @ 2.5%`, sgstAmount);
-    drawTotalRow(`CGST @ 2.5%`, cgstAmount);
-    if (discount > 0) {
-      drawTotalRow("Discount", -discount);
-    }
-    if (paidAmount > 0) {
-      drawTotalRow("Amount Paid", paidAmount);
-    }
-    const pdfBalanceDue = balanceDue > 0 ? balanceDue : (totalAmount - paidAmount - discount);
-    drawTotalRow("BALANCE DUE", pdfBalanceDue > 0 ? pdfBalanceDue : 0, pdfBalanceDue > 0);
-    drawTotalRow("GRAND TOTAL", totalAmount, true);
-
-    y += 5;
-
-    // ── Footer ──────────────────────────────────────────────────
-    doc.setFont("helvetica", "italic");
-    doc.setFontSize(8);
-    doc.setTextColor(100, 100, 100);
-    doc.text("Thank you for staying with us. Visit again!", center, y, { align: "center" });
-    doc.text(`Powered by ${RESORT_NAME}`, center, y + 4, { align: "center" });
-    doc.text(`This is a computer generated invoice. Generated on: ${formatDate(printTimestamp)}`, center, y + 8, { align: "center" });
-
-    doc.save(`${invoiceNoDisplay}.pdf`);
   };
+
 
   const handleSettleInvoice = async () => {
     if (!invoice?.id) return;
@@ -462,6 +340,29 @@ const CustomerInvoicePage = () => {
           .invoice-a4-sheet .font-black {
             font-weight: 700 !important;
           }
+        }
+
+        /* Download-PDF snapshot: mirrors the @media print rules above so the
+           html2canvas capture (Download PDF) matches the printed sheet
+           exactly — black text, square corners, no shadows. */
+        .pdf-snapshot,
+        .pdf-snapshot * {
+          color: #000000 !important;
+          text-shadow: none !important;
+          box-shadow: none !important;
+          print-color-adjust: exact;
+          -webkit-print-color-adjust: exact;
+        }
+        .pdf-snapshot {
+          border-radius: 0 !important;
+          border: 2px solid #000000 !important;
+          background: #ffffff !important;
+        }
+        .pdf-snapshot table,
+        .pdf-snapshot th,
+        .pdf-snapshot td,
+        .pdf-snapshot [class*="border"] {
+          border-color: #000000 !important;
         }
       `}</style>
 

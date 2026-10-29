@@ -15,13 +15,18 @@ const resolveSocketBaseURL = () => {
   return getBackendBaseURL();
 };
 
+// 127.0.0.1, not localhost: on this dev machine Node/Winsock resolve
+// localhost to ::1 (IPv6) and the backend only listens on IPv4, which broke
+// the socket script fetch with ECONNREFUSED ::1:5002.
+const SOCKET_FALLBACK_ORIGIN = "http://127.0.0.1:5002";
+
 const getSocketScriptURL = () => {
-  const base = (import.meta.env.VITE_BACKEND_ORIGIN || "http://localhost:5002").replace(/\/$/, "");
+  const base = (import.meta.env.VITE_BACKEND_ORIGIN || SOCKET_FALLBACK_ORIGIN).replace(/\/$/, "");
   return `${base}/socket.io/socket.io.js?v=${SOCKET_CLIENT_VERSION}`;
 };
 
 const getSocketServerURL = () => {
-  const base = (import.meta.env.VITE_BACKEND_ORIGIN || "http://localhost:5002").replace(/\/$/, "");
+  const base = (import.meta.env.VITE_BACKEND_ORIGIN || SOCKET_FALLBACK_ORIGIN).replace(/\/$/, "");
   return `${base}/socket.io`;
 };
 

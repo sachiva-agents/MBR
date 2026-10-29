@@ -2344,6 +2344,18 @@ const Accounts = () => {
     return null;
   };
 
+  // Distinct notes across a group's records — used to keep every note visible
+  // on the collapsed group summary row instead of only the first one.
+  const getGroupNarrations = (group) => {
+    if (!group?.records?.length) return [];
+    const notes = new Set();
+    group.records.forEach((r) => {
+      const note = String(r.narration || "").trim();
+      if (note) notes.add(note);
+    });
+    return [...notes];
+  };
+
   const toggleGroup = (key) => {
     setExpandedGroups((prev) => ({
       ...prev,
@@ -3325,7 +3337,19 @@ const Accounts = () => {
                           <tr className="transition-colors hover:bg-slate-50/50">
                             <td className="px-4 py-3 pl-12 text-xs text-slate-400 font-medium">Summary Group</td>
                             <td className="px-4 py-3 text-xs text-slate-500">
-                              {getGroupCustomerNarration(group)}
+                              {(() => {
+                                const notes = getGroupNarrations(group);
+                                if (notes.length === 0) return null;
+                                const shown =
+                                  notes.length > 2
+                                    ? `${notes.slice(0, 2).join(" • ")} (+${notes.length - 2} more)`
+                                    : notes.join(" • ");
+                                return (
+                                  <span title={notes.join("\n")} className="cursor-help">
+                                    {shown}
+                                  </span>
+                                );
+                              })()}
                             </td>
                             <td className="px-4 py-3 text-xs text-slate-600">
                               {getGroupCustomer(group) || "--"}
@@ -3387,7 +3411,11 @@ const Accounts = () => {
                                   {r.description}
                                 </td>
                                 <td className="px-4 py-2.5 text-xs text-slate-500">
-                                  {r.narration ? <span className="line-clamp-1">{r.narration}</span> : "--"}
+                                  {r.narration ? (
+                                    <span title={r.narration} className="block break-words">{r.narration}</span>
+                                  ) : (
+                                    "--"
+                                  )}
                                 </td>
                                 <td className="px-4 py-2.5 text-xs text-slate-500">
                                   {r.customerMobile || r.customerName || "--"}

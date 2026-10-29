@@ -48,6 +48,8 @@
 // -----------------------------------------------------------------------------
 
 import axios from "axios";
+import html2canvas from "html2canvas";
+import { jsPDF } from "jspdf";
 import { getBackendBaseURL } from "../../api";
 
 // Booking uploads are large and slow, so this file keeps its own instance with a
@@ -1244,8 +1246,6 @@ const InvoiceModal = ({
   const [invoice, setInvoice] = useState(null);
   const [invoiceError, setInvoiceError] = useState("");
   const [loading, setLoading] = useState(false);
-  const [sending, setSending] = useState(false);
-  const [sendStatus, setSendStatus] = useState(null);
   const [folioChargesLocal, setFolioChargesLocal] = useState(folioCharges);
   const [totalPaidLocal, setTotalPaidLocal] = useState(paidAmount);
 
@@ -1634,612 +1634,8 @@ const InvoiceModal = ({
       .replace(/\s*Only$/i, "");
   })();
 
-  const handlePrint = () => {
-    // Open the window immediately from the click handler so browser popup
-    // protection does not block the print/PDF window after invoice preparation.
-    const win = window.open("", "_blank", "width=900,height=700");
-    if (!win) {
-      console.error("Invoice window was blocked by the browser.");
-      return;
-    }
 
-    const d = invoice || {};
-    const b = booking || {};
 
-    // 🐛 FIX: this used to read `d.items` (the raw, possibly-stale invoice
-    // row from the database) FIRST, before ever looking at the live,
-    // correctly-computed `items` (built above from the booking's current
-    // rooms + folio charges). That stale row is only refreshed when a brand
-    // new invoice is generated, so if a booking was later extended to more
-    // nights/rooms, or its tariff changed, the Print Invoice output kept
-    // showing the OLD 1-room/1-night breakdown even though the on-screen
-    // total (which uses live data) was correct. It also referenced an
-    // undefined `invoiceLines` variable in its fallback branch. Fixed by
-    // always preferring the live `items`/`allItems` computed at the top of
-    // this component, and only falling back to `d.items` as a last resort.
-    const printItems =
-      Array.isArray(items) && items.length > 0
-        ? items.map((it) => ({
-            name: it.name || it.description || "Charge",
-            date: it.date || "",
-            qty: it.quantity || 1,
-            rate: it.price || it.tariff || 0,
-            amount: it.total || 0,
-          }))
-        : Array.isArray(allItems) && allItems.length > 0
-          ? allItems.map((l) => ({
-              name: l.particulars || l.description || "Charge",
-              date: l.date || "",
-              qty: l.quantity || 1,
-              rate: l.tariff || l.rate || l.price || 0,
-              amount: l.amount || l.total || 0,
-            }))
-          : Array.isArray(d.items) && d.items.length > 0
-            ? d.items
-            : [];
-
-    const invoiceNo =
-      d.invoiceNo ||
-      d.invoice_no ||
-      invoice?.invoice_number ||
-      b.bookingCode ||
-      `INV-${b.bookingId}`;
-    const guestName =
-      d.customerName || d.guestName || booking?.guest_name || "Guest";
-    const roomType = d.roomType || b.roomType || booking?.roomType || "";
-    const noOfNights =
-      d.noOfNights || b.noOfNights || b.nights || booking?.noOfNights || "";
-
-    const totalTariff = invoiceTotal;
-    const totalDiscount = invoiceDiscount;
-    const totalTaxable = invoiceSubtotal;
-    const sgst = invoiceSgst;
-    const cgst = invoiceCgst;
-    const roundOff =
-      Math.round(totalTariff * 100) / 100 - Math.round(totalTariff * 100) / 100;
-    const finalTotal = invoiceTotal;
-    const remaining = Math.max(finalTotal - paid, 0);
-    const amountInWords = toWords(finalTotal);
-    const paymentMode =
-      d.paymentMode || d.payment_method || booking?.paymentMode || "Front Desk";
-    const paymentRef = d.paymentReference || d.payment_reference || "";
-    const invoiceDate = d.date
-      ? formatDate(new Date(d.date))
-      : formatDate(new Date());
-
-    const renderRow = (item) => {
-      const dateStr = item.date ? formatDate(new Date(item.date)) : "";
-      const name = item.name || item.description || "Charge";
-      const qty = item.qty || item.quantity || 1;
-      const rate = item.rate || item.price || item.tariff || 0;
-      const disc = item.discount || 0;
-      const taxable = item.taxable || rate - disc;
-      const sgstAmt = taxable * 0.025;
-      const cgstAmt = taxable * 0.025;
-      const total = item.amount || item.total || rate * qty;
-      return `<tr>
-        <td>${dateStr}</td>
-        <td>${name}${item.description && item.description !== name ? `<div style="font-size:9px;color:#64748b">${item.description}</div>` : ""}</td>
-        <td>${formatCurrency(rate)}</td>
-        <td>${disc > 0 ? formatCurrency(disc) : "0.00"}</td>
-        <td>${formatCurrency(taxable)}</td>
-        <td>${formatCurrency(sgstAmt)}</td>
-        <td>${formatCurrency(cgstAmt)}</td>
-        <td style="font-weight:700">${formatCurrency(total)}</td>
-      </tr>`;
-    };
-
-    win.document.write(`
-      <html>
-      <head>
-        <title>${invoiceNo} - ${RESORT_NAME_INVOICE}</title>
-        <style>
-          @page { size: A4; margin: 12mm; }
-          html, body {
-            background: #ffffff !important;
-            background-color: #ffffff !important;
-            color: #0f172a;
-          }
-          * { box-sizing: border-box; margin: 0; padding: 0; }
-          body {
-            font-family: "Helvetica Neue", Arial, sans-serif;
-            color: #0f172a;
-            background: #ffffff !important;
-            background-color: #ffffff !important;
-            padding: 20px;
-            font-size: 11px;
-            line-height: 1.4;
-          }
-          .resort-header {
-            text-align: center;
-            padding: 10px 0 8px;
-            border-bottom: 2px solid #0f172a;
-            margin-bottom: 6px;
-          }
-          .resort-header .logo-row {
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 8px;
-            margin-bottom: 4px;
-          }
-          .resort-header .logo-icon {
-            width: 28px; height: 28px;
-            background: #0f172a;
-            color: #fff;
-            border-radius: 50%;
-            display: flex; align-items: center; justify-content: center;
-            font-size: 12px; font-weight: 700;
-          }
-          .resort-header h1 { font-size: 18px; font-weight: 800; letter-spacing: 0.03em; }
-          .resort-header .sub { font-size: 10px; color: #475569; margin-top: 2px; }
-          .resort-header .gst-line { font-size: 10px; color: #475569; margin-top: 1px; }
-
-          .meta-row {
-            display: grid;
-            grid-template-columns: 1fr auto 1fr;
-            gap: 0;
-            padding: 6px 0;
-            border-bottom: 1px dashed #94a3b8;
-            margin-bottom: 6px;
-            align-items: end;
-          }
-          .meta-row .left { font-weight: 700; font-size: 13px; letter-spacing: 0.06em; }
-          .meta-row .right { text-align: right; font-size: 10px; line-height: 1.6; }
-          .meta-row .right .meta-line { display: flex; justify-content: space-between; gap: 16px; white-space: nowrap; }
-          .meta-row .right .ml { color: #64748b; font-size: 9px; font-weight: 600; }
-          .meta-row .right .mv { font-weight: 700; font-size: 11px; }
-
-          .info-grid {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 6px;
-            margin-bottom: 6px;
-          }
-          .info-card {
-            border: 1px solid #cbd5e1;
-            padding: 6px 8px;
-            font-size: 10px;
-          }
-          .info-card .ic-label {
-            font-size: 8px; font-weight: 700; text-transform: uppercase;
-            letter-spacing: 0.08em; color: #64748b; margin-bottom: 2px;
-          }
-          .info-card .ic-value { font-weight: 700; font-size: 11px; }
-          .info-card .ic-sub { font-size: 10px; color: #475569; margin-top: 1px; }
-
-          table.items {
-            width: 100%;
-            border-collapse: collapse;
-            margin-top: 4px;
-            font-size: 10px;
-          }
-          table.items thead th {
-            background: #0f172a;
-            color: #ffffff;
-            padding: 5px 6px;
-            font-weight: 700;
-            text-align: left;
-            font-size: 9px;
-            text-transform: uppercase;
-            letter-spacing: 0.03em;
-            border: 1px solid #0f172a;
-          }
-          table.items tbody td {
-            padding: 4px 6px;
-            border-bottom: 1px solid #e2e8f0;
-            vertical-align: top;
-            font-size: 10px;
-          }
-          .text-right { text-align: right; }
-
-          .remarks-box {
-            border: 1px solid #cbd5e1;
-            padding: 4px 8px;
-            font-size: 10px;
-            margin-top: 4px;
-            min-height: 28px;
-          }
-          .remarks-box .rb-label {
-            font-size: 8px; font-weight: 700; text-transform: uppercase;
-            letter-spacing: 0.06em; color: #64748b;
-          }
-
-          .totals-area {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 6px;
-            margin-top: 4px;
-          }
-          .tariff-box {
-            border: 1px solid #cbd5e1;
-            padding: 4px 8px;
-            font-size: 10px;
-          }
-          .tariff-box .tb-label {
-            font-size: 8px; font-weight: 700; text-transform: uppercase;
-            letter-spacing: 0.06em; color: #64748b; margin-bottom: 2px;
-          }
-          .tariff-box .tb-row {
-            display: flex; justify-content: space-between;
-            padding: 1px 0; font-size: 10px;
-          }
-          .tariff-box .tb-row .tb-lbl { color: #475569; }
-          .tariff-box .tb-row.grand {
-            border-top: 1px solid #e2e8f0;
-            margin-top: 3px; padding-top: 3px;
-            font-weight: 800; font-size: 12px;
-          }
-
-          .payment-box {
-            border: 1px solid #cbd5e1;
-            background: #f8fafc;
-            color: #0f172a;
-            padding: 8px 10px;
-            font-size: 10px;
-          }
-          .payment-box .pb-label {
-            font-size: 8px; font-weight: 700; text-transform: uppercase;
-            letter-spacing: 0.06em; color: #475569; margin-bottom: 2px;
-          }
-          .payment-box .pb-row {
-            display: flex; justify-content: space-between;
-            padding: 1px 0; font-size: 10px;
-          }
-          .payment-box .pb-row .pb-lbl { color: #475569; }
-          .payment-box .pb-row.grand {
-            border-top: 1px solid #e2e8f0;
-            margin-top: 3px; padding-top: 3px;
-            font-weight: 800; font-size: 13px;
-          }
-          .payment-box .pb-row .pb-lbl.grand { color: #0f172a; }
-
-          .words-box {
-            border: 1px solid #cbd5e1;
-            padding: 3px 8px;
-            font-size: 10px;
-            margin-top: 4px;
-            font-style: italic;
-          }
-          .words-box .wb-label {
-            font-size: 8px; font-weight: 700; text-transform: uppercase;
-            letter-spacing: 0.06em; color: #64748b;
-          }
-
-          .footer-area {
-            margin-top: 6px;
-            padding-top: 6px;
-            border-top: 1px solid #e2e8f0;
-            text-align: center;
-            font-size: 9px;
-            color: #64748b;
-          }
-          .sig-line {
-            margin-top: 8px;
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 20px;
-          }
-          .sig-label {
-            font-size: 9px;
-            font-weight: 600;
-            color: #334155;
-          }
-        </style>
-      </head>
-      <body>
-        <div class="resort-header">
-          <div class="logo-row">
-            <div class="logo-icon">M</div>
-            <h1>${RESORT_NAME_INVOICE}</h1>
-          </div>
-          <div class="sub">${RESORT_ADDRESS_LINE_1}, ${RESORT_ADDRESS_LINE_2}</div>
-          <div class="sub">Ph: ${RESORT_PHONE_INVOICE} | Email: ${RESORT_EMAIL_INVOICE}</div>
-          <div class="gst-line">GSTIN: ${RESORT_GSTIN_INVOICE} | State: ${RESORT_STATE_CODE_INVOICE}</div>
-        </div>
-
-        <div class="meta-row">
-          <div class="left">TAX INVOICE</div>
-          <div class="right">
-            <div class="meta-line"><span class="ml">Invoice No.</span><span class="mv">${invoiceNo}</span></div>
-            <div class="meta-line"><span class="ml">Folio No.</span><span class="mv">${b.bookingId || "-"}</span></div>
-            <div class="meta-line"><span class="ml">Invoice Date</span><span class="mv">${invoiceDate}</span></div>
-            <div class="meta-line"><span class="ml">Room No.</span><span class="mv">104</span></div>
-            <div class="meta-line"><span class="ml">Room Type</span><span class="mv">${roomType || "-"}</span></div>
-            <div class="meta-line"><span class="ml">Arrival</span><span class="mv">${d.check_in || b.check_in ? formatDate(new Date(d.check_in || b.check_in)) : "-"}</span></div>
-            <div class="meta-line"><span class="ml">Departure</span><span class="mv">${d.check_out || b.check_out ? formatDate(new Date(d.check_out || b.check_out)) : "-"}</span></div>
-            <div class="meta-line"><span class="ml">Pax</span><span class="mv">${d.noOfGuests || d.guestCapacity || b.noOfGuests || b.guestCapacity || booking?.noOfGuests || "2 Adults, 0"}</span></div>
-            <div class="meta-line"><span class="ml">No. of Nights</span><span class="mv">${noOfNights || "-"}</span></div>
-          </div>
-        </div>
-
-        <div class="info-grid">
-          <div class="info-card">
-            <div class="ic-label">Guest Name</div>
-            <div class="ic-value">${guestName}</div>
-            <div class="ic-sub">Address: ${d.address || b.address || booking?.address || "-"}</div>
-            <div class="ic-sub">Contact #: ${d.mobile || b.mobile || booking?.mobile || "-"}</div>
-            ${companyName ? `<div class="ic-sub">Company: ${companyName}</div>` : ""}
-            ${companyGstin ? `<div class="ic-sub">GSTIN: ${companyGstin}</div>` : ""}
-          </div>
-          <div class="info-card">
-            <div class="ic-label">Stay Details</div>
-            <div class="ic-sub">Arrival: ${d.check_in || b.check_in ? formatDate(new Date(d.check_in || b.check_in)) : "-"}</div>
-            <div class="ic-sub">Departure: ${d.check_out || b.check_out ? formatDate(new Date(d.check_out || b.check_out)) : "-"}</div>
-            <div class="ic-sub">Pax: ${d.noOfGuests || d.guestCapacity || b.noOfGuests || b.guestCapacity || booking?.noOfGuests || "2 Adults, 0"} | No. of Nights: ${noOfNights || "-"}</div>
-          </div>
-        </div>
-
-        <table class="items">
-          <thead>
-            <tr>
-              <th style="width:8%">Date</th>
-              <th style="width:32%">Particulars</th>
-              <th style="width:11%" class="text-right">Tariff</th>
-              <th style="width:9%" class="text-right">Disc</th>
-              <th style="width:11%" class="text-right">Taxable</th>
-              <th style="width:10%" class="text-right">SGST 2.50%</th>
-              <th style="width:10%" class="text-right">CGST 2.50%</th>
-              <th style="width:9%" class="text-right">Total</th>
-            </tr>
-          </thead>
-          <tbody>
-            ${printItems.length > 0 ? printItems.map(renderRow).join("") : `<tr><td colspan="8" style="text-align:center;color:#94a3b8;padding:12px">No charges recorded</td></tr>`}
-          </tbody>
-        </table>
-
-        <div class="remarks-box">
-          <span class="rb-label">Remarks: </span>
-        </div>
-
-        <div class="totals-area">
-          <div>
-            <div class="tariff-box">
-              <div class="tb-label">Tariff Total</div>
-              <div class="tb-row"><span class="tb-lbl">Discount</span><span>0.00</span></div>
-              <div class="tb-row"><span class="tb-lbl">Taxable Amount</span><span>${formatCurrency(totalTaxable)}</span></div>
-              <div class="tb-row"><span class="tb-lbl">SGST</span><span>${formatCurrency(sgst)}</span></div>
-              <div class="tb-row"><span class="tb-lbl">CGST</span><span>${formatCurrency(cgst)}</span></div>
-              <div class="tb-row"><span class="tb-lbl">Room Total</span><span>${formatCurrency(totalTariff)}</span></div>
-              <div class="tb-row"><span class="tb-lbl">Round Off Disc.</span><span>0.00</span></div>
-              <div class="tb-row grand"><span class="tb-lbl">Final Total</span><span>${formatCurrency(finalTotal)}</span></div>
-              <div class="tb-row"><span class="tb-lbl">Service Total</span><span>0.00</span></div>
-            </div>
-            <div class="words-box">
-              <span class="wb-label">Rupees ${amountInWords.replace("Rupees ", "").replace(" Only", "")} Only</span>
-            </div>
-          </div>
-          <div>
-            <div class="payment-box">
-              <div class="pb-label">Payment Detail</div>
-              <div class="pb-row"><span class="pb-lbl">UPI / Mode</span><span>${paymentMode}${paymentRef ? " (" + paymentRef + ")" : ""}</span></div>
-              <div class="pb-row grand"><span class="pb-lbl grand">Final Total</span><span>${formatCurrency(finalTotal)}</span></div>
-              <div class="pb-row"><span class="pb-lbl">Service Total</span><span>0.00</span></div>
-              <div class="pb-row"><span class="pb-lbl">Balance</span><span>${formatCurrency(remaining)}</span></div>
-            </div>
-          </div>
-        </div>
-
-        <div class="footer-area">
-          <div>Invoice issued under section 31 of CGST Act, 2017</div>
-          <div style="margin-top:2px">Thank you for staying with ${RESORT_NAME_INVOICE}.</div>
-        </div>
-        <div class="sig-line">
-          <div>
-            <div class="sig-label">For MAA BAGLAMUKHI RESORT</div>
-            <div style="margin-top:18px;border-top:1px solid #0f172a;display:inline-block;padding-top:3px;font-size:9px;font-weight:600;color:#334155">Authorised Signature</div>
-          </div>
-          <div style="text-align:right">
-            <div class="sig-label">Guest Signature</div>
-            <div style="margin-top:18px;border-top:1px solid #0f172a;display:inline-block;padding-top:3px;font-size:9px;font-weight:600;color:#334155"></div>
-          </div>
-        </div>
-      </body>
-      </html>
-    `);
-    win.document.close();
-    const printInvoice = () => {
-      win.focus();
-      win.print();
-    };
-    if (win.document.readyState === "complete") {
-      window.setTimeout(printInvoice, 150);
-    } else {
-      win.addEventListener("load", () => window.setTimeout(printInvoice, 150), {
-        once: true,
-      });
-    }
-  };
-
-  const handleDownloadPdf = () => {
-    if (!bookingId) return;
-
-    API.get(`/invoice/${bookingId}/pdf`, { responseType: "blob" })
-      .then((response) => {
-        const contentDisposition = response.headers["content-disposition"] || "";
-        const filenameMatch = contentDisposition.match(
-          /filename\*?=(?:UTF-8'')?"?([^";]+)"?/i,
-        );
-        const filename = filenameMatch?.[1]
-          ? decodeURIComponent(filenameMatch[1])
-          : `Tax_Invoice_${invoiceNo}.pdf`;
-        const url = URL.createObjectURL(response.data);
-        const anchor = document.createElement("a");
-        anchor.href = url;
-        anchor.download = filename;
-        document.body.appendChild(anchor);
-        anchor.click();
-        anchor.remove();
-        URL.revokeObjectURL(url);
-      })
-      .catch((error) => {
-        console.error("Failed to download hotel invoice PDF:", error);
-      });
-  };
-  const handleSendNotification = async () => {
-    if (!bookingId || !invoice) {
-      setSendStatus({
-        type: "error",
-        message: "Invoice not ready yet. Please wait or Regenerate.",
-      });
-      return;
-    }
-    setSending(true);
-    setSendStatus(null);
-    console.group("[Invoice] Send WhatsApp + SMS", {
-      bookingId,
-      invoiceNo: invoice?.invoiceNo,
-    });
-    try {
-      let adminNumber = "";
-
-      const localStoragePhone = localStorage.getItem("phone") || "";
-      console.log(
-        "[Invoice] localStorage phone:",
-        localStoragePhone || "(empty)",
-      );
-      if (localStoragePhone) {
-        adminNumber = localStoragePhone;
-      }
-
-      if (!adminNumber) {
-        try {
-          const meRes = await API.get("/users/me");
-          adminNumber = meRes.data?.phone || meRes.data?.user?.phone || "";
-          console.log(
-            "[Invoice] /users/me phone:",
-            adminNumber || "(empty)",
-            "full response:",
-            meRes.data,
-          );
-        } catch (err) {
-          console.warn("[Invoice] /users/me failed:", err.message);
-        }
-      }
-
-      console.log(
-        "[Invoice] Final adminNumber to send:",
-        adminNumber || "(empty — backend will DB-fallback)",
-      );
-
-      if (!adminNumber) {
-        const envAdmin =
-          (import.meta &&
-            import.meta.env &&
-            import.meta.env.VITE_ADMIN_WHATSAPP_NUMBER) ||
-          "";
-        if (envAdmin) {
-          adminNumber = envAdmin;
-          console.log(
-            "[Invoice] using VITE_ADMIN_WHATSAPP_NUMBER from env:",
-            envAdmin,
-          );
-        }
-      }
-
-      console.log(
-        "[Invoice] Final adminNumber to send:",
-        adminNumber || "(empty — backend will DB-fallback)",
-      );
-
-      const cleanNumber = (num) => {
-        const digits = String(num || "").replace(/\D/g, "");
-        if (!digits) return "";
-        return digits.length > 10 ? digits : `91${digits}`;
-      };
-
-      const payload = {
-        adminNumber: cleanNumber(adminNumber),
-        customerNumber: cleanNumber(invoice?.phone || booking?.mobile || ""),
-        // Pass the frontend-computed invoice data so the backend PDF and
-        // WhatsApp message match exactly what the user sees on screen.
-        invoiceData: {
-          invoiceNo: invoiceNo,
-          totalAmount: invoiceTotal,
-          subtotal: invoiceSubtotal || invoiceTotal,
-          tax: invoiceTax,
-          discount: invoiceDiscount,
-          paymentStatus:
-            invoice?.paymentStatus ||
-            invoice?.payment_status ||
-            (remainingAmount > 0 ? "Pending" : "Paid"),
-          paymentMode:
-            invoice?.paymentMode ||
-            invoice?.payment_method ||
-            booking?.payment_mode ||
-            "Cash",
-          customerName: guestName,
-          phone: invoice?.phone || booking?.mobile || "",
-          roomNumber: roomNo,
-          checkIn:
-            invoice?.checkIn || invoice?.check_in || booking?.check_in || "",
-          checkOut:
-            invoice?.checkOut || invoice?.check_out || booking?.check_out || "",
-          address: guestAddress,
-          items: items.map((it) => ({
-            name: it.name || it.description || "Charge",
-            price: it.price || it.tariff || 0,
-            quantity: it.quantity || 1,
-            // 🐛 FIX: gstPercent wasn't being passed through at all, so the
-            // backend PDF had no way to know this item's real tax rate and
-            // fell back to assuming a flat 5% GST on every line — inflating
-            // the total for rooms configured with a different (or 0%) rate.
-            gstPercent: it.gst ?? it.gstPercent ?? 0,
-            total: it.total || it.price || it.tariff || 0,
-            date: it.date || "",
-            discount: it.disc || it.discount || 0,
-          })),
-        },
-      };
-      console.log("[Invoice] POST payload:", payload);
-      const pdfRes = await API.post(`/hotel/invoice/pdf`, payload);
-      const data = pdfRes.data || {};
-      console.log("[WhatsApp] full response:", JSON.stringify(data, null, 2));
-      console.log("[WhatsApp] customer.whatsapp:", data?.customer?.whatsapp);
-      console.log("[WhatsApp] admin.whatsapp:", data?.admin?.whatsapp);
-
-      const customerWa = data?.customer?.whatsapp || {};
-      const adminWa = data?.admin?.whatsapp || {};
-
-      const channels = [];
-      if (customerWa?.ok)
-        channels.push(
-          `customer WhatsApp${customerWa?.fallback ? " (text+link)" : ""}`,
-        );
-      if (adminWa?.ok)
-        channels.push(
-          `admin WhatsApp${adminWa?.fallback ? " (text+link)" : ""}`,
-        );
-
-      const skipped = [];
-      if (customerWa?.skipped)
-        skipped.push(`customer WhatsApp (${customerWa.reason || "no number"})`);
-      if (adminWa?.skipped)
-        skipped.push(`admin WhatsApp (${adminWa.reason || "no number"})`);
-
-      if (channels.length > 0) {
-        setSendStatus({
-          type: "success",
-          message: `Invoice sent via: ${channels.join(", ")}${skipped.length ? ". Skipped: " + skipped.join(", ") : ""}`,
-        });
-      } else {
-        const errMsg = customerWa?.error || adminWa?.error || "Unknown error";
-        setSendStatus({
-          type: "error",
-          message: `Could not send: ${errMsg.length > 100 ? errMsg.substring(0, 100) + "..." : errMsg}`,
-        });
-      }
-    } catch (err) {
-      console.error("[Invoice] Send failed:", err);
-      console.groupEnd();
-      setSendStatus({
-        type: "error",
-        message: err.response?.data?.error || err.message || "Send failed",
-      });
-    } finally {
-      setSending(false);
-    }
-  };
 
   return (
     <FeatureModal
@@ -2271,48 +1667,14 @@ const InvoiceModal = ({
               <span className="text-[14px] font-bold uppercase tracking-wider text-slate-400">
                 Invoice Actions
               </span>
-              {sendStatus ? (
-                <div
-                  className={`rounded-full px-3 py-1.5 text-[13px] font-semibold border ${
-                    sendStatus.type === "success"
-                      ? "bg-emerald-50 text-emerald-700 border-emerald-200"
-                      : "bg-rose-50 text-rose-700 border-rose-200"
-                  }`}
-                >
-                  {sendStatus.message}
-                </div>
-              ) : null}
             </div>
             <div className="flex flex-wrap gap-2">
-              <button
-                type="button"
-                onClick={handleSendNotification}
-                disabled={sending || loading || !invoice}
-                className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-500 px-5 h-12 text-[17px] font-bold text-white shadow-lg shadow-emerald-200 hover:from-emerald-700 hover:to-teal-600 hover:shadow-xl hover:-translate-y-0.5 active:scale-[0.98] transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap"
-              >
-                <FaWhatsapp className="text-lg" />
-                {sending ? "Sending..." : "Send WhatsApp + SMS"}
-              </button>
               <button
                 type="button"
                 onClick={loadInvoice}
                 className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-5 h-12 text-[17px] font-bold text-slate-700 shadow-sm hover:bg-slate-50 hover:border-slate-300 hover:-translate-y-0.5 active:scale-[0.98] transition-all duration-300 whitespace-nowrap"
               >
                 <FaSync className="text-sm" /> Regenerate
-              </button>
-              <button
-                type="button"
-                onClick={handlePrint}
-                className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-5 h-12 text-[17px] font-bold text-slate-700 shadow-sm hover:bg-slate-50 hover:border-slate-300 hover:-translate-y-0.5 active:scale-[0.98] transition-all duration-300 whitespace-nowrap"
-              >
-                <FaPrint className="text-sm" /> Print
-              </button>
-              <button
-                type="button"
-                onClick={handleDownloadPdf}
-                className="inline-flex items-center gap-2 rounded-xl bg-blue-600 px-5 h-12 text-[17px] font-bold text-white shadow-lg shadow-blue-200 hover:bg-blue-700 hover:shadow-xl hover:-translate-y-0.5 active:scale-[0.98] transition-all duration-300 whitespace-nowrap"
-              >
-                <FaDownload className="text-sm" /> PDF
               </button>
             </div>
           </div>
@@ -3585,6 +2947,7 @@ const BookingFlow = () => {
   const [showAddRoom, setShowAddRoom] = useState(false);
 
   const [selectedBookingId, setSelectedBookingId] = useState(null);
+  const [hotelPdfBusy, setHotelPdfBusy] = useState(false);
 
   /* ---------- navigation between the 5 "screens" (all local state) ---------- */
 
@@ -4758,23 +4121,12 @@ const BookingFlow = () => {
   };
 
   // ============================================================
-  // PRINT-INVOICE: builds a proper A4 tax invoice matching the
-  // reference image layout exactly (traditional paper invoice
-  // format used by the resort's printed bill).
-  //
-  // Layout matches the reference image row-for-row:
-  //   1. "Tax Invoice" centered title (bold)
-  //   2. Resort name + logo + address block
-  //   3. Guest-info (left) | Booking-info (right) grid
-  //   4. Billing-Details items table (Date | Particulars |
-  //      Tariff | Disc | Taxable | SGST | CGST | Total)
-  //   5. Remarks (left) | Payment-summary (right)
-  //   6. Amount-in-words (left) | Final Total (right)
-  //   7. Invoice Note (left) | Payment Detail (right)
-  //   8. Authorized + Guest signature lines
-  //   9. "Invoice Generated By" footer
-  // ============================================================
-  const handlePrintInvoiceDirect = () => {
+  // Shared "Tax Invoice" document builder — the single source of truth for
+  // the hotel print/PDF invoice. Both the "Print Invoice" button and the
+  // "PDF" download render THIS template (via buildHotelInvoiceDocument),
+  // so the downloaded file is pixel-identical to the printed sheet instead
+  // of a separate, divergent layout.
+  const buildHotelInvoiceDocument = () => {
     const d = bookingDetail || {};
     const b = selectedBooking || {};
 
@@ -4960,9 +4312,6 @@ const BookingFlow = () => {
       .replace(/^Rupees\s+/i, "")
       .replace(/\s*Only$/i, "");
 
-    const win = window.open("", "_blank", "width=900,height=1100");
-    if (!win) return;
-
     const renderInvoiceRow = (item) => `
       <tr>
         <td class="td-date">${item.date}</td>
@@ -4983,7 +4332,7 @@ const BookingFlow = () => {
         maximumFractionDigits: 2,
       });
 
-    win.document.write(`
+    return `
       <html>
       <head>
         <title>${invoiceNo} - ${RESORT_NAME_INVOICE}</title>
@@ -5489,10 +4838,93 @@ const BookingFlow = () => {
         </div>
       </body>
       </html>
-    `);
+    `;
+  };
+
+  // "Print Invoice" button: render the shared document in a fresh A4 window
+  // and print it — the EXACT same markup the PDF download captures.
+  const handlePrintInvoiceDirect = () => {
+    const html = buildHotelInvoiceDocument();
+    const win = window.open("", "_blank", "width=900,height=1100");
+    if (!win) return;
+    win.document.write(html);
     win.document.close();
-    win.focus();
-    win.print();
+    const doPrint = () => {
+      win.focus();
+      win.print();
+    };
+    if (win.document.readyState === "complete") {
+      window.setTimeout(doPrint, 150);
+    } else {
+      win.addEventListener("load", () => window.setTimeout(doPrint, 150), {
+        once: true,
+      });
+    }
+  };
+
+  // "PDF" download: capture the SAME shared document in an offscreen iframe,
+  // rasterise it and save as A4 — so the downloaded file matches the printed
+  // sheet (both render buildHotelInvoiceDocument).
+  const handleDownloadHotelInvoicePdf = async () => {
+    if (hotelPdfBusy) return;
+    setHotelPdfBusy(true);
+    let iframe = null;
+    try {
+      const html = buildHotelInvoiceDocument();
+      iframe = document.createElement("iframe");
+      iframe.style.cssText =
+        "position:fixed;left:-10000px;top:0;width:794px;height:1123px;border:0;";
+      document.body.appendChild(iframe);
+      const idoc = iframe.contentDocument;
+      idoc.open();
+      idoc.write(html);
+      idoc.close();
+      await new Promise((r) => setTimeout(r, 200));
+
+      const canvas = await html2canvas(idoc.body, {
+        scale: 2,
+        useCORS: true,
+        backgroundColor: "#ffffff",
+      });
+      const pdf = new jsPDF("p", "mm", "a4");
+      const pageW = pdf.internal.pageSize.getWidth();
+      const pageH = pdf.internal.pageSize.getHeight();
+      const imgData = canvas.toDataURL("image/jpeg", 0.92);
+      const imgH = (canvas.height * pageW) / canvas.width;
+      if (imgH <= pageH + 1) {
+        pdf.addImage(imgData, "JPEG", 0, 0, pageW, imgH);
+      } else {
+        let position = 0;
+        let pageNo = 0;
+        while (position < imgH) {
+          if (pageNo > 0) pdf.addPage();
+          pdf.addImage(imgData, "JPEG", 0, -position, pageW, imgH);
+          position += pageH;
+          pageNo += 1;
+        }
+      }
+      const docNo =
+        (bookingDetail?.invoice_no ||
+          bookingDetail?.invoiceNo ||
+          selectedBooking?.bookingCode ||
+          `INV-${selectedBooking?.bookingId}`) ||
+          "invoice";
+      pdf.save(`Tax_Invoice_${docNo}.pdf`);
+    } catch (err) {
+      console.error("Hotel invoice PDF failed:", err);
+      alert(
+        "PDF could not be generated. Use the Print button and choose “Save as PDF”."
+      );
+    } finally {
+      if (iframe) {
+        try {
+          document.body.removeChild(iframe);
+        } catch {
+          /* noop */
+        }
+      }
+      setHotelPdfBusy(false);
+    }
   };
 
   const handleCloseGroupBooking = () => {
@@ -6758,6 +6190,14 @@ const BookingFlow = () => {
             */}
             <button onClick={handlePrintInvoiceDirect} className={ghostBtn}>
               <FaPrint className="text-sm" /> Print Invoice
+            </button>
+            <button
+              onClick={handleDownloadHotelInvoicePdf}
+              disabled={hotelPdfBusy}
+              className="inline-flex items-center gap-2 px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-lg shadow-md transition-all duration-200 hover:shadow-lg text-sm disabled:opacity-50"
+            >
+              <FaDownload className="text-sm" />
+              {hotelPdfBusy ? "Preparing PDF…" : "Download PDF"}
             </button>
             <button onClick={() => openEditBooking(b)} className={ghostBtn}>
               <FaEdit className="text-sm" /> Edit

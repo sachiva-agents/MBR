@@ -24,6 +24,7 @@
     "country-state-city": "^3.2.1",
     "date-fns": "^4.1.0",
     "jsonwebtoken": "^9.0.3",
+    "html2canvas": "^1.4.1",
     "jspdf": "^4.2.1",
     "lucide-react": "^0.575.0",
     "react": "^19.2.0",
