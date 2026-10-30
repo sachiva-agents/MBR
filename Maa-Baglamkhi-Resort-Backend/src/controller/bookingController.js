@@ -1952,25 +1952,47 @@ exports.updateAdvance = async (req, res) => {
       }
     });
 
-    // Auto-print advance payment receipt
+    // Auto-print advance payment receipt — but using the SAME full
+    // "Tax_Invoice" design as the invoice PDF (not the thin ADV receipt).
+    // The invoice payload (items, GST, dates, totals) is fetched live so
+    // the printed sheet is 100% identical to the Tax_Invoice_*.pdf file;
+    // if it can't be built, fall back to the thin advance data.
     setImmediate(async () => {
       try {
         const { InvoicePrintService } = require("../services/InvoicePrintService");
+        const InvoiceModel = require("../models/InvoiceModel");
         const booking = await getBookingSummaryById(req.params.id);
-        await InvoicePrintService.immediatePrintInvoice("advance_payment", {
-          bookingId: req.params.id,
-          invoiceNo: `ADV-${req.params.id}`,
-          customerName: booking?.guest_name || "Guest",
-          phone: booking?.mobile || "",
-          roomNumber: booking?.rooms || "",
-          totalAmount: Number(data.amount || data.paidAmount || 0),
-          discount: Number(data.discountAmount || data.discount_amount || 0),
-          subtotal: Number(data.amount || data.paidAmount || 0),
-          tax: 0,
-          paymentMode: data.paymentMode || "Cash",
-          paymentStatus: "Paid",
-          printedBy: "System (Advance)",
-        });
+
+        let invoiceData;
+        try {
+          invoiceData = await InvoiceModel.generateCustomerInvoice(Number(req.params.id));
+        } catch {
+          invoiceData = null;
+        }
+
+        invoiceData = invoiceData
+          ? {
+              ...invoiceData,
+              invoiceNo: invoiceData.invoiceNo || `ADV-${req.params.id}`,
+              paymentMode: invoiceData.paymentMode || data.paymentMode || "Cash",
+              printedBy: "System (Advance)",
+            }
+          : {
+              bookingId: req.params.id,
+              invoiceNo: `ADV-${req.params.id}`,
+              customerName: booking?.guest_name || "Guest",
+              phone: booking?.mobile || "",
+              roomNumber: booking?.rooms || "",
+              totalAmount: Number(data.amount || data.paidAmount || 0),
+              discount: Number(data.discountAmount || data.discount_amount || 0),
+              subtotal: Number(data.amount || data.paidAmount || 0),
+              tax: 0,
+              paymentMode: data.paymentMode || "Cash",
+              paymentStatus: "Paid",
+              printedBy: "System (Advance)",
+            };
+
+        await InvoicePrintService.immediatePrintInvoice("advance_payment", invoiceData);
       } catch (err) {
         console.error("[auto-print] advance receipt failed:", err.message);
       }

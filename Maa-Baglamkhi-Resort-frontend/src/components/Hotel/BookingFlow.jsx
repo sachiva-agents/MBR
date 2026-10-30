@@ -98,7 +98,7 @@ bookingAPI.interceptors.response.use(
   },
 );
 
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import {
   FaPlus,
@@ -2492,6 +2492,13 @@ const BookingFlow = () => {
 
   const [formData, setFormData] = useState(emptyForm());
   const [saving, setSaving] = useState(false);
+  // Synchronous re-entrancy lock. `disabled={saving}` only blocks the button on
+  // the NEXT render, so a fast double/triple-click (or any repeated trigger
+  // inside the same tick) runs handleSaveBooking several times before the UI
+  // re-renders — each run POSTs a brand-new /hotel/guest booking and each one
+  // auto-sends its "Booking Confirmed" WhatsApp, so the guest sees it 3x.
+  // This ref is set immediately and synchronously, closing that window.
+  const savingRef = useRef(false);
   const [categorySetup, setCategorySetup] = useState([]);
 
   const [selectedBooking, setSelectedBooking] = useState(null);
@@ -3397,6 +3404,12 @@ const BookingFlow = () => {
 
   const handleSaveBooking = async () => {
     if (!validateForm()) return;
+    // Synchronous lock: block concurrent re-entry. `saving` state only disables
+    // the button after a re-render, so without this a fast double/triple-click
+    // starts 3 parallel saves — each creates a NEW booking and each auto-sends
+    // its "Booking Confirmed" WhatsApp, so the guest sees it 3 times.
+    if (savingRef.current) return;
+    savingRef.current = true;
     setSaving(true);
     try {
       let bookingId = formData.bookingId;
@@ -3598,6 +3611,7 @@ const BookingFlow = () => {
       );
     } finally {
       setSaving(false);
+      savingRef.current = false;
     }
   };
 

@@ -65,7 +65,16 @@ const immediatePrintInvoice = async (printType, invoiceData, printerKey) => {
     let pdfResult;
     try {
       // Try using the specialized generator based on print type
-      if (printType === "gst_invoice" || printType === "final_invoice" || printType === "checkout_bill") {
+      // `advance_payment` uses the SAME full GST-design generator as the
+      // downloaded/WhatsApp'd "Tax_Invoice_..." file (invoicePdfService),
+      // so an advance print is 100% identical to that invoice — the old
+      // generic `invoice_ADV-<id>.pdf` receipt layout was dropped.
+      if (
+        printType === "gst_invoice" ||
+        printType === "final_invoice" ||
+        printType === "checkout_bill" ||
+        printType === "advance_payment"
+      ) {
         pdfResult = await generateLegacyInvoicePdf(invoiceData);
       } else if (printType === "restaurant_bill_a4") {
         pdfResult = await generateRestaurantInvoicePdf(invoiceData);
