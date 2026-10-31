@@ -1522,11 +1522,15 @@ const InvoiceModal = ({
     invoice?.payment_method ||
     booking?.payment_mode ||
     "UPI";
+  // Whoever is logged in generated this invoice — same source the rest of
+  // the app uses for "currentUser" (localStorage "name"/"username").
   const generatedBy =
     invoice?.generatedBy ||
     booking?.generated_by ||
     booking?.staff_name ||
-    "ABHISHEK RATHORE";
+    localStorage.getItem("name") ||
+    localStorage.getItem("username") ||
+    "";
   const paymentNoteText = "Thanks Pl Visit Again!!!";
 
   // 2-decimal money formatter used by the preview (en-IN, no currency symbol)
@@ -4212,7 +4216,14 @@ const BookingFlow = () => {
     const amountInWords = toWords(finalTotal);
     const paymentMode =
       d.payment_mode || d.paymentMode || b.payment_mode || "UPI";
-    const generatedBy = b.generated_by || b.staff_name || "ABHISHEK RATHORE";
+    // Whoever is logged in generated this invoice — same source the rest of
+    // the app uses for the current user (localStorage "name"/"username").
+    const generatedBy =
+      b.generated_by ||
+      b.staff_name ||
+      localStorage.getItem("name") ||
+      localStorage.getItem("username") ||
+      "";
 
     // Build per-day line items (one row per night of stay), exactly like
     // the reference: "Room Charges - SUPER Deluxe - SUPER Deluxe" on its
