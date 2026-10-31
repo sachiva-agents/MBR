@@ -34,7 +34,20 @@ const DESCRIPTION_SUGGESTIONS = {
   ],
 };
 
-const DEPARTMENT_OPTIONS = ["Room", "Restaurant", "Other"];
+// Standard hotel departments — match the backend chart-of-accounts
+// classification so a department picked here books to the right ledger
+// account instead of the catch-all "Other Expenses".
+const DEPARTMENT_OPTIONS = [
+  "Hotel",
+  "Restaurant",
+  "Banquet",
+  "Payroll",
+  "Utilities",
+  "Maintenance",
+  "Office & Admin",
+  "Marketing",
+  "Other",
+];
 
 const TransactionForm = ({ type, onSubmit, onCancel, initialData = {} }) => {
   const [form, setForm] = useState({
@@ -46,7 +59,7 @@ const TransactionForm = ({ type, onSubmit, onCancel, initialData = {} }) => {
     amount: initialData.amount ?? "",
     paymentMode: initialData.paymentMode || "UPI",
     department:
-      initialData.department || (type === "Income" ? "Room" : "Other"),
+      initialData.department || (type === "Income" ? "Hotel" : "Other"),
   });
   const [errors, setErrors] = useState({});
 

@@ -169,16 +169,6 @@ const generateRestaurantInvoicePdf = async (bill) => {
       THEME.primaryDark,
     );
 
-    // Logo / mark circle on the left
-    drawRoundedRect(doc, 36, 22, 66, 66, 16, THEME.white, null);
-    doc.fillColor(THEME.primary)
-      .font("Helvetica-Bold")
-      .fontSize(28)
-      .text("M", 36, 22, { width: 66, align: "center" });
-    doc.fillColor(THEME.accent)
-      .circle(99, 35, 5)
-      .fill();
-
     // Brand text (right of logo)
     doc.fillColor(THEME.white)
       .font("Helvetica-Bold")

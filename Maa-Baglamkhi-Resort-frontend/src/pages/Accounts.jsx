@@ -641,6 +641,11 @@ const Accounts = () => {
   const [selectedBanquetHall, setSelectedBanquetHall] = useState("all");
   const [selectedPaymentMode, setSelectedPaymentMode] = useState("all");
   const [nameSearch, setNameSearch] = useState("");
+  const [departmentFilter, setDepartmentFilter] = useState("all");
+  // Group the ledger "By Name" (party/customer) or "By Department" (standard
+  // chart category: Hotel, Banquet, Utilities …). Department mode is the
+  // classic ledger view; name mode keeps the customer-oriented groups.
+  const [groupMode, setGroupMode] = useState("name");
   const [transactionPage, setTransactionPage] = useState(1);
   const [billingPage, setBillingPage] = useState(1);
   const [bankLedgerStatusFilter, setBankLedgerStatusFilter] = useState("all");
@@ -2323,6 +2328,16 @@ const Accounts = () => {
       return { key: customerKey, label: customerLabel };
     }
 
+    // No party on the row — group by its standard department instead of
+    // shoving it into one giant "Other" pile. The backend books every ledger
+    // row into a real chart account (Hotel Operating, Utilities,
+    // Maintenance, Banquet …), so nameless records now form proper
+    // department groups, exactly like a standard ledger.
+    const department = String(record.department || "").trim();
+    if (department && department.toLowerCase() !== "other") {
+      return { key: `department:${department.toLowerCase()}`, label: department };
+    }
+
     return { key: '__ungrouped', label: 'Other' };
   };
 
@@ -2363,10 +2378,22 @@ const Accounts = () => {
     }));
   };
 
+  // "By Department" grouping key: one group per standard department label
+  // (Hotel, Banquet, Utilities …). Unclassified rows pool under "Other".
+  const getDepartmentGroupKey = (record) => {
+    const department = String(record.department || "").trim();
+    const label =
+      department && department.toLowerCase() !== "other" ? department : "Other";
+    return { key: `department:${label.toLowerCase()}`, label };
+  };
+
   const groupedTransactions = useMemo(() => {
     const map = new Map();
     (records || []).forEach((record) => {
-      const { key, label } = getGroupKey(record);
+      const { key, label } =
+        groupMode === "department"
+          ? getDepartmentGroupKey(record)
+          : getGroupKey(record);
       if (!map.has(key)) {
         map.set(key, {
           name: label,
@@ -2386,11 +2413,14 @@ const Accounts = () => {
       }
     });
     return Array.from(map.values()).sort((a, b) => {
-      if (a.key === '__ungrouped') return 1;
-      if (b.key === '__ungrouped') return -1;
+      // "Other"/ungrouped pools last, in both name mode (__ungrouped) and
+      // department mode (department:other).
+      const aLast = a.key === '__ungrouped' || a.key === 'department:other';
+      const bLast = b.key === '__ungrouped' || b.key === 'department:other';
+      if (aLast !== bLast) return aLast ? 1 : -1;
       return a.key.localeCompare(b.key, undefined, { sensitivity: 'base' });
     });
-  }, [records]);
+  }, [records, groupMode]);
 
   const expandAllGroups = () => {
     const allKeys = groupedTransactions.map((g) => g.key);
@@ -2407,12 +2437,21 @@ const Accounts = () => {
 
 
   const filteredGroupedTransactions = useMemo(() => {
-    if (selectedPaymentMode === "all") return groupedTransactions;
+    // Both the payment-mode and the department filters are per-record; apply
+    // whichever is active (either, or both) before re-totalling each group.
+    const matches = (record) => {
+      if (selectedPaymentMode !== "all" && normalizePaymentMode(record.paymentMode) !== selectedPaymentMode) {
+        return false;
+      }
+      if (departmentFilter !== "all") {
+        const dept = String(record.department || "").trim().toLowerCase();
+        if (dept !== departmentFilter) return false;
+      }
+      return true;
+    };
     return groupedTransactions
       .map((group) => {
-        const filteredRecords = group.records.filter((record) =>
-          normalizePaymentMode(record.paymentMode) === selectedPaymentMode,
-        );
+        const filteredRecords = group.records.filter(matches);
         if (filteredRecords.length === 0) return null;
         const income = filteredRecords
           .filter((r) => r.type === "Income")
@@ -2423,7 +2462,33 @@ const Accounts = () => {
         return { ...group, records: filteredRecords, income, expense };
       })
       .filter(Boolean);
-  }, [groupedTransactions, selectedPaymentMode]);
+  }, [groupedTransactions, selectedPaymentMode, departmentFilter]);
+
+  // Standard department list for the ledger filter, unioned with whatever the
+  // current records actually carry so a custom department is never hidden.
+  const departmentFilterOptions = useMemo(() => {
+    const standard = [
+      "Hotel",
+      "Restaurant",
+      "Banquet",
+      "Payroll",
+      "Utilities",
+      "Maintenance",
+      "Admin",
+      "Marketing",
+      "COGS",
+      "Other",
+    ];
+    const present = new Set(
+      (records || [])
+        .map((r) => String(r.department || "").trim())
+        .filter(Boolean)
+    );
+    const extra = [...present].filter(
+      (d) => !standard.some((s) => s.toLowerCase() === d.toLowerCase())
+    );
+    return [...standard, ...extra];
+  }, [records]);
 
   const searchTerm = String(nameSearch || "").trim().toLowerCase();
 
@@ -2483,7 +2548,13 @@ const Accounts = () => {
 
   React.useEffect(() => {
     setTransactionPage(1);
-  }, [searchTerm, selectedPaymentMode]);
+  }, [searchTerm, selectedPaymentMode, departmentFilter, groupMode]);
+
+  // Switching between "By Name" and "By Department" rebuilds every group, so
+  // collapse them all — previously-opened group keys no longer exist.
+  React.useEffect(() => {
+    setExpandedGroups({});
+  }, [groupMode]);
 
   const transactionTotalPages = Math.max(1, Math.ceil(searchFilteredGroupedTransactions.length / TRANSACTION_PAGE_SIZE));
   const paginatedTransactionRecords = searchFilteredGroupedTransactions.slice(
@@ -3225,11 +3296,33 @@ const Accounts = () => {
                   Accounts Ledger
                 </h3>
                 <div className="text-xs sm:text-sm font-medium text-slate-500">
-                  All income and expense transactions grouped by name
+                  All income and expense transactions grouped by{" "}
+                  {groupMode === "department" ? "department" : "name"}
                 </div>
               </div>
 
               <div className="flex flex-wrap items-center gap-3">
+                {/* Grouping mode switcher: party/customer names vs the standard
+                    chart-of-accounts department. */}
+                <div className="inline-flex rounded-xl border border-slate-200 bg-slate-100/70 p-0.5">
+                  {[
+                    { id: "name", label: "By Name" },
+                    { id: "department", label: "By Department" },
+                  ].map((modeOption) => (
+                    <button
+                      key={modeOption.id}
+                      type="button"
+                      onClick={() => setGroupMode(modeOption.id)}
+                      className={`rounded-lg px-3 py-1.5 text-xs font-bold transition-all ${
+                        groupMode === modeOption.id
+                          ? "bg-slate-900 text-white shadow-sm"
+                          : "text-slate-500 hover:text-slate-900"
+                      }`}
+                    >
+                      {modeOption.label}
+                    </button>
+                  ))}
+                </div>
                 <div className="relative w-full sm:w-72">
                   <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400">
                     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="h-4 w-4">
@@ -3251,6 +3344,24 @@ const Accounts = () => {
                       ✕
                     </button>
                   )}
+                </div>
+                <div className="relative">
+                  <select
+                    value={departmentFilter}
+                    onChange={(event) => setDepartmentFilter(event.target.value)}
+                    className="rounded-xl border border-slate-200 bg-slate-50/50 pl-3 pr-8 py-2 text-xs sm:text-sm font-medium text-slate-900 outline-none transition-all focus:border-blue-500 focus:bg-white focus:ring-2 focus:ring-blue-100 cursor-pointer appearance-none"
+                    aria-label="Filter by department"
+                  >
+                    <option value="all">All Departments</option>
+                    {departmentFilterOptions.map((option) => (
+                      <option key={option} value={option.toLowerCase()}>
+                        {option}
+                      </option>
+                    ))}
+                  </select>
+                  <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 text-[10px]">
+                    ▾
+                  </span>
                 </div>
                 <div className="inline-flex items-center gap-1.5 rounded-full bg-slate-100 px-3 py-1.5 text-xs font-semibold text-slate-600">
                   <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
@@ -3421,13 +3532,25 @@ const Accounts = () => {
                                   {r.customerMobile || r.customerName || "--"}
                                 </td>
                                 <td className="px-4 py-2.5">
-                                  <span className={`inline-flex rounded-full px-2 py-0.5 text-[11px] font-bold ${
-                                    r.type === "Income"
-                                      ? "bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200/60"
-                                      : "bg-rose-50 text-rose-700 ring-1 ring-rose-200/60"
-                                  }`}>
-                                    {r.type}
-                                  </span>
+                                  <div className="flex flex-wrap items-center gap-1">
+                                    <span className={`inline-flex rounded-full px-2 py-0.5 text-[11px] font-bold ${
+                                      r.type === "Income"
+                                        ? "bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200/60"
+                                        : "bg-rose-50 text-rose-700 ring-1 ring-rose-200/60"
+                                    }`}>
+                                      {r.type}
+                                    </span>
+                                    {r.department ? (
+                                      <span className="inline-flex rounded-full bg-slate-100 px-2 py-0.5 text-[11px] font-semibold text-slate-600">
+                                        {r.department}
+                                      </span>
+                                    ) : null}
+                                    {r.category ? (
+                                      <span className="inline-flex rounded-full bg-blue-50 px-2 py-0.5 text-[11px] font-semibold text-blue-700 ring-1 ring-blue-200/60">
+                                        {r.category}
+                                      </span>
+                                    ) : null}
+                                  </div>
                                 </td>
                                 <td className="whitespace-nowrap px-4 py-2.5 text-right font-semibold text-emerald-600">
                                   {r.type === "Income" ? formatINR(r.amount) : "--"}
@@ -4269,7 +4392,7 @@ const Accounts = () => {
                   customerMobile: editingRecord.customerMobile || "",
                   amount: editingRecord.amount || "",
                   paymentMode: editingRecord.paymentMode || "UPI",
-                  department: editingRecord.department || (editingRecord.type === "Income" ? "Room" : "Other"),
+                  department: editingRecord.department || (editingRecord.type === "Income" ? "Hotel" : "Other"),
                 }}
                 onSubmit={handleUpdateTransaction}
                 onCancel={() => {

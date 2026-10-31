@@ -93,10 +93,14 @@ const normalizeText = (value) => String(value || "").trim().toLowerCase();
 
 // The v4 `chart_of_accounts` table is seedable but ships empty. Ensure the small
 // set of accounts this controller posts against exists, once per process.
+// Standard hotel chart of accounts. The expense side is split per department
+// so the ledger can classify money properly instead of lumping everything
+// into one "Other Expenses" bucket (the classic single-bucket problem).
 const ACCOUNT_SEEDS = [
   { code: "1000", name: "Cash in Hand", type: "asset" },
   { code: "1010", name: "Bank Account", type: "asset" },
   { code: "2000", name: "Accounts Payable", type: "liability" },
+  { code: "2010", name: "GST Payable", type: "liability" },
   { code: "3000", name: "Owner's Equity", type: "equity" },
   { code: "4000", name: "Room Revenue", type: "revenue" },
   { code: "4010", name: "Restaurant Revenue", type: "revenue" },
@@ -106,37 +110,92 @@ const ACCOUNT_SEEDS = [
   { code: "5010", name: "Staff Salaries", type: "expense" },
   { code: "5020", name: "Utilities", type: "expense" },
   { code: "5030", name: "Other Expenses", type: "expense" },
+  { code: "5040", name: "Hotel Operating Expenses", type: "expense" },
+  { code: "5050", name: "Restaurant Expenses", type: "expense" },
+  { code: "5060", name: "Banquet Expenses", type: "expense" },
+  { code: "5070", name: "Maintenance & Repairs", type: "expense" },
+  { code: "5080", name: "Office & Admin Expenses", type: "expense" },
+  { code: "5090", name: "Marketing & Miscellaneous", type: "expense" },
 ];
 
-let chartSeeded = null;
+// INSERT IGNORE on the UNIQUE code is idempotent, so this can safely run on
+// every call: it seeds the missing standard accounts without touching
+// existing rows (real data is never overwritten).
 const ensureChartOfAccounts = async () => {
-  if (chartSeeded === "done") return;
-  // Only seed when the table is genuinely empty — never overwrite real data.
-  const row = await queryOne("SELECT COUNT(*) AS cnt FROM chart_of_accounts");
-  if (toNumber(row?.cnt) > 0) {
-    chartSeeded = "done";
-    return;
-  }
   for (const acc of ACCOUNT_SEEDS) {
     await query(
       "INSERT IGNORE INTO chart_of_accounts (code, name, type) VALUES (?, ?, ?)",
       [acc.code, acc.name, acc.type],
     );
   }
-  chartSeeded = "done";
 };
 
 const getAccountByCode = (code) =>
   queryOne("SELECT id, code, name, type FROM chart_of_accounts WHERE code = ? LIMIT 1", [code]);
 
-// Resolve a department label ("Room"/"Restaurant"/"Banquet"/"Other") to the
-// revenue account used on the credit leg of an income posting.
+// Resolve a department label to the revenue account used on the credit leg of
+// an income posting. Standard hotel departments: Hotel (rooms/front office),
+// Restaurant, Banquet; everything else books to Other Revenue.
 const revenueAccountForDepartment = (department) => {
   const key = normalizeText(department);
   if (key.includes("restaurant")) return "4010";
   if (key.includes("banquet")) return "4020";
-  if (key.includes("room") || key.includes("hotel")) return "4000";
+  if (key.includes("room") || key.includes("hotel") || key.includes("front")) return "4000";
   return "4030";
+};
+
+// Standard expense classification. Instead of dumping every expense into one
+// "Other Expenses" bucket, pick the matching chart account from the chosen
+// department first, then from the description keywords (the classic
+// hospitality expense categories). Every code below is seeded by
+// ensureChartOfAccounts, so the account always exists.
+const expenseAccountForDepartment = (department, description) => {
+  const dep = normalizeText(department);
+  const text = `${dep} ${normalizeText(description)}`;
+
+  // 1) Specific keywords always win — a "Utility/AC" bill stays a Utilities
+  //    expense even when booked under the Hotel department, etc. This is
+  //    what makes the ledger behave like a standard chart, not a
+  //    department dump.
+  if (/\bsal(aries|ary)\b|\bwages?\b|payroll/.test(text)) return "5010";
+  if (/electricit|power bill|water bill|gas bill|electricity|utility/.test(text)) return "5020";
+  if (/maintenance|repair|plumb|\bac\b|a\.c\.|paint|hvac|machine/.test(text)) return "5070";
+  if (/stationery|office|admin|software|insurance|phone bill|internet|audit|accounting/.test(text)) return "5080";
+  if (/market|advertis|promotion|banner|publicity|sponsor/.test(text)) return "5090";
+  if (/\bkitchen\b|grocer|vegetable|raw material|food suppl|kitchen stock/.test(text)) return "5050";
+  if (/banquet|catering|hall (charge|setup|decor)|function/.test(text)) return "5060";
+
+  // 2) Otherwise the chosen department picks the account.
+  if (dep.includes("salary") || dep.includes("payroll")) return "5010";
+  if (dep.includes("utility")) return "5020";
+  if (dep.includes("restaurant") || dep.includes("kitchen")) return "5050";
+  if (dep.includes("banquet") || dep.includes("catering")) return "5060";
+  if (dep.includes("hotel") || dep.includes("room") || dep.includes("front") || dep.includes("housekeeping")) return "5040";
+  if (dep.includes("maintenance") || dep.includes("repair")) return "5070";
+  if (dep.includes("office") || dep.includes("admin") || dep.includes("stationery")) return "5080";
+  if (dep.includes("marketing") || dep.includes("advertis") || dep.includes("promotion")) return "5090";
+
+  return "5030"; // Other Expenses
+};
+
+// Human-readable category label for a standard expense/revenue account name,
+// so the ledger UI can show a proper category chip instead of "Other".
+const categoryLabelForAccount = (accountName, type) => {
+  const n = normalizeText(accountName);
+  if (!n) return "Other";
+  if (n.includes("room revenue")) return "Hotel";
+  if (n.includes("restaurant revenue")) return "Restaurant";
+  if (n.includes("banquet revenue")) return "Banquet";
+  if (n.includes("other revenue")) return "General";
+  if (n.includes("salaries")) return "Salaries";
+  if (n.includes("utilities")) return "Utilities";
+  if (n.includes("maintenance") || n.includes("repairs")) return "Maintenance";
+  if (n.includes("office") || n.includes("admin")) return "Office & Admin";
+  if (n.includes("marketing") || n.includes("misc")) return "Marketing";
+  if (n.includes("cost of goods")) return "COGS";
+  if (n.includes("other expenses")) return "Other";
+  // Unknown/custom accounts: fall back to the account's own name.
+  return accountName;
 };
 
 // Cash vs bank asset account, decided from the payment mode string.
@@ -237,17 +296,67 @@ const LEDGER_ROW_SELECT = `
   WHERE 1 = 1
 `;
 
+// Department label from the standard chart account name (both legs), so the
+// ledger UI shows "Hotel" instead of "Room" and can tell which department an
+// entry was posted to.
+const departmentForAccount = (accountName, accountType) => {
+  const n = normalizeText(accountName || "");
+  if (n.includes("restaurant") && accountType === "expense") return "Restaurant";
+  if (n.includes("banquet")) return "Banquet";
+  if (n.includes("hotel") || n.includes("room") || n.includes("front") || n.includes("housekeeping")) return "Hotel";
+  if (n.includes("salaries")) return "Payroll";
+  if (n.includes("utilities")) return "Utilities";
+  if (n.includes("maintenance") || n.includes("repair")) return "Maintenance";
+  if (n.includes("office") || n.includes("admin")) return "Admin";
+  if (n.includes("marketing")) return "Marketing";
+  if (n.includes("cost of goods")) return "COGS";
+  return "Other";
+};
+
+// Retro-classification for rows posted to the generic catch-all accounts
+// ("Other Expenses"/"Other Revenue" — where every pre-standard record lives):
+// re-derive the department from the description keywords, using the SAME
+// rules as the insert-time classifier. This is display-only (no rewrite of
+// the journal), so the old ledger rows finally show their real department
+// instead of one giant "Other" group.
+const departmentFromDescription = (description, accountType) => {
+  const text = normalizeText(description);
+  if (/\bsal(aries|ary)\b|\bwages?\b|payroll/.test(text)) return "Payroll";
+  if (/electricit|power bill|water bill|gas bill|utility/.test(text)) return "Utilities";
+  if (/maintenance|repair|plumb|\bac\b|a\.c\.|paint|hvac|machine/.test(text)) return "Maintenance";
+  if (/stationery|office|admin|software|insurance|phone bill|internet|audit|accounting/.test(text)) return "Admin";
+  if (/market|advertis|promotion|banner|publicity|sponsor|flower|gift|puja|decor/.test(text)) return "Marketing";
+  if (/\bkitchen\b|grocer|vegetable|raw material|food suppl|kitchen stock/.test(text)) return "Restaurant";
+  if (/banquet|catering|hall (charge|setup|decor)|function/.test(text)) return "Banquet";
+  if (/hotel|room|laundry|housekeep|flooring|bed sheet|towel|housekeep/.test(text)) return "Hotel";
+  return "Other";
+};
+
 const ledgerRowToRecord = (row) => {
   const revenue = toNumber(row.revenue_amount);
   const expense = toNumber(row.expense_amount);
   const isIncome = revenue >= expense;
   const amount = isIncome ? revenue : expense;
 
-  let department = "Other";
-  const accountName = normalizeText(isIncome ? row.revenue_account : row.expense_account);
-  if (accountName.includes("restaurant")) department = "Restaurant";
-  else if (accountName.includes("banquet")) department = "Banquet";
-  else if (accountName.includes("room") || accountName.includes("hotel")) department = "Room";
+  // Classification is read from whichever side actually moved money.
+  const expenseAccountName = isIncome ? "" : (row.expense_account || "");
+  const revenueAccountName = isIncome ? (row.revenue_account || "") : "";
+  let department = departmentForAccount(
+    isIncome ? revenueAccountName : expenseAccountName,
+    isIncome ? "revenue" : "expense",
+  );
+  // Old rows posted to the generic catch-all account classify as "Other" from
+  // the account name alone — re-derive the department from the description
+  // so legacy records sort into the right standard group too.
+  if (department === "Other") {
+    const rowText = `${row.description || ""} ${row.entry_narration || ""}`;
+    department = departmentFromDescription(rowText, isIncome ? "revenue" : "expense");
+  }
+  // Standard category chip (e.g. "Utilities", "Maintenance") for the ledger
+  // UI, derived from the account name rather than a free-text guess.
+  const category = isIncome
+    ? categoryLabelForAccount(revenueAccountName, "revenue")
+    : categoryLabelForAccount(expenseAccountName, "expense");
 
   return {
     id: row.id,
@@ -256,6 +365,7 @@ const ledgerRowToRecord = (row) => {
     transaction_date: toInputDate(row.transaction_date),
     type: isIncome ? "Income" : "Expense",
     department,
+    category,
     sourceModule: row.reference_type || "accounts-manual",
     description: row.description || "",
     narration: row.entry_narration || "",
@@ -458,7 +568,10 @@ const recordLedgerTransaction = async ({
   if (isIncome) {
     counterAccount = await getAccountByCode(revenueAccountForDepartment(department));
   } else {
-    counterAccount = await getAccountByCode(department && normalizeText(department).includes("salary") ? "5010" : "5030");
+    // Standard classification: department first, then description keywords,
+    // so a "Hotel" utility bill books to Utilities, a kitchen purchase to
+    // Restaurant Expenses, etc. — never one big "Other Expenses" bucket.
+    counterAccount = await getAccountByCode(expenseAccountForDepartment(department, description));
   }
   if (!counterAccount) throw new Error("Ledger account is not configured");
 
@@ -558,8 +671,11 @@ const updateTransaction = async (req, res) => {
 
       if (value > 0) {
         const assetAccount = await getAccountByCode(assetAccountForPaymentMode(paymentMode));
+        // Same standard classifier as the insert path (department first,
+        // then description keywords) — reclassification on edit stays
+        // consistent with newly posted entries.
         const counterAccount = await getAccountByCode(
-          isIncome ? revenueAccountForDepartment(department) : department && normalizeText(department).includes("salary") ? "5010" : "5030",
+          isIncome ? revenueAccountForDepartment(department) : expenseAccountForDepartment(department, description),
         );
         if (assetAccount && counterAccount) {
           const debitAccount = isIncome ? assetAccount : counterAccount;
