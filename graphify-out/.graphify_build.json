@@ -1,0 +1,11 @@
+{
+  "excludes": [
+    "Maa-Baglamkhi-Resort-Backend/uploads/**",
+    "Maa-Baglamkhi-Resort-Backend/src/uploads/**",
+    "**/*.mp3",
+    ".claude/**",
+    "resort_backup_*.sql",
+    "Maa-Baglamkhi-Resort-frontend/public/**",
+    "Maa-Baglamkhi-Resort-frontend/src/assets/**"
+  ]
+}
