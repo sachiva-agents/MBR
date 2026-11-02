@@ -78,7 +78,10 @@ exports.createOrder = async (req, res) => {
   const itemsJson   = JSON.stringify(Array.isArray(items) ? items : []);
   const prepMinutes = normalizePrepTime(prepTimeMinutes);
   const expectedAt  = formatMySqlDateTime(new Date(Date.now() + prepMinutes * 60000));
-  const kot = kotNo || `KOT-${Date.now()}`;
+  // KOT numbers are sequential (KOT-0001, KOT-0002, ...) driven by the
+  // kitchen order's own id, so after a data reset the first KOT is KOT-0001.
+  // A client-supplied kotNo (re-print / manual) still wins when provided.
+  let kot = kotNo || null;
 
   try {
     const createdWaiter = isWaiterActor(actor) ? actor.name || waiter || "Waiter" : waiter || "Waiter";
@@ -88,6 +91,13 @@ exports.createOrder = async (req, res) => {
         VALUES (?, ?, ?, 'Pending', 'Active', ?, ?, ?, ?)`,
       [createdWaiter, String(table || ""), itemsJson, kot, entityType || "Table", prepMinutes, expectedAt]
     );
+    // Sequential KOT from the row's own id: a brand-new order (no client
+    // kotNo) becomes KOT-0001, then KOT-0002, ... After a data reset the
+    // counter starts at 1. Backfill because the insert ran with a NULL KOT.
+    if (!kot) {
+      kot = `KOT-${String(result.insertId).padStart(4, "0")}`;
+      await db.query("UPDATE kitchen_orders SET kot_no = ? WHERE id = ?", [kot, result.insertId]);
+    }
     // Fire-and-forget: auto-print KOT to kitchen thermal printer
     try {
       const { KitchenPrintService } = require("../services/KitchenPrintService");

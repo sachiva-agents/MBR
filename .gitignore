@@ -1,3 +1,7 @@
 src/uploads/documents/
 src/uploads/invoices/
 src/uploads/documents/.*
+
+# Data-reset backups (regenerable; keep out of git)
+data-reset-backup/
+resort_backup_*.sql

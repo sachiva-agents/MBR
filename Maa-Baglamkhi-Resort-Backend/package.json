@@ -9,6 +9,8 @@
     "init:prod": "node initialize.js",
     "seed": "node seed-runner.js",
     "repair:payments": "node repair-payments.js",
+    "reset": "node src/tools/reset-data.js",
+    "reset:dry": "node src/tools/reset-data.js --dry-run",
     "test": "npm run test:routes && npm run test:lifecycle && npm run test:writeprobe",
     "test:routes": "node test/api-routes.test.js",
     "test:lifecycle": "node test/lifecycle.test.js",
