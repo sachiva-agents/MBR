@@ -22,6 +22,18 @@ const queryOne = async (sql, params = []) => {
   return Array.isArray(rows) ? rows[0] || null : null;
 };
 
+// Row-array helper. `query()` resolves to the raw [result, fields] tuple, so
+// `safeArray(await query(...))` was handing .map() the tuple itself — every
+// read endpoint .map()-ed over 2 elements (the row array + the column-fields
+// array) and returned exactly 2 phantom "rows" no matter how many records the
+// table actually held (the Accounts "Billing Records: 4 / ₹0" tiles even on
+// a wiped database). queryRows() unwraps the tuple so .map() sees real rows.
+const queryRows = async (sql, params = []) => {
+  const result = await query(sql, params);
+  const rows = Array.isArray(result) ? result[0] : result;
+  return Array.isArray(rows) ? rows : [];
+};
+
 const toNumber = (value) => {
   const n = Number(value);
   return Number.isFinite(n) ? n : 0;
@@ -835,7 +847,7 @@ const getHotelBillingRecords = async (req, res) => {
   sql += " ORDER BY b.id DESC";
 
   try {
-    const rows = safeArray(await query(sql, params));
+    const rows = await queryRows(sql, params);
 
     const records = rows.map((row) => {
       const total = round2(row.total_amount);
@@ -926,7 +938,7 @@ const getRestaurantBillingRecords = async (req, res) => {
   sql += " ORDER BY b.created_at DESC, b.id DESC";
 
   try {
-    const rows = safeArray(await query(sql, params));
+    const rows = await queryRows(sql, params);
 
     const records = rows.map((row) => {
       const total = round2(row.total);
@@ -1021,7 +1033,7 @@ const getPaymentHistory = async (req, res) => {
   sql += " ORDER BY p.created_at DESC, p.id DESC";
 
   try {
-    const rows = safeArray(await query(sql, params));
+    const rows = await queryRows(sql, params);
     const records = rows.map((row) => ({
       id: row.id,
       reference: row.reference,
@@ -1243,7 +1255,7 @@ const getReconciliationLedgerRows = async (filters = {}) => {
   }
 
   sql += " ORDER BY p.created_at DESC, p.id DESC";
-  return safeArray(await query(sql, params));
+  return await queryRows(sql, params);
 };
 
 const getReconciliationItemsFromSources = async () => {
@@ -1589,7 +1601,7 @@ const listGstReturns = async (req, res) => {
   sql += " GROUP BY period_key ORDER BY period_key DESC";
 
   try {
-    const rows = safeArray(await query(sql, params));
+    const rows = await queryRows(sql, params);
     const records = rows.map((row) => {
       const gstCollected = round2(row.gst_collected);
       const gstPaid = 0;
@@ -1637,7 +1649,7 @@ const listVendorPayments = async (req, res) => {
   sql += " ORDER BY payment_date DESC, id DESC";
 
   try {
-    const rows = safeArray(await query(sql, params));
+    const rows = await queryRows(sql, params);
     res.json(rows.map((r) => ({ ...r, payment_date: toInputDate(r.payment_date), amount: round2(r.amount) })));
   } catch (error) {
     res.status(500).json({ message: "Failed to fetch vendor payments", error: error.message });
@@ -1736,7 +1748,7 @@ const listPurchaseOrders = async (req, res) => {
   sql += " ORDER BY order_date DESC, id DESC";
 
   try {
-    const rows = safeArray(await query(sql, params));
+    const rows = await queryRows(sql, params);
     res.json(rows.map((r) => ({
       ...r,
       order_date: toInputDate(r.order_date),
@@ -1856,7 +1868,7 @@ const listPayrollRecords = async (req, res) => {
   sql += " ORDER BY sp.month DESC, sp.id DESC";
 
   try {
-    const rows = safeArray(await query(sql, params));
+    const rows = await queryRows(sql, params);
     res.json(rows.map((r) => {
       const monthDate = r.month instanceof Date ? r.month : new Date(r.month);
       const payrollMonth = Number.isNaN(monthDate.getTime())
@@ -2178,7 +2190,7 @@ const paymentSettingToRow = (m) => ({
 const listPaymentGatewaySettings = async (req, res) => {
   try {
     await PaymentMethodsModel.ensureSchema();
-    const methods = safeArray(await query("SELECT * FROM payment_methods ORDER BY id ASC"));
+    const methods = await queryRows("SELECT * FROM payment_methods ORDER BY id ASC");
     res.json(methods.map(paymentSettingToRow));
   } catch (error) {
     res.status(500).json({ message: "Failed to fetch payment settings", error: error.message });
@@ -2323,7 +2335,7 @@ const listPettyCash = async (req, res) => {
   sql += " ORDER BY p.created_at DESC, p.id DESC";
 
   try {
-    const rows = safeArray(await query(sql, params));
+    const rows = await queryRows(sql, params);
     res.json(rows.map((r) => ({ ...r, amount: round2(r.amount) })));
   } catch (error) {
     res.status(500).json({ message: "Failed to fetch petty cash", error: error.message });
@@ -2345,7 +2357,7 @@ const gstReturnWriteUnsupported = async (req, res) =>
 const getTransactionsByModule = async (req, res) => {
   const { from, to } = req.query;
   try {
-    const rows = safeArray(await query(LEDGER_ROW_SELECT + " GROUP BY t.id ORDER BY t.transaction_date DESC, t.id DESC"));
+    const rows = await queryRows(LEDGER_ROW_SELECT + " GROUP BY t.id ORDER BY t.transaction_date DESC, t.id DESC");
     let records = rows.map(ledgerRowToRecord);
     records = records.filter((r) => normalizeText(r.sourceModule) === normalizeText(req.params.module) || normalizeText(req.params.module) === "accounts-manual");
     if (from) records = records.filter((r) => r.transaction_date >= normalizeDateInput(from));
