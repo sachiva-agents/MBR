@@ -79,7 +79,8 @@ const WIPE_TABLES = [
   "housekeeping", "housekeeping_assignments", "housekeeping_logs",
   "completed_cleaning_logs", "hk_amenities_consumption",
   "hk_completed_cleaning_logs", "hk_inspections", "hk_lost_found",
-  "hk_messages", "hk_shift_roster", "maintenance_requests",
+  "hk_messages", "hk_shift_roster", "hk_room_costing",
+  "maintenance_requests", "assignments",
   // ── Inventory operations (masters kept) ──
   "inventory", "inventory_adjustments", "inventory_chef_issues",
   "inventory_consumption", "inventory_consumption_log",
@@ -301,7 +302,43 @@ async function main() {
   }
   log(`\n Backup : ${backupNote || "done"}`);
 
-  // ── 3. Wipe + counter reset ────────────────────────────────────────────────
+  // ── 3. Wipe + counter reset + master-state normalisation ───────────────────
+  // Kept master tables carry live operational state (rooms flagged occupied,
+  // tables reserved, a current_booking_id pointing at a wiped booking). Wiping
+  // the bookings does NOT clean those up — that is what leaves rooms showing
+  // "occupied" and dashboards showing stale counts after a reset.
+  const MASTER_STATE_RESETS = [
+    {
+      table: "rooms",
+      set: ["status = 'available'", "current_booking_id = NULL"],
+      dirty: ["status <> 'available'", "current_booking_id IS NOT NULL"],
+    },
+    {
+      table: "restaurant_tables",
+      set: ["status = 'available'", "guestCount = 0", "status_color = NULL"],
+      dirty: ["status <> 'available'"],
+    },
+    {
+      table: "banquet_halls",
+      set: ["status = 'available'"],
+      dirty: ["status <> 'available'"],
+    },
+  ];
+
+  // Which columns actually exist per table on this PC's schema.
+  const tableCols = {};
+  for (const { table } of MASTER_STATE_RESETS) {
+    if (!have.has(table)) continue;
+    const [[{ cols }]] = await conn.query(
+      `SELECT GROUP_CONCAT(COLUMN_NAME) AS cols FROM information_schema.COLUMNS
+       WHERE TABLE_SCHEMA = ? AND TABLE_NAME = ?`,
+      [db, table]
+    );
+    tableCols[table] = new Set((cols || "").split(",").filter(Boolean).map((c) => c.toLowerCase()));
+  }
+  const keep = (spec, arr) =>
+    arr.filter((s) => spec.has(s.split("=")[0].trim().toLowerCase()));
+
   await conn.query("SET FOREIGN_KEY_CHECKS = 0");
   try {
     for (const t of toWipe) {
@@ -311,9 +348,41 @@ async function main() {
     for (const t of withCounter) {
       await conn.query(`ALTER TABLE \`${db}\`.\`${t}\` AUTO_INCREMENT = 1`);
     }
-    log(` Cleared ${toWipe.length} table(s); reset ${withCounter.length} auto-increment counter(s) to 1.`);
+
+    let normalised = 0;
+    for (const spec of MASTER_STATE_RESETS) {
+      if (!have.has(spec.table)) continue;
+      const applied = keep(tableCols[spec.table] || new Set(), spec.set);
+      if (applied.length === 0) continue;
+      await conn.query(`UPDATE \`${db}\`.\`${spec.table}\` SET ${applied.join(", ")}`);
+      normalised += 1;
+    }
+    log(` Cleared ${toWipe.length} table(s); reset ${withCounter.length} auto-increment counter(s) to 1;`);
+    log(` normalised operational state in ${normalised} master table(s) (rooms/tables/halls → available).`);
   } finally {
     await conn.query("SET FOREIGN_KEY_CHECKS = 1");
+  }
+
+  // ── 3b. Verify the post-state: every wiped table must now be empty, and no
+  //      kept master row may be left in a "dirty" operational state. ─────────
+  const dirty = [];
+  for (const t of toWipe) {
+    const [[{ n }]] = await conn.query(`SELECT COUNT(*) AS n FROM \`${db}\`.\`${t}\``);
+    if (n > 0) dirty.push(`${t} (${n})`);
+  }
+  for (const spec of MASTER_STATE_RESETS) {
+    if (!have.has(spec.table)) continue;
+    const conds = keep(tableCols[spec.table] || new Set(), spec.dirty);
+    if (conds.length === 0) continue;
+    const [[{ n }]] = await conn.query(
+      `SELECT COUNT(*) AS n FROM \`${db}\`.\`${spec.table}\` WHERE ${conds.join(" OR ")}`
+    );
+    if (n > 0) dirty.push(`${spec.table} has ${n} row(s) in a non-clean state`);
+  }
+  if (dirty.length) {
+    log(` WARNING: ${dirty.length} check(s) failed: ${dirty.join("; ")}`);
+  } else {
+    log(" Verified: all wiped tables are empty; master tables are in a clean state.");
   }
 
   // ── 4. Optional: remove generated PDFs from disk ───────────────────────────
@@ -340,6 +409,8 @@ async function main() {
   log("  2. Log in with an existing user — numbers now start at 0001");
   log("     (HOTINV-…-0001, kitchen order #1, KOT-0001).");
   log("  3. The standard accounts chart re-seeds itself on boot.");
+  log("  4. HARD-REFRESH the browser (Ctrl+Shift+R) — pages keep old numbers");
+  log("     in memory until they reload, which looks like the reset failed.");
   log("");
 }
 

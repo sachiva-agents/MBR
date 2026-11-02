@@ -33,7 +33,18 @@ node src/tools/reset-data.js          (or: npm run reset)
    `HOTINV-YYYYMMDD-0001`, the next kitchen order is `#1`, and the first
    KOT prints as `KOT-0001` (sequential KOT numbering shipped in the same
    release; KOTs used to be timestamp-based).
-6. **Prints a before/after report** — which tables, how many rows, where
+6. **Normalises the operational state *inside* the kept master tables** —
+   `rooms.status` → `available` (+ `current_booking_id` cleared),
+   `restaurant_tables` → available / guests cleared, `banquet_halls` →
+   available. Wiping the bookings alone leaves rooms flagged "occupied"
+   with a dangling `current_booking_id`, which is what makes the room board
+   show "occupied" rooms and the Accounts dashboard keep showing stale
+   billing/payment counts after a reset.
+7. **Verifies the post-state** — re-counts every wiped table and scans the
+   kept masters for rows still in a non-clean state, printing either
+   `Verified: all wiped tables are empty…` or a `WARNING: …` list naming
+   exactly which tables are not clean.
+8. **Prints a before/after report** — which tables, how many rows, where
    the backup went.
 
 The standard chart of accounts (22 accounts) re-seeds itself automatically
@@ -139,7 +150,8 @@ Wiped and counter-reset:
   `housekeeping_assignments`, `housekeeping_logs`,
   `completed_cleaning_logs`, `hk_amenities_consumption`,
   `hk_completed_cleaning_logs`, `hk_inspections`, `hk_lost_found`,
-  `hk_messages`, `hk_shift_roster`, `maintenance_requests`
+  `hk_messages`, `hk_shift_roster`, `hk_room_costing`,
+  `maintenance_requests`, `assignments`
 - **Inventory operations** — `inventory`, `inventory_adjustments`,
   `inventory_chef_issues`, `inventory_consumption`,
   `inventory_consumption_log`, `inventory_stock`,
