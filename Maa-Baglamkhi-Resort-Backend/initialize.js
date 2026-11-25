@@ -79,7 +79,7 @@ async function run() {
     const uploadsDir = ensureUploadsDir();
     console.log(`Uploads directory ready: ${uploadsDir}`);
 
-    const { initializeDatabase } = require("./app");
+    const { initializeDatabase } = require("./src/app");
     await initializeDatabase();
 
     console.log("Schema bootstrap completed.");
