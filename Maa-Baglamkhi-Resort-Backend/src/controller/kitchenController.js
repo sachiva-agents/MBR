@@ -43,7 +43,7 @@ const normalizePrepTime = (value) => {
 const KITCHEN_STATUSES = ["Pending", "Preparing", "Ready", "Cancelled", "Served"];
 
 // Shared with chefController: returns the canonical status or null; sends 400 when the value is not a known kitchen status.
-exports.resolveKitchenStatus = (res, status) => {
+const resolveKitchenStatus = (res, status) => {
   const canonical = KITCHEN_STATUSES.find((s) => s.toLowerCase() === String(status || "").toLowerCase());
   if (!canonical) {
     res.status(400).json({
@@ -53,6 +53,7 @@ exports.resolveKitchenStatus = (res, status) => {
   }
   return canonical;
 };
+exports.resolveKitchenStatus = resolveKitchenStatus;
 
 const inferEntityType = (orderLike = {}) => {
   if (String(orderLike.entity_type || orderLike.entityType || "").toLowerCase() === "room") {
