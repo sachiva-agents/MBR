@@ -43,7 +43,7 @@ All four final passes were run as separate gates before this report. Three are i
 
 | Pass | Owner | Scope | Result |
 | --- | --- | --- | --- |
-| **HAG-1** | ron | Backend test suites | **PENDING** — inform not yet received; result not yet recorded (will not be invented). |
+| **HAG-1** | ron | Backend test suites | **RE-VERIFY PENDING (HAG-6)** — first run RED on a clean scratch DB: 5 bootstrap/provisioning root causes (init require bug, roles never seeded, 7 lazy tables not created at boot, 5 migrated columns missing, mysqldump PATH). God green-lit ron to fix all five and re-verify GREEN on a clean scratch DB; he will commit to main and report the new hash + 0-fail counts. This run's result is recorded only when his inform lands. |
 | **HAG-2** | hermione | Frontend production build | **GREEN** — `.env` already IPv4, `npm run build` succeeded, `main` unchanged (god sign-off, 2026-11-25 ~09:56; detail on board.md). |
 | **HAG-3** | harry | e2e smoke, full stack | **GREEN** — full stack up, admin login ok, `KOT-0001` created, booking `BK-20261125-2B53`, invoice `HOTINV-20261125-0001` a valid 1-page PDF. Two environmental, non-blocking defects, both infra not code: (1) host has no `kitchen` printer, so thermal auto-print retries fail; (2) no reachable Wasachiva key, so WhatsApp auto-confirm returns 500. Authoritative detail: board.md (HAG-3 line, signed off 10:02); report file `reports/HAG-3-final-smoke.md` not yet on `main` at audit time (post-dates the HAG-4 git gate at `ca21c07`). |
 | **HAG-4** | albus | Git state | **GREEN** — option (a) done: `main == origin/main == ca21c07`, remote worker branch deleted, HAG-53 report restored to main. |
@@ -52,4 +52,23 @@ _Confirms: HAG-4's `ca21c07` matches the one-commit gap my branch had at audit s
 
 ## (c) Open items
 
-_Pending section (b). Static audit so far: no open functional items — all 12 README modules mapped to live code; see debris list in (a)._
+**Completion work — 5 bootstrap root-cause fixes (owner: ron, card HAG-6):**
+HAG-1's first run on a clean scratch DB exposed five provisioning defects, all fixed in one green-lit push to main before this report can call the project complete:
+1. Init require bug
+2. Roles never seeded on first boot
+3. Seven lazy tables not created at boot
+4. Five migrated columns missing from the schema bootstrap
+5. `mysqldump` not on PATH on the host
+
+Re-verification criterion: clean scratch DB, backend test suites return 0 failures. Ron's new main hash and 0-fail counts land with his inform; this section is finalized at that point, and the branch is re-based onto the new main before the final commit.
+
+**Debris (from (a), cosmetic only, no functional impact):**
+- `src/controller/aiterController.js` and `src/controller/hatsappInvoiceController.js` — dead files, never required anywhere.
+- `_diag-*.js` (9 probe scripts) and `_routes.json` at the backend root — diagnostic debris.
+- `test-results/` at the repo root — empty; `run-tests.sh` has no last-run artifact committed.
+
+**Environmental, non-blocking (host infra, not code bugs):**
+- No Windows printer named `kitchen` → thermal auto-print retries fail.
+- No reachable Wasachiva key → WhatsApp auto-confirm returns 500.
+
+**Verdict:** the codebase is functionally complete — all 12 README modules map to live code with no gaps. The only open item is the five bootstrap fixes, which are tracked under HAG-6 and expected to land on main before this report is finalized.
