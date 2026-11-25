@@ -29,12 +29,62 @@ const JS_DEFAULTS = {
   destDir: "/tmp/mbr-backups",
 };
 
-// mysqldump/mysql live under XAMPP on this machine, not on a bare shell PATH.
-const XAMPP_BIN = "/Applications/XAMPP/xamppfiles/bin";
+// mysqldump/mysql live under XAMPP on most installs, not on a bare shell
+// PATH. Resolution order:
+//   1. an explicit override env var (MYSQLDUMP_BIN / MYSQL_BIN), so a
+//      deployment can point at any client;
+//   2. a known XAMPP bin dir (macOS and Windows);
+//   3. the bare command name (assumes it is on PATH).
+const XAMPP_BIN_DIRS = [
+  "/Applications/XAMPP/xamppfiles/bin",
+  "C:\\xampp\\mysql\\bin",
+  "D:\\xampp\\mysql\\bin",
+];
 function tool(name) {
-  const x = path.join(XAMPP_BIN, name);
-  return fs.existsSync(x) ? x : name;
+  // An explicit override (MYSQLDUMP_BIN / MYSQL_BIN) wins: the operator
+  // pointed it at a known-good client, so use it as-is.
+  const override = process.env[name === "mysqldump" ? "MYSQLDUMP_BIN" : "MYSQL_BIN"];
+  if (override) return override;
+  for (const dir of XAMPP_BIN_DIRS) {
+    const candidate = path.join(dir, name + (process.platform === "win32" ? ".exe" : ""));
+    if (fs.existsSync(candidate)) return candidate;
+  }
+  return name;
 }
+
+// True when the dump client could not even start (ENOENT) — the signal to
+// fall back to an in-database clone instead of crashing the whole backup.
+const isSpawnNotFound = (err) =>
+  err && (err.code === "ENOENT" || String(err.message || "").includes("ENOENT"));
+
+// In-database clone fallback (mirrors reset-data.js's backupWithClone): copy
+// every table into a sibling mbb_backup_<stamp> database. Used only when no
+// SQL dump client is available, so a backup never fails just because
+// mysqldump is off PATH.
+const cloneDatabaseInDb = async (targetSchema) => {
+  const conn = await db.getConnection();
+  try {
+    await conn.query(`CREATE DATABASE IF NOT EXISTS \`${targetSchema}\``);
+    const [tableRows] = await conn.query(
+      "SELECT table_name AS t FROM information_schema.tables WHERE table_schema = DATABASE() AND table_type = 'BASE TABLE'"
+    );
+    await conn.query("SET FOREIGN_KEY_CHECKS = 0");
+    try {
+      for (const row of tableRows) {
+        const t = row.t;
+        await conn.query(`CREATE TABLE IF NOT EXISTS \`${targetSchema}\`.\`${t}\` LIKE \`${t}\``);
+        await conn.query(
+          `INSERT INTO \`${targetSchema}\`.\`${t}\` SELECT * FROM \`${t}\``
+        );
+      }
+    } finally {
+      await conn.query("SET FOREIGN_KEY_CHECKS = 1");
+    }
+  } finally {
+    conn.release();
+  }
+  return targetSchema;
+};
 
 const ensureBackupSettingsRow = async () => {
   await db.query(`
@@ -175,6 +225,15 @@ const runBackup = async () => {
     // a failed dump leaves a partial file; drop it so restore can never
     // pick up a corrupt dump
     fs.rmSync(partial, { force: true });
+    // No dump client on PATH (ENOENT): fall back to an in-database clone of
+    // the schema, the same fallback the reset tool uses, instead of
+    // ENOENT-crashing the whole backup.
+    if (isSpawnNotFound(err)) {
+      const cloneSchema = `mbb_backup_${base.replace(/[^0-9]/g, "")}`;
+      await cloneDatabaseInDb(cloneSchema);
+      await recordRun(`ok: in-database clone -> ${cloneSchema}`, null);
+      return { file: cloneSchema, sizeBytes: 0, inDbClone: cloneSchema };
+    }
     await recordRun(`failed: ${err.message}`, null);
     throw err;
   }
@@ -301,6 +360,24 @@ exports.list = async (_req, res) => {
           return { name: f, sizeBytes: st.size, mtimeISO: st.mtime.toISOString() };
         })
         .sort((a, b) => (a.name < b.name ? 1 : -1));
+    }
+    // In-database clones (the no-mysqldump fallback) are sibling databases,
+    // not files. Surface them in the listing too so /run's result is visible.
+    try {
+      const [dbRows] = await db.query(
+        "SELECT schema_name AS name FROM information_schema.schemata WHERE schema_name LIKE 'mbb\\_backup\\_%' ORDER BY schema_name DESC"
+      );
+      const nowIso = new Date().toISOString();
+      for (const row of dbRows) {
+        files.push({
+          name: row.name,
+          sizeBytes: 0,
+          mtimeISO: nowIso,
+          inDbClone: true,
+        });
+      }
+    } catch {
+      /* clone listing is best-effort; a failed lookup must not break the file listing */
     }
     res.json({ destDir: s.destDir, files });
   } catch (err) {
