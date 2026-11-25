@@ -39,7 +39,16 @@ Everything the README claims to do maps to live, mounted code. The only true "ga
 
 ## (b) Teammate final-pass results
 
-_Drafted when all four informs have arrived; pending: ron (HAG-1 backend tests), harry (HAG-3 e2e smoke), albus (HAG-4 git state). Confirmed so far: hermione (HAG-2 frontend prod build) = GREEN — signed off by god, `.env` already IPv4, `npm run build` succeeded, main unchanged (board.md)._
+All four final passes were run as separate gates before this report. Three are in; ron's is the last one outstanding.
+
+| Pass | Owner | Scope | Result |
+| --- | --- | --- | --- |
+| **HAG-1** | ron | Backend test suites | **PENDING** — inform not yet received; result not yet recorded (will not be invented). |
+| **HAG-2** | hermione | Frontend production build | **GREEN** — `.env` already IPv4, `npm run build` succeeded, `main` unchanged (god sign-off, 2026-11-25 ~09:56; detail on board.md). |
+| **HAG-3** | harry | e2e smoke, full stack | **GREEN** — full stack up, admin login ok, `KOT-0001` created, booking `BK-20261125-2B53`, invoice `HOTINV-20261125-0001` a valid 1-page PDF. Two environmental, non-blocking defects, both infra not code: (1) host has no `kitchen` printer, so thermal auto-print retries fail; (2) no reachable Wasachiva key, so WhatsApp auto-confirm returns 500. Authoritative detail: board.md (HAG-3 line, signed off 10:02); report file `reports/HAG-3-final-smoke.md` not yet on `main` at audit time (post-dates the HAG-4 git gate at `ca21c07`). |
+| **HAG-4** | albus | Git state | **GREEN** — option (a) done: `main == origin/main == ca21c07`, remote worker branch deleted, HAG-53 report restored to main. |
+
+_Confirms: HAG-4's `ca21c07` matches the one-commit gap my branch had at audit start (report-only commit, no code). _
 
 ## (c) Open items
 
