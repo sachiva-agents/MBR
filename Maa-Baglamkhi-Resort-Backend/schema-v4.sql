@@ -36,6 +36,22 @@ CREATE TABLE IF NOT EXISTS `roles` (
   PRIMARY KEY (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+-- System roles used by every role-gated route (roleMiddleware alias map).
+-- The login JWT carries roles.name via LEFT JOIN; an empty roles table makes
+-- every user fall back to 'staff', so all admin-gated routes answer 403.
+-- INSERT IGNORE against the UNIQUE key on roles.name: additive only — a
+-- running install keeps its existing rows, a fresh install gets the seven.
+-- ids are fixed so users.role_id (1..7, see ensureDefaultStaffLogins)
+-- resolves to the right role.
+INSERT IGNORE INTO `roles` (`id`, `name`, `display_name`, `is_system`) VALUES
+  (1, 'admin', 'Administrator', 0),
+  (2, 'manager', 'Manager', 0),
+  (3, 'reception', 'Reception', 0),
+  (4, 'accounts', 'Accounts', 0),
+  (5, 'housekeeping', 'Housekeeping', 0),
+  (6, 'waiter', 'Waiter', 0),
+  (7, 'kitchen', 'Kitchen', 0);
+
 -- Permissions
 CREATE TABLE IF NOT EXISTS `permissions` (
   `id` INT UNSIGNED NOT NULL AUTO_INCREMENT,
