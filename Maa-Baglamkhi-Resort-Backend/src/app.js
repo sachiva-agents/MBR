@@ -219,6 +219,12 @@ async function initializeDatabase(options = {}) {
       const holidayCalendarModel = require("./models/HolidayCalendarModel");
       await holidayCalendarModel.ensureSchema();
     });
+    // Lazy-table DDL + migrated columns + the seven production roles.
+    // Idempotent; on a running install every step is a no-op pre-check.
+    await bootstrapSchema("Boot schema (lazy tables, columns, roles)", async () => {
+      const { ensureBootSchema } = require("./models/BootstrapModule");
+      await ensureBootSchema();
+    });
     await bootstrapSchema("Default staff login bootstrap", ensureDefaultStaffLogins);
   } catch (error) {
     console.error(
