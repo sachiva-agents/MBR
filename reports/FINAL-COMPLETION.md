@@ -1,8 +1,8 @@
 # MBR — Final Completion Audit
 
-Author: ada · 2026-11-25 · branch `agent/ada-mwvxtqat` · HEAD `9c8957b` (branch-local; `main` is one commit ahead at `ca21c07`, which adds only `reports/HAG-53-banquet-bookings-route.md`)
+Author: ada · 2026-11-25 · branch `agent/ada-mwvxtqat` · re-based onto `main` at `0cd2d86` (ron's HAG-6 fix chain ending at `e1ddb5a` + one docs commit that adds `reports/HAG-3-final-smoke.md`)
 
-Method: read the repo README, grepped the backend controller/route tree (`src/app.js` mounts, `src/controller/`, `src/routes/`), the frontend route tree (`src/App.jsx`, `src/pages/`, `src/components/`), `reports/*.md`, and the test layout. No code changes; no running services required for the static portions of this audit.
+Method: read the repo README, grepped the backend controller/route tree (`src/app.js` mounts, `src/controller/`, `src/routes/`), the frontend route tree (`src/App.jsx`, `src/pages/`, `src/components/`), `reports/*.md`, and the test layout. No code changes on this branch; no running services required for the static portions of this audit.
 
 ---
 
@@ -39,28 +39,29 @@ Everything the README claims to do maps to live, mounted code. The only true "ga
 
 ## (b) Teammate final-pass results
 
-All four final passes were run as separate gates before this report. Three are in; ron's is the last one outstanding.
+All four final passes are GREEN.
 
 | Pass | Owner | Scope | Result |
 | --- | --- | --- | --- |
-| **HAG-1** | ron | Backend test suites | **RE-VERIFY PENDING (HAG-6)** — first run RED on a clean scratch DB: 5 bootstrap/provisioning root causes (init require bug, roles never seeded, 7 lazy tables not created at boot, 5 migrated columns missing, mysqldump PATH). God green-lit ron to fix all five and re-verify GREEN on a clean scratch DB; he will commit to main and report the new hash + 0-fail counts. This run's result is recorded only when his inform lands. |
+| **HAG-1** | ron | Backend test suites | **GREEN (re-verify, card HAG-6)** — clean scratch DB: routes **512 pass / 0 fail / 14 skip**, lifecycle **120 / 0**, write-probe **55 / 0**. All changes additive; prod DB untouched. See (c) for the commit chain. |
 | **HAG-2** | hermione | Frontend production build | **GREEN** — `.env` already IPv4, `npm run build` succeeded, `main` unchanged (god sign-off, 2026-11-25 ~09:56; detail on board.md). |
-| **HAG-3** | harry | e2e smoke, full stack | **GREEN** — full stack up, admin login ok, `KOT-0001` created, booking `BK-20261125-2B53`, invoice `HOTINV-20261125-0001` a valid 1-page PDF. Two environmental, non-blocking defects, both infra not code: (1) host has no `kitchen` printer, so thermal auto-print retries fail; (2) no reachable Wasachiva key, so WhatsApp auto-confirm returns 500. Authoritative detail: board.md (HAG-3 line, signed off 10:02); report file `reports/HAG-3-final-smoke.md` not yet on `main` at audit time (post-dates the HAG-4 git gate at `ca21c07`). |
+| **HAG-3** | harry | e2e smoke, full stack | **GREEN** — full stack up, admin login ok, `KOT-0001` created, booking `BK-20261125-2B53`, invoice `HOTINV-20261125-0001` a valid 1-page PDF. Two environmental, non-blocking defects, both infra not code: (1) host has no `kitchen` printer, so thermal auto-print retries fail; (2) no reachable Wasachiva key, so WhatsApp auto-confirm returns 500. Detail: `reports/HAG-3-final-smoke.md` (committed to main at `0cd2d86` during the HAG-6 window, now present in this re-base) and board.md (signed off 10:02). |
 | **HAG-4** | albus | Git state | **GREEN** — option (a) done: `main == origin/main == ca21c07`, remote worker branch deleted, HAG-53 report restored to main. |
 
 _Confirms: HAG-4's `ca21c07` matches the one-commit gap my branch had at audit start (report-only commit, no code). _
 
 ## (c) Open items
 
-**Completion work — 5 bootstrap root-cause fixes (owner: ron, card HAG-6):**
-HAG-1's first run on a clean scratch DB exposed five provisioning defects, all fixed in one green-lit push to main before this report can call the project complete:
-1. Init require bug
-2. Roles never seeded on first boot
-3. Seven lazy tables not created at boot
-4. Five migrated columns missing from the schema bootstrap
-5. `mysqldump` not on PATH on the host
+**Completion work — 5 bootstrap root-cause fixes + 2 new findings (owner: ron, card HAG-6, GREEN on main):**
+HAG-1's first run on a clean scratch DB exposed five provisioning defects; the re-verify surfaced two more. All six are fixed and committed to `main` (chain ending at `e1ddb5a`):
+1. `fix(init)` — `require ./src/app` so `npm run init` completes (init require bug)
+2. `feat(schema)` — seed the seven production roles on bootstrap
+3. `feat(boot)` — create the seven lazy tables + backfill the five migrated columns at schema init
+4. `fix(backups)` — fall back to in-database clone when `mysqldump` is off PATH
+5. **New finding:** `fix(kitchen)` — `resolveKitchenStatus` was undefined in `updateOrderStatus`
+6. **New finding:** `test` — self-provision room/housekeeping fixtures on a fresh install
 
-Re-verification criterion: clean scratch DB, backend test suites return 0 failures. Ron's new main hash and 0-fail counts land with his inform; this section is finalized at that point, and the branch is re-based onto the new main before the final commit.
+Re-verification (clean scratch DB, prod DB untouched): routes **512 pass / 0 fail / 14 skip**, lifecycle **120 / 0**, write-probe **55 / 0**. God signed off HAG-6 GREEN at main `e1ddb5a`.
 
 **Debris (from (a), cosmetic only, no functional impact):**
 - `src/controller/aiterController.js` and `src/controller/hatsappInvoiceController.js` — dead files, never required anywhere.
@@ -71,4 +72,4 @@ Re-verification criterion: clean scratch DB, backend test suites return 0 failur
 - No Windows printer named `kitchen` → thermal auto-print retries fail.
 - No reachable Wasachiva key → WhatsApp auto-confirm returns 500.
 
-**Verdict:** the codebase is functionally complete — all 12 README modules map to live code with no gaps. The only open item is the five bootstrap fixes, which are tracked under HAG-6 and expected to land on main before this report is finalized.
+**Verdict: READY TO DECLARE COMPLETE.** All 12 README modules map to live code with no functional gaps; all four final passes are GREEN (HAG-1 re-verify at main `e1ddb5a`); the six fixes (5 known + 2 new) are committed and verified on a clean scratch DB. Remaining items are cosmetic debris and two host-infra gaps that do not block completion.
