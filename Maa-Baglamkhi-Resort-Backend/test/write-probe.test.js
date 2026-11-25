@@ -72,7 +72,7 @@ function check(label, ok, detail) {
 // Track what we create so the cleanup at the end can remove it.
 const created = {
   transactions: [], bills: [], kots: [], tables: [],
-  items: [], users: [], halls: [], banquet: [], assignments: [],
+  items: [], users: [], halls: [], banquet: [], assignments: [], hkRooms: [],
 };
 
 async function login() {
@@ -403,7 +403,20 @@ async function probeBanquet() {
 async function probeHousekeeping() {
   console.log("\n[5d] Housekeeping — status, assignment, message");
 
-  const rooms = await api("GET", "/api/housekeeping");
+  let rooms = await api("GET", "/api/housekeeping");
+  // A fresh install has no housekeeping rows yet: create one for the probe
+  // (and clean it up at the end) so the status/assignment writes are real.
+  if (!Array.isArray(rooms.body) || !rooms.body.length) {
+    const hk = await api("POST", "/api/housekeeping", {
+      roomNo: `HK-WP-${crypto.randomBytes(3).toString("hex")}`,
+      status: "Vacant Dirty",
+      assignee: "Write Probe",
+    });
+    if ([200, 201].includes(hk.status) && hk.body?.id) {
+      created.hkRooms.push(hk.body.id);
+      rooms = await api("GET", "/api/housekeeping");
+    }
+  }
   // Pick a real room that exists in the inventory (room_number must be in the
   // rooms table, and it must not be currently occupied by a guest).
   const roomRow = Array.isArray(rooms.body) && rooms.body.find(
@@ -416,8 +429,10 @@ async function probeHousekeeping() {
   }
   const roomId = roomRow.id;
 
+  // The handler validates against the housekeeping status list ("Vacant Dirty",
+  // not "Dirty").
   const status = await api("PUT", `/api/housekeeping/status/${roomId}`, {
-    status: "Dirty",
+    status: "Vacant Dirty",
   });
   check("PUT /api/housekeeping/status/:id accepted", [200, 201].includes(status.status), `got ${status.status} ${JSON.stringify(status.body).slice(0, 140)}`);
 
@@ -526,6 +541,9 @@ async function cleanup() {
   }
   for (const id of created.users) {
     await api("DELETE", `/api/users/${id}`).catch(() => {});
+  }
+  for (const id of created.hkRooms) {
+    await api("DELETE", `/api/housekeeping/${id}`).catch(() => {});
   }
   console.log("   done");
 }

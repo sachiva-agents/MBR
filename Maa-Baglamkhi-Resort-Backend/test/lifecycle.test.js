@@ -105,6 +105,25 @@ function summarize(suite) {
   return { name: suite.name, passed, failed, results: suite.results };
 }
 
+// A fresh install ships an empty rooms table (schema bootstrap only creates
+// the DDL + the six default categories, no room rows). The room-attach steps
+// need at least one room, so this provisions a stamp-suffixed fixture through
+// the public API and removes it on cleanup — the suite's own "clean up
+// everything we create" contract. No-op when rooms already exist.
+async function ensureRoomFixture(suite, stamp) {
+  const setup = await api("GET", "/api/hotel/rooms/setup");
+  const categories = Array.isArray(setup.body) ? setup.body : [];
+  const anyRoom = categories.flatMap((c) => c.roomDetails || c.rooms || []);
+  if (anyRoom.length) return;
+
+  const categoryId = categories[0]?.id;
+  const roomNumber = `LK-ROOM-${stamp}`;
+  const created = await api("POST", "/api/hotel/rooms", { roomNumber, categoryId });
+  if ([200, 201].includes(created.status)) {
+    suite.onCleanup(() => api("DELETE", `/api/hotel/rooms/${roomNumber}`).catch(() => {}));
+  }
+}
+
 // ---------------------------------------------------------------------------
 // Module 1 — Hotel booking lifecycle
 // ---------------------------------------------------------------------------
@@ -118,6 +137,7 @@ async function testBookingLifecycle() {
   const guestName = `Lifecycle Guest ${stamp}`;
   const checkIn = "2026-03-01";
   const checkOut = "2026-03-04";
+  await ensureRoomFixture(suite, stamp);
 
   // --- Create ---
   const created = await api("POST", "/api/hotel/guest", {
@@ -294,6 +314,7 @@ async function testBookingV4Lifecycle() {
 
   const stamp = crypto.randomBytes(3).toString("hex");
   const guestName = `Lifecycle V4 ${stamp}`;
+  await ensureRoomFixture(suite, stamp);
   const mobile = `90000${String(Math.floor(Math.random() * 100000)).padStart(5, "0")}`;
 
   // --- Create a booking ---
