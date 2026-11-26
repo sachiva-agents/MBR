@@ -53,7 +53,12 @@ const PRINTERS = {
   },
   KITCHEN_PRINTER: {
     printerKey: "KITCHEN_PRINTER",
-    name: process.env.KITCHEN_PRINTER_NAME || "kitchen",
+    // HAG-13: KOT_PRINTER_NAME is the explicit KOT override; it wins over the
+    // legacy KITCHEN_PRINTER_NAME. Default stays "kitchen".
+    name:
+      process.env.KOT_PRINTER_NAME ||
+      process.env.KITCHEN_PRINTER_NAME ||
+      "kitchen",
     type: "inkjet",
     paperSize: "A5",
     driver: "pdf-to-printer",

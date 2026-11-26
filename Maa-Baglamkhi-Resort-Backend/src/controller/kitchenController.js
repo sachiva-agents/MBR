@@ -116,6 +116,11 @@ exports.createOrder = async (req, res) => {
         .then((res) => {
           if (res?.success) {
             console.log(`[KOT] ✓ Queued for printing — KOT ${kot}`);
+          } else if (res?.skipped) {
+            // HAG-13: auto-print off or printer absent — expected degraded
+            // path, not an error. The queue/gate already logged the reason
+            // and raised the rate-limited admin notice.
+            console.warn(`[KOT] ⚠ Auto-print not queued for KOT ${kot} (degraded: ${res?.error || "printer unavailable"})`);
           } else {
             console.error(`[KOT] ✗ Queue failed:`, res?.error || "unknown");
           }

@@ -59,13 +59,129 @@ const fs = require("fs");
 const path = require("path");
 const { URL } = require("url");
 
+// HAG-13: env overrides for a different/secondary gateway + key.
+// WHATSAPP_GATEWAY_URL wins over the legacy wasachiva_url pair;
+// WASACHIVA_KEY / WHATSAPP_API_KEY win over the legacy wasachiva_key.
 const DEFAULT_BASE_URL =
-  (process.env.wasachiva_url || process.env.WASACHIVA_URL || "https://wasend.sachiva.cloud")
+  (process.env.WHATSAPP_GATEWAY_URL ||
+    process.env.wasachiva_url ||
+    process.env.WASACHIVA_URL ||
+    "https://wasend.sachiva.cloud")
     .replace(/\/+$/, "")
     .replace(/\?.*$/, "");
 
-const API_KEY = process.env.wasachiva_key || process.env.WASACHIVA_KEY || "";
+const API_KEY =
+  process.env.WHATSAPP_API_KEY ||
+  process.env.WASACHIVA_KEY ||
+  process.env.wasachiva_key ||
+  "";
 const GATEWAY_TIMEOUT_MS = Number(process.env.WASACHIVA_TIMEOUT_MS) || 10000;
+
+/**
+ * HAG-13: log a clear line once when the gateway cannot be reached, instead
+ * of the old 500-loop behaviour. The in-app admin notice is rate-limited
+ * (adminNotice, 1 h cooldown) so a steady stream of unreachable-gateway
+ * requests produces ONE notice, not one per request.
+ */
+const { notifyAdmin } = require("./adminNotice");
+
+/**
+ * True when a gateway error is a NETWORK-level failure (DNS/timeout/refused)
+ * rather than a gateway HTTP error (401/404/500): HTTP errors carry
+ * err.statusCode, network errors do not.
+ */
+const isNetworkFailure = (err) =>
+  !!err && !err.statusCode && !err.status && err.name !== "AbortError";
+
+const markGatewayUnreachable = async (reason, context = {}) => {
+  console.error(
+    `[WhatsApp][HAG-13] gateway unreachable — ${reason}`,
+    context && Object.keys(context).length ? JSON.stringify(context) : "",
+  );
+  await notifyAdmin({
+    type: "whatsapp_gateway_unreachable",
+    title: "WhatsApp/Wasachiva gateway unreachable",
+    message:
+      `WhatsApp delivery is failing (gateway ${String(reason).toLowerCase()} — no reachable gateway/key on this host). ` +
+      `Requests degrade gracefully: one notice, no 500-loop; delivery shows as undelivered. ` +
+      `Fix: point WHATSAPP_GATEWAY_URL (legacy wasachiva_url) at a live gateway and set WASACHIVA_KEY (legacy wasachiva_key) / WHATSAPP_API_KEY to its key.`,
+    data: { reason, gateway: DEFAULT_BASE_URL, at: new Date().toISOString() },
+  });
+};
+
+const markGatewayUnconfigured = async () => {
+  await notifyAdmin({
+    type: "whatsapp_unconfigured",
+    title: "WhatsApp/Wasachiva key not configured",
+    message:
+      `WhatsApp delivery is disabled: no API key found. ` +
+      `Set WHATSAPP_API_KEY or WASACHIVA_KEY (legacy wasachiva_key) in the backend .env, and WHATSAPP_GATEWAY_URL if the gateway host differs from the default.`,
+    data: { gateway: DEFAULT_BASE_URL, at: new Date().toISOString() },
+  });
+};
+
+// ── HAG-13 gateway circuit breaker ──────────────────────────────────────────
+// When the gateway is down, every send would re-fire DNS lookups + a full
+// url-shapes loop (the old "500 loop"). The breaker remembers the outage and
+// makes the in-flight and next sends short-circuit to a fast `degraded`
+// result after one network failure, re-arming after a cooldown (with one
+// live probe attempt) so a recovered gateway is picked up without a restart.
+const CB_COOLDOWN_MS = 60 * 1000;
+const circuit = { downUntil: 0, lastProbeAt: 0, reason: null };
+
+const isCircuitOpen = () =>
+  circuit.downUntil > 0 && Date.now() < circuit.downUntil;
+
+const isCircuitReadyToProbe = () =>
+  circuit.downUntil > 0 &&
+  Date.now() >= circuit.downUntil &&
+  Date.now() - circuit.lastProbeAt >= CB_COOLDOWN_MS;
+
+const tripCircuit = (reason) => {
+  circuit.downUntil = Date.now() + CB_COOLDOWN_MS;
+  circuit.reason = reason;
+};
+
+const rearmCircuit = () => {
+  circuit.downUntil = 0;
+  circuit.reason = null;
+};
+
+/**
+ * Send one gateway request, honouring the circuit breaker:
+ *   - open + not the designated probe → short-circuit, no network
+ *   - open + probe → attempt the real call; success rearms, failure keeps
+ *     it open and refreshes the notice (rate-limited)
+ * Returns { ran: boolean, value?, error? }.
+ */
+const withBreaker = async (attempt, label) => {
+  if (isCircuitReadyToProbe()) {
+    circuit.lastProbeAt = Date.now();
+    try {
+      const value = await attempt();
+      rearmCircuit();
+      return { ran: true, value };
+    } catch (err) {
+      tripCircuit(err.message || "unreachable");
+      markGatewayUnreachable(err.message || "unreachable", { label }).catch(() => {});
+      return { ran: true, error: err };
+    }
+  }
+  if (isCircuitOpen()) {
+    return { ran: false, error: new Error(`gateway ${circuit.reason || "unreachable"} (breaker open)`), shortCircuited: true };
+  }
+  try {
+    const value = await attempt();
+    rearmCircuit();
+    return { ran: true, value };
+  } catch (err) {
+    if (isNetworkFailure(err)) {
+      tripCircuit(err.message || "unreachable");
+      markGatewayUnreachable(err.message || "unreachable", { label }).catch(() => {});
+    }
+    return { ran: true, error: err };
+  }
+};
 
 const normalizePhoneNumber = (raw) => {
   if (raw === null || raw === undefined) return null;
@@ -255,12 +371,38 @@ const sendWhatsAppMessage = async ({ number, message, filePath, fileName, fileUr
     return { ok: false, error: `Invalid phone number: ${number}`, number, channel: "whatsapp" };
   }
   if (!API_KEY) {
-    return { ok: false, error: "wasachiva_key not configured", number: normalised, channel: "whatsapp" };
+    // HAG-13: key absent — degrade gracefully (one rate-limited notice),
+    // never a 500 loop. Fire-and-forget so the response shape is unchanged.
+    markGatewayUnconfigured().catch(() => {});
+    return {
+      ok: false,
+      degraded: true,
+      error: "wasachiva_key not configured",
+      number: normalised,
+      channel: "whatsapp",
+    };
   }
 
   const msg = message || "";
   const docType = type || "document";
   let lastErr = null;
+
+  // HAG-13: gateway is known-unreachable (breaker open) — short-circuit the
+  // whole shapes+multipart+fallback sequence in this request. This is the
+  // "fail once, don't retry-storm" guarantee: after the first network
+  // failure the breaker stays open for CB_COOLDOWN_MS and these calls are
+  // instant `degraded` results instead of 40s of dead requests.
+  if (isCircuitOpen() && !isCircuitReadyToProbe()) {
+    // ok:false WITHOUT skipped:true — delivery failed (gateway down), it was
+    // not intentionally skipped. Callers therefore report 207, not 200.
+    return {
+      ok: false,
+      degraded: true,
+      reason: `gateway unreachable (circuit breaker open: ${circuit.reason || "unreachable"})`,
+      number: normalised,
+      channel: "whatsapp",
+    };
+  }
 
   // ── 1. PRIMARY: send document via GET /api/send-message with file_url ──
   //
@@ -356,11 +498,50 @@ const sendWhatsAppMessage = async ({ number, message, filePath, fileName, fileUr
     const textMsg = (filePath || fileUrl)
       ? `${msg}\n\nYour invoice PDF is available. Please contact the resort for a copy.`
       : msg;
-    const textResponse = await requestGateway("GET", "/api/send-message", {
-      number: normalised,
-      message: textMsg,
-      type: "text",
-    });
+
+    // HAG-13: while the breaker is open (gateway unreachable), short-circuit
+    // instead of re-hitting a dead gateway with another full url-shapes
+    // loop — this is what used to become the 500 loop.
+    if (isCircuitOpen() && !isCircuitReadyToProbe()) {
+      return {
+        ok: false,
+        degraded: true,
+        reason: `gateway unreachable (circuit breaker open: ${circuit.reason || "unreachable"})`,
+        number: normalised,
+        channel: "whatsapp",
+      };
+    }
+
+    const textAttempt = () =>
+      requestGateway("GET", "/api/send-message", {
+        number: normalised,
+        message: textMsg,
+        type: "text",
+      });
+
+    let textResponse;
+    const b = await withBreaker(textAttempt, "text-fallback");
+    if (b.value !== undefined) textResponse = b.value;
+
+    if (textResponse && textResponse.status === "error") {
+      throw Object.assign(new Error(textResponse.error || "Wasend reported an error"), {
+        statusCode: 400,
+        body: textResponse,
+      });
+    }
+    if (b.shortCircuited) {
+      return {
+        ok: false,
+        degraded: true,
+        reason: `gateway unreachable (circuit breaker open: ${b.error?.message || "unreachable"})`,
+        number: normalised,
+        channel: "whatsapp",
+      };
+    }
+    if (b.error && !b.shortCircuited && !textResponse) {
+      throw b.error;
+    }
+
     return {
       ok: true,
       statusCode: 200,
@@ -371,8 +552,22 @@ const sendWhatsAppMessage = async ({ number, message, filePath, fileName, fileUr
       fallbackReason: lastErr?.message || "document delivery not supported",
     };
   } catch (textErr) {
+    // HAG-13: unreachable-gateway detection. A network-level failure (DNS
+    // error, timeout, refused connection — no HTTP status code on the error)
+    // means the gateway itself is down: log ONCE and raise the rate-limited
+    // admin notice, and surface `degraded` so callers can 207-degrade
+    // instead of a 500 loop. Gateway HTTP errors (401/404) are config
+    // problems, not outages — no notice, just the existing log line.
+    const networkFail = isNetworkFailure(textErr) || isNetworkFailure(lastErr);
+    if (networkFail) {
+      markGatewayUnreachable(
+        textErr?.message || lastErr?.message || "unreachable",
+        { number: normalised, docType },
+      ).catch(() => {});
+    }
     return {
       ok: false,
+      degraded: networkFail,
       statusCode: lastErr?.statusCode || 0,
       error: `Document send failed: ${lastErr?.message || "unknown"}. Text fallback also failed: ${textErr.message}`,
       body: lastErr?.body,
@@ -389,15 +584,57 @@ const sendSmsMessage = async ({ number, message } = {}) => {
     return { ok: false, error: "Invalid phone number", number, channel: "sms" };
   }
   if (!API_KEY) {
-    return { ok: false, error: "wasachiva_key not configured", number: normalised, channel: "sms" };
+    markGatewayUnconfigured().catch(() => {});
+    return {
+      ok: false,
+      degraded: true,
+      error: "wasachiva_key not configured",
+      number: normalised,
+      channel: "sms",
+    };
+  }
+
+  // HAG-13: honour the gateway breaker — when the gateway is unreachable,
+  // don't re-fire a dead request; report degraded instead.
+  if (isCircuitOpen() && !isCircuitReadyToProbe()) {
+    return {
+      ok: false,
+      degraded: true,
+      reason: `gateway unreachable (circuit breaker open: ${circuit.reason || "unreachable"})`,
+      number: normalised,
+      channel: "sms",
+    };
   }
 
   try {
-    const response = await requestGateway("GET", "/api/send-message", {
-      number: normalised,
-      message: message || "",
-      type: "sms",
-    });
+    const smsAttempt = () =>
+      requestGateway("GET", "/api/send-message", {
+        number: normalised,
+        message: message || "",
+        type: "sms",
+      });
+
+    const b = await withBreaker(smsAttempt, "sms");
+    if (b.shortCircuited) {
+      return {
+        ok: false,
+        degraded: true,
+        reason: `gateway unreachable (circuit breaker open: ${b.error?.message || "unreachable"})`,
+        number: normalised,
+        channel: "sms",
+      };
+    }
+    if (b.error) {
+      return {
+        ok: false,
+        degraded: isNetworkFailure(b.error),
+        statusCode: b.error.statusCode || 0,
+        error: b.error.message,
+        number: normalised,
+        channel: "sms",
+      };
+    }
+    const response = b.value;
     if (response?.status === "error") {
       const err = new Error(response.error || "Wasend reported an error");
       err.statusCode = 400;

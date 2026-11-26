@@ -18,12 +18,21 @@ const PrintConfig = require("../PrintConfig");
 const PrintLogModel = require("../models/PrintLogsModel");
 const { printQueue } = require("./PrintQueue");
 const { ThermalPrintService } = require("./ThermalPrintService");
+const { isAutoPrintEnabled } = require("./printerAvailability");
 
 /**
  * Automatically print a KOT when a kitchen order is created.
  * Called from kitchenController after order creation.
  */
 const autoPrintKOT = async (orderData) => {
+  // HAG-13: AUTO_PRINT_ENABLED is now a real switch. When off, skip the
+  // queue entirely — clear log line, no jobs, no retries, no notices.
+  if (!isAutoPrintEnabled()) {
+    const kotNo0 = orderData.kotNo || `KOT-${Date.now()}`;
+    console.log(`[KitchenPrint] auto-print disabled (AUTO_PRINT_ENABLED) — KOT ${kotNo0} NOT queued`);
+    return { success: false, skipped: true, kotNo: kotNo0, error: "auto-print disabled" };
+  }
+
   const { kotNo, orderId, tableNumber, entityType, waiterName, items, prepTimeMinutes } = orderData;
 
   // Build KOT data

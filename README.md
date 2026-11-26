@@ -120,7 +120,9 @@ serves the API on 5002 (CORS via `CORS_ORIGINS`).
 | `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` / `CLIENT_URL` | Google OAuth login |
 | `ADMIN_WHATSAPP_NUMBER` | Booking admin notification fallback |
 | `PUBLIC_BASE_URL` | Public base used when sending PDFs over WhatsApp (ngrok) |
-| `wasachiva_key` | WhatsApp gateway bearer key |
+| `wasachiva_key` | WhatsApp gateway bearer key (legacy; `WHATSAPP_API_KEY` overrides) |
+| `WHATSAPP_GATEWAY_URL` | WhatsApp gateway URL override (wins over legacy `wasachiva_url`) |
+| `KOT_PRINTER_NAME` | Explicit KOT printer override (wins over `KITCHEN_PRINTER_NAME`) |
 | `AUTO_PRINT_ENABLED` + `PRINT_*` | Thermal printer settings (KOT, A4, restaurant) |
 
 ### Frontend (`.env` in `Maa-Baglamkhi-Resort-frontend/`)

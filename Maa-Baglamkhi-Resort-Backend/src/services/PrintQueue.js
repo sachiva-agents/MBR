@@ -22,6 +22,7 @@ const numericUserId = (value) => {
 };
 const { ensureSchema } = require("../models/PrintLogsModel");
 const PrintConfig = require("../PrintConfig");
+const { gateForJob, isAutoPrintEnabled } = require("./printerAvailability");
 
 
 const isTestEnv = () => process.env.NODE_ENV === "test";
@@ -131,6 +132,33 @@ class PrintQueue {
     );
 
     try {
+      // ── HAG-13 graceful degradation ─────────────────────────────────────
+      // 1) Auto-print explicitly disabled (AUTO_PRINT_ENABLED=false):
+      //    skip without retry — this is operator intent, not an error.
+      if (!isAutoPrintEnabled()) {
+        await this.skipJob(job, "auto-print disabled (AUTO_PRINT_ENABLED=false)");
+        return;
+      }
+
+      // 2) KOT printer absent/degraded: fail ONCE (skip, no retry storm).
+      //    The parked round-1 gap was specifically the kitchen printer —
+      //    gate the KITCHEN_PRINTER jobs (kot / kot_customer_copy). Other
+      //    print types keep their legacy fail-retry-to-final-failed path
+      //    (HAG-13 adds one rate-limited admin notice on final failure).
+      const printerKey = PrintConfig.resolvePrinterWithOverride(job.print_type);
+      const printer = PrintConfig.getPrinter(printerKey);
+      if (printerKey === "KITCHEN_PRINTER") {
+        const gate = await gateForJob({
+          printerName: printer.name,
+          printerKey,
+          jobLabel: `KOT print job ${job.job_id} (${job.print_type})`,
+        });
+        if (!gate.proceed) {
+          await this.skipJob(job, gate.reason);
+          return;
+        }
+      }
+
       const result = await this.executePrintJob(job);
 
       // FIX: executePrintJob can resolve normally with { success: false, error }
@@ -174,6 +202,19 @@ class PrintQueue {
           `UPDATE print_queue SET status = 'failed', retry_count = ?, error_message = ? WHERE id = ?`,
           [newRetryCount, err.message, job.id],
         );
+
+        // HAG-13: printer exists but the send keeps failing (offline /
+        // driver error) — surface ONE rate-limited admin notice.
+        const { notifyAdmin } = require("./adminNotice");
+        await notifyAdmin({
+          type: "printer_degraded",
+          title: `Print job ${job.job_id} failed after ${job.max_retries || 3} attempts`,
+          message:
+            `Printer "${job.printer_name}" is installed but the print job ${job.job_id} (${job.print_type}) ` +
+            `failed: ${err.message}. Check that the printer is online/ready and the paper form is loaded; ` +
+            `or point the printer override (KOT_PRINTER_NAME / KITCHEN_PRINTER_NAME) at a working one.`,
+          data: { job: job.job_id, printType: job.print_type, printer: job.printer_name, error: err.message },
+        }).catch(() => {});
 
         // Log failure
         await db.query(
@@ -270,6 +311,18 @@ class PrintQueue {
         }
       }
     }
+  }
+
+  /**
+   * Mark jobs as skipped without retry (used when the printer is absent /
+   * auto-print is off — HAG-13 graceful degradation).
+   */
+  async skipJob(job, reason) {
+    await db.query(
+      `UPDATE print_queue SET status = 'skipped', error_message = ? WHERE id = ?`,
+      [reason, job.id],
+    );
+    this.logger(`Job skipped: ${job.job_id} type=${job.print_type} — ${reason} (no retry)`);
   }
 
   /**
