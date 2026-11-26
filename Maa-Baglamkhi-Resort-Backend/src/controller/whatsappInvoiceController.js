@@ -208,10 +208,10 @@ exports.sendInvoiceWhatsApp = async (req, res) => {
       let adminNumber = req.body?.adminNumber || "";
       if (!adminNumber) {
         try {
-          const adminRow = await new Promise((resolve, reject) => {
-            UserModel.findAdminWithPhone((err, row) => (err ? reject(err) : resolve(row)));
-          });
-          adminNumber = adminRow?.phone || "";
+          // findAdminWithPhone is async (returns rows[]) — await it, do not
+          // pass a callback. (HAG-15)
+          const adminRows = await UserModel.findAdminWithPhone();
+          adminNumber = adminRows?.[0]?.phone || "";
         } catch { /* ignore */ }
       }
       if (!adminNumber && process.env.ADMIN_WHATSAPP_NUMBER) {
@@ -397,11 +397,11 @@ exports.sendInvoiceWhatsApp = async (req, res) => {
     console.log("[send-whatsapp] adminNumber from request body:", adminNumber || "(empty)");
     if (!adminNumber && !hasFrontendInvoice) {
       try {
-        const adminRow = await new Promise((resolve, reject) => {
-          UserModel.findAdminWithPhone((err, row) => (err ? reject(err) : resolve(row)));
-        });
-        adminNumber = adminRow?.phone || "";
-        console.log("[send-whatsapp] adminNumber from DB:", adminNumber || "(empty — no admin has phone set)", "adminId:", adminRow?.id || "null");
+        // findAdminWithPhone is async (returns rows[]) — await it, do not
+        // pass a callback. (HAG-15)
+        const adminRows = await UserModel.findAdminWithPhone();
+        adminNumber = adminRows?.[0]?.phone || "";
+        console.log("[send-whatsapp] adminNumber from DB:", adminNumber || "(empty — no admin has phone set)", "adminId:", adminRows?.[0]?.id || "null");
       } catch (err) {
         console.error("[send-whatsapp] DB lookup for admin phone failed:", err.message);
       }
