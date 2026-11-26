@@ -1,200 +1,117 @@
-# DEAD-ROUTES: 88 unused backend routes, redundant vs genuine gaps
+# DEAD-ROUTES — classification of the 88 [DEAD] endpoints
 
-Classification of the [DEAD] list in reports/API-AUDIT.json (main @ 449da93). Evidence chain: (1) same-handler sibling that the UI calls; (2) resource-keyword cross-check against 607 live calls; (3) remainder = GAP.
+Source: `reports/API-AUDIT.json` (`details.DEAD`, 88 entries), commit 449da93. Strictly read-only analysis — no code touched.
+
+## Method
+- Indexed every `.get/.post/.put/.delete/.patch(…)` call in `Maa-Baglamkhi-Resort-frontend/src` (600 literal call sites, 309 distinct method+resource shapes).
+- **REDUNDANT**: a live sibling in the same resource family is what the UI actually calls (same handler / alias mount / verb variant).
+- **GAP**: no sibling in the family is called by any UI — the feature exists only on the backend. Each gap gets a suggested UI placement for HAG-12.
+- Sibling relationships verified against the route files (`src/routes/*.js` + `src/app.js` mounts).
 
 ## Totals
-- REDUNDANT: 59 - keep as-is, no UI needed (feature reachable another way)
-- GAP: 29 - backend features with no live frontend caller (HAG-12 UI candidates)
 
-### InvoiceRoutes.js (1)
+| | count |
+|---|---|
+| DEAD routes | **88** |
+| REDUNDANT (alias/variant of a live route the UI already calls) | **66** |
+| GAP (backend-only feature, no UI exposes it or its payload shape) | **22** |
 
-| method | route | verdict | evidence / suggested area |
-| --- | --- | --- | --- |
-| PATCH | `/payment-status/:id` | **GAP** | Hotel / Front Desk (invoices) - no live frontend caller of this feature |
+GAP domains: employees (6), notifications (4), housekeeping (2), payment (2), roles (2), room-service (2), payroll (1), restaurant (1), salary (1), zk (1)
 
-### accountsRoutes.js (4)
+## REDUNDANT (66)
 
-| method | route | verdict | evidence / suggested area |
-| --- | --- | --- | --- |
-| GET | `/dashboard` | **GAP** | Accounts - no live frontend caller of this feature |
-| GET | `/` | **GAP** | Accounts - no live frontend caller of this feature |
-| GET | `/transactions/:id` | **REDUNDANT** | GET /accounts/transactions @ Maa-Baglamkhi-Resort-frontend\src\pages\Accounts.jsx; PUT /accounts/transactions/${editingRecord.id} @ Maa-Baglamkhi-Resort-frontend\src\pages\Accounts.jsx; DELETE /accounts/transactions/${id} @ Maa-Baglamkhi-Resort-frontend\src\pages\Accounts.jsx |
-| GET | `/payment-settings/:id` | **REDUNDANT** | GET /accounts/payment-settings @ Maa-Baglamkhi-Resort-frontend\src\pages\Accounts.jsx; GET /accounts/payment-history @ Maa-Baglamkhi-Resort-frontend\src\pages\Accounts.jsx; GET /accounts/payment-history @ Maa-Baglamkhi-Resort-frontend\src\pages\Accounts.jsx |
+| # | Route | Live sibling the UI calls | FE evidence |
+|---|---|---|---|
+| 1 | `PATCH /api/invoices/payment-status/:id` (InvoiceRoutes.js) | PUT /api/accounts/payment-settings/:id (live: Accounts.jsx:1639) is the payment-settings write the UI uses; no UI references the invoice payment-status patch | no FE caller for this path (sibling family covered by live routes) |
+| 2 | `GET /api/accounts/dashboard` (accountsRoutes.js) | GET /api/accounts/summary (live: Accounts.jsx, AccountsDashboard.jsx; same handler getSummary) | FE caller(s): pages/Accounts.jsx, pages/AccountsDashboard.jsx, pages/reports/IncomeExpenditure.jsx |
+| 3 | `GET /api/accounts/` (accountsRoutes.js) | GET /api/accounts/summary (live: Accounts.jsx, AccountsDashboard.jsx; same handler getSummary) | FE caller(s): pages/Accounts.jsx, pages/AccountsDashboard.jsx, pages/reports/IncomeExpenditure.jsx |
+| 4 | `GET /api/accounts/transactions/:id` (accountsRoutes.js) | GET/PUT/DELETE /api/accounts/transactions (list+item CRUD live: Accounts.jsx) | FE caller(s): pages/Accounts.jsx, pages/Accounts.jsx, pages/Accounts.jsx |
+| 5 | `GET /api/accounts/payment-settings/:id` (accountsRoutes.js) | GET /api/accounts/payment-settings (live: Accounts.jsx:800); :id read has no UI (UI works off the list) | FE caller(s): pages/Accounts.jsx, pages/Accounts.jsx, pages/Accounts.jsx |
+| 6 | `GET /api/attendance/payroll` (attendanceRoutes.js) | GET /api/attendance (live: Attendance.jsx) + GET /api/accounts/payroll (live) | FE caller(s): pages/Attendance.jsx, pages/Attendance.jsx, pages/Attendance.jsx |
+| 7 | `POST /api/attendance/mark` (attendanceRoutes.js) | POST /api/attendance (live: Attendance.jsx, same handler markAttendance) | no FE caller for this path (sibling family covered by live routes) |
+| 8 | `PATCH /api/attendance/:id` (attendanceRoutes.js) | PUT /api/attendance/:id (live shape, same handler updateAttendanceRecord); UI uses the PUT verb | no FE caller for this path (sibling family covered by live routes) |
+| 9 | `GET /api/banquet/config` (banquetRoutes.js) | GET /api/banquet dashboard (live: Banquet page, bundles pricing config) + PUT /api/banquet/config (live) | FE caller(s): pages/Accounts.jsx, pages/AccountsCustomerInvoices.jsx, pages/AccountsDashboard.jsx |
+| 10 | `GET /api/banquet/halls` (banquetRoutes.js) | GET /api/banquet dashboard (live: Banquet page, includes halls) | FE caller(s): pages/Accounts.jsx, pages/AccountsCustomerInvoices.jsx, pages/AccountsDashboard.jsx |
+| 11 | `GET /api/banquet/bookings` (banquetRoutes.js) | GET /api/banquet dashboard (live: Banquet page, includes bookings) | FE caller(s): pages/Accounts.jsx, pages/AccountsCustomerInvoices.jsx, pages/AccountsDashboard.jsx |
+| 12 | `GET /api/hotel/` (bookingRoutes.js) | GET /api/hotel/all-bookings (live: 15 call sites, same handler getAllBookings) | FE caller(s): components/Dashboard/Stayover.jsx, components/Hotel/AllBooking.jsx, components/Hotel/BookingFlow.jsx |
+| 13 | `GET /api/hotel/payment-history` (bookingRoutes.js) | GET /api/hotel/payment-history/:id (live: 5 call sites) + GET /api/accounts/payment-history (live) | FE caller(s): components/Hotel/BookingFlow.jsx, components/Hotel/BookingFlow.jsx, components/Hotel/BookingFlow.jsx |
+| 14 | `GET /api/hotel/room-tariff` (bookingRoutes.js) | POST /api/hotel/room-tariff/:id (live) is the write the UI uses; GET /api/hotel/booking-history (live) is the read | FE caller(s): components/Hotel/RoomTariff.jsx, components/Hotel/AllBooking.jsx, components/Hotel/BookingFlow.jsx |
+| 15 | `GET /api/hotel/communication` (bookingRoutes.js) | GET /api/hotel/booking-history (live; same handler getBookingHistory) | FE caller(s): components/Hotel/AllBooking.jsx, components/Hotel/BookingFlow.jsx, components/Hotel/BookingHistory.jsx |
+| 16 | `GET /api/hotel/booking/:id` (bookingRoutes.js) | GET /api/hotel/full-booking/:id (live: 10 call sites) | FE caller(s): components/Dashboard/Stayover.jsx, components/Dashboard/Stayover.jsx, components/Hotel/BookingFlow.jsx |
+| 17 | `GET /api/hotel/rooms` (bookingRoutes.js) | GET /api/hotel/rooms/setup (live: 10 call sites, same handler getRoomSetup) | FE caller(s): components/Hotel/BookingFlow.jsx, components/Hotel/GroupBooking.jsx, components/Hotel/OccupancyForecast.jsx |
+| 18 | `GET /api/hotel/rooms-availability` (bookingRoutes.js) | GET /api/hotel/rooms/setup (live, same handler getRoomSetup) | FE caller(s): components/Hotel/BookingFlow.jsx, components/Hotel/GroupBooking.jsx, components/Hotel/OccupancyForecast.jsx |
+| 19 | `POST /api/hotel/rooms/validate-availability` (bookingRoutes.js) | POST /api/hotel/rooms + POST /api/hotel/room-block (live) cover create/block; availability is validated server-side on booking | no FE caller for this path (sibling family covered by live routes) |
+| 20 | `DELETE /api/hotel/folio/entry/:entryId` (bookingRoutes.js) | GET /api/hotel/folio/:id + POST /api/hotel/folio/:id (live: 5+2 call sites); entry deletion has no UI (void is done by re-posting) | FE caller(s): components/Hotel/BookingFlow.jsx, components/Hotel/BookingFlow.jsx, components/Hotel/BookingFlow.jsx |
+| 21 | `GET /api/hotel/room-block/` (bookingRoutes.js) | GET /api/hotel/room-blocks (live: 4 call sites; /room-block and /room-blocks mount the SAME sub-router) | FE caller(s): components/Hotel/OccupancyForecast.jsx, components/Hotel/Room.jsx, components/Hotel/RoomMaintenance.jsx |
+| 22 | `POST /api/hotel/room-blocks/` (bookingRoutes.js) | POST /api/hotel/room-block (live: 1 call site; same sub-router under both mounts) | no FE caller for this path (sibling family covered by live routes) |
+| 23 | `GET /api/hotel/guests/search` (bookingRoutes.js) | GET /api/hotel/guest-profile (live: 2 call sites, same controller family) | FE caller(s): components/Hotel/GuestProfile.jsx, components/Hotel/GuestProfile.jsx |
+| 24 | `GET /api/chef/` (chefRoutes.js) | GET /api/chef/orders (live: chefService.js, same handler getKitchenOrders) | FE caller(s): services/chefService.js, services/chefService.js |
+| 25 | `PUT /api/chef/orders/:id/cancel` (chefRoutes.js) | PUT /api/kitchen/orders/:id/cancel (live: restaurantService.js; chef mount is the duplicate) | FE caller(s): services/restaurantService.js, services/restaurantService.js, services/restaurantService.js |
+| 26 | `PUT /api/chef/orders/:id/save` (chefRoutes.js) | PUT /api/kitchen/orders/:id/save (live: restaurantService.js) | FE caller(s): services/restaurantService.js, services/restaurantService.js, services/restaurantService.js |
+| 27 | `DELETE /api/chef/orders/:id` (chefRoutes.js) | DELETE /api/kitchen/orders/:id (live: restaurantService.js) | FE caller(s): services/restaurantService.js, services/restaurantService.js, services/restaurantService.js |
+| 28 | `GET /api/dashboard/` (dashboardRoutes.js) | GET /api/dashboard/metrics (live: Dashboard.jsx, AccountsDashboard.jsx; same handler getMetrics) | FE caller(s): pages/AccountsDashboard.jsx, pages/Dashboard.jsx, pages/ManagerDashboard.jsx |
+| 32 | `GET /api/employees/attendance/employees` (employeeRoutes.js) | GET /api/employees/employees (live) + GET /api/attendance/employees (live) | no FE caller for this path (sibling family covered by live routes) |
+| 33 | `GET /api/employees/employees` (employeeRoutes.js) | GET /api/employees (live: Payroll.jsx, ZkAttendance.jsx, same handler listEmployees) | no FE caller for this path (sibling family covered by live routes) |
+| 39 | `GET /api/housekeeping/inspections/:id` (housekeepingRoutes.js) | GET /api/housekeeping/inspections (live list; :id read has no UI) | FE caller(s): components/Housekeeping/InspectionChecklistModal.jsx, components/Housekeeping/InspectionChecklistModal.jsx |
+| 40 | `DELETE /api/housekeeping/lost-found/:id` (housekeepingRoutes.js) | GET/POST /api/housekeeping/lost-found + PUT /:id (live: Housekeeping.jsx, LostFoundModal.jsx) — delete is the missing tail of that UI | FE caller(s): components/Housekeeping/LostFoundModal.jsx, components/Housekeeping/LostFoundModal.jsx, components/Housekeeping/LostFoundModal.jsx |
+| 41 | `GET /api/inventory/items` (inventoryRoutes.js) | GET /api/inventory (live: 6 call sites, same handler getItems) | no FE caller for this path (sibling family covered by live routes) |
+| 42 | `GET /api/inventory/vendors` (inventoryRoutes.js) | GET /api/inventory/vendor-inwards (live: 4 call sites, same handler getVendorInwards) | FE caller(s): components/Inventory/InventoryDashboard.jsx, components/Inventory/InventoryDashboard.jsx, components/Inventory/InventoryDashboard.jsx |
+| 43 | `GET /api/inventory/menu-list` (inventoryRoutes.js) | GET /api/inventory (live, same handler getItems) — legacy alias name | no FE caller for this path (sibling family covered by live routes) |
+| 44 | `GET /api/inventory/menu-items` (inventoryRoutes.js) | GET /api/inventory (live, same handler getItems) — legacy alias name | no FE caller for this path (sibling family covered by live routes) |
+| 45 | `GET /api/inventory/reports` (inventoryRoutes.js) | GET /api/inventory/stock-ledger (live: 2 call sites, same handler getStockLedger) | FE caller(s): components/Inventory/InventoryDashboard.jsx |
+| 46 | `GET /api/inventory/chef-issues/:id` (inventoryRoutes.js) | GET /api/inventory/chef-issues (live) + PUT /:id/return (live); :id read has no UI | no FE caller for this path (sibling family covered by live routes) |
+| 47 | `POST /api/inventory/purchases` (inventoryRoutes.js) | GET /api/inventory/purchases (live stub pair, both 501/[]); real purchase flow is /api/inventory/purchase-orders (live: 5 call sites) | no FE caller for this path (sibling family covered by live routes) |
+| 48 | `POST /api/inventory/stock` (inventoryRoutes.js) | GET /api/inventory/stock (live stub pair, 501); live stock ops run on /api/inventory/stock-ledger + /api/inventory/vendor-inwards | no FE caller for this path (sibling family covered by live routes) |
+| 49 | `POST /api/inventory/stock-action` (inventoryRoutes.js) | 501 stub; live audit action is POST /api/inventory/audit (live, same editor role) | no FE caller for this path (sibling family covered by live routes) |
+| 50 | `GET /api/kitchen/` (kitchenRoutes.js) | GET /api/kitchen/orders (live: kitchen board, same handler getOrders) | FE caller(s): components/Restaurant/EditToken.jsx, services/restaurantService.js, services/restaurantService.js |
+| 57 | `GET /api/payroll/payments/:id` (payrollRoutes.js) | GET /api/payroll/payments (live: Payroll.jsx); :id read has no UI | no FE caller for this path (sibling family covered by live routes) |
+| 58 | `PATCH /api/payroll/payments/:id` (payrollRoutes.js) | POST /api/payroll/payments + POST /:id/mark-paid (live: Payroll.jsx) — UI uses those verbs | FE caller(s): pages/Payroll.jsx, pages/Payroll.jsx, pages/Payroll.jsx |
+| 60 | `GET /api/report/daywise` (reportRoutes.js) | GET /api/reports/summary (live: Reports.jsx) — the singular /report mount is a dead alias | FE caller(s): pages/Reports.jsx |
+| 61 | `GET /api/report/items` (reportRoutes.js) | GET /api/reports/summary (live: Reports.jsx) | FE caller(s): pages/Reports.jsx |
+| 62 | `GET /api/reports/` (reportsRoutes.js) | GET /api/reports/summary (live: Reports.jsx, same handler summary) | FE caller(s): pages/Reports.jsx |
+| 63 | `GET /api/reports/data` (reportsRoutes.js) | GET /api/reports/summary (live) + GET /api/reports-suite/:key (live: 3 call sites) | FE caller(s): pages/Reports.jsx, pages/reports/ReportsSuite.jsx, pages/reports/ReportsSuite.jsx |
+| 64 | `GET /api/restaurant/` (restaurantRoutes.js) | GET /api/restaurant/bills (live: 7 call sites, same handler getBills) | FE caller(s): components/Restaurant/Payment.jsx, components/Restaurant/PaymentBills.jsx, components/Restaurant/Roomitem.jsx |
+| 65 | `GET /api/restaurant/payment` (restaurantRoutes.js) | GET /api/restaurant/bills (live, same handler getBills) | FE caller(s): components/Restaurant/Payment.jsx, components/Restaurant/PaymentBills.jsx, components/Restaurant/Roomitem.jsx |
+| 66 | `GET /api/restaurant/payment-bills` (restaurantRoutes.js) | GET /api/restaurant/bills (live, same handler getBills) | FE caller(s): components/Restaurant/Payment.jsx, components/Restaurant/PaymentBills.jsx, components/Restaurant/Roomitem.jsx |
+| 67 | `GET /api/restaurant/room-items` (restaurantRoutes.js) | GET /api/restaurant/order (live: 2 call sites, same handler getOrders) | FE caller(s): components/Restaurant/Payment.jsx, services/restaurantService.js, services/restaurantService.js |
+| 68 | `GET /api/restaurant/bill` (restaurantRoutes.js) | GET /api/restaurant/bills (live, same handler getBills) | FE caller(s): components/Restaurant/Payment.jsx, components/Restaurant/PaymentBills.jsx, components/Restaurant/Roomitem.jsx |
+| 70 | `GET /api/roles/permissions` (roleRoutes.js) | GET /api/roles (live: Payroll.jsx area) — catalog read has no UI | no FE caller for this path (sibling family covered by live routes) |
+| 72 | `GET /api/roles/:id` (roleRoutes.js) | GET /api/roles (live list); :id read has no UI | no FE caller for this path (sibling family covered by live routes) |
+| 74 | `GET /api/roles/:id/permissions` (roleRoutes.js) | GET /api/roles (live) — per-role permissions read has no UI | no FE caller for this path (sibling family covered by live routes) |
+| 75 | `PUT /api/roles/:id/permissions` (roleRoutes.js) | GET /api/roles (live) — permission assignment has no UI | no FE caller for this path (sibling family covered by live routes) |
+| 76 | `DELETE /api/room-service/menu/:id` (roomServiceRoutes.js) | GET+POST /api/room-service/menu (live) — read/create only today; delete has no UI | no FE caller for this path (sibling family covered by live routes) |
+| 77 | `GET /api/room-service/order/:roomNumber` (roomServiceRoutes.js) | POST /api/room-service/order/add (live) + GET /api/room-service/rooms (live) — order read-back has no UI | no FE caller for this path (sibling family covered by live routes) |
+| 79 | `GET /api/room-service/order-items/:orderId` (roomServiceRoutes.js) | POST /api/room-service/order/add (live) — item read-back has no UI | FE caller(s): services/roomService.js, services/roomService.js, services/roomService.js |
+| 81 | `GET /api/room-service/bill/:roomNumber` (roomServiceRoutes.js) | POST /api/room-service/order/add (live) — bill read has no UI | FE caller(s): services/roomService.js, services/roomService.js, services/roomService.js |
+| 82 | `PUT /api/room-service/order/:orderId/status` (roomServiceRoutes.js) | POST /api/room-service/order/add (live); delivery status moves via /api/room-service-delivery (live: 6 call sites) | FE caller(s): components/Restaurant/WaiterAssignmentCard.jsx, components/Restaurant/WaiterAssignmentCard.jsx, pages/WaiterDeliveryQueue.jsx |
+| 83 | `GET /api/salary/employees` (salaryRoutes.js) | GET /api/salary (live: Salary page) | no FE caller for this path (sibling family covered by live routes) |
+| 84 | `GET /api/salary/me` (salaryRoutes.js) | GET /api/salary (live); the self-view has no UI | no FE caller for this path (sibling family covered by live routes) |
+| 85 | `GET /api/salary/me/attendance` (salaryRoutes.js) | GET /api/attendance/me/salary (live: the per-user salary view lives under /attendance) | FE caller(s): pages/MyAttendance.jsx |
+| 86 | `GET /api/salary/:userId` (salaryRoutes.js) | GET /api/salary (live list); per-user read has no UI | no FE caller for this path (sibling family covered by live routes) |
 
-### attendanceRoutes.js (3)
+## GAP — backend-only features, suggested UI placement for HAG-12 (22)
 
-| method | route | verdict | evidence / suggested area |
-| --- | --- | --- | --- |
-| GET | `/payroll` | **REDUNDANT** | GET /accounts/payroll @ Maa-Baglamkhi-Resort-frontend\src\pages\Accounts.jsx |
-| POST | `/mark` | **REDUNDANT** | POST /attendance/mark-holiday @ Maa-Baglamkhi-Resort-frontend\src\pages\Attendance.jsx; POST /attendance/mark-own @ Maa-Baglamkhi-Resort-frontend\src\pages\MyAttendance.jsx |
-| PATCH | `/:id` | **GAP** | Attendance - no live frontend caller of this feature |
-
-### banquetRoutes.js (3)
-
-| method | route | verdict | evidence / suggested area |
-| --- | --- | --- | --- |
-| GET | `/config` | **REDUNDANT** | PUT /banquet/config @ Maa-Baglamkhi-Resort-frontend\src\pages\Banquet.jsx; GET /web/dining/config @ Maa-Baglamkhi-Resort-frontend\src\services\websiteDiningService.js |
-| GET | `/halls` | **REDUNDANT** | PUT /banquet/halls/${editingHallId} @ Maa-Baglamkhi-Resort-frontend\src\pages\Banquet.jsx; POST /banquet/halls @ Maa-Baglamkhi-Resort-frontend\src\pages\Banquet.jsx; DELETE /banquet/halls/${hallDeleteTarget.id} @ Maa-Baglamkhi-Resort-frontend\src\pages\Banquet.jsx |
-| GET | `/bookings` | **GAP** | Banquet - no live frontend caller of this feature |
-
-### bookingRoutes.js (12)
-
-| method | route | verdict | evidence / suggested area |
-| --- | --- | --- | --- |
-| GET | `/` | **GAP** | Hotel / Front Desk - no live frontend caller of this feature |
-| GET | `/payment-history` | **REDUNDANT** | GET /hotel/booking-history @ Maa-Baglamkhi-Resort-frontend\src\components\Hotel\AllBooking.jsx; GET /hotel/payment-history/${booking.bookingId} @ Maa-Baglamkhi-Resort-frontend\src\components\Hotel\BookingFlow.jsx; GET /hotel/payment-history/${bookingId} @ Maa-Baglamkhi-Resort-frontend\src\components\Hotel\BookingFlow.jsx |
-| GET | `/room-tariff` | **REDUNDANT** | POST /hotel/room-tariff/${bookingId} @ Maa-Baglamkhi-Resort-frontend\src\components\Hotel\BookingFlow.jsx; GET /hotel/room-blocks @ Maa-Baglamkhi-Resort-frontend\src\components\Hotel\OccupancyForecast.jsx; GET /hotel/room-blocks?status=Active @ Maa-Baglamkhi-Resort-frontend\src\components\Hotel\Room.jsx |
-| GET | `/communication` | **GAP** | Hotel / Front Desk - no live frontend caller of this feature |
-| GET | `/booking/:id` | **REDUNDANT** | GET /hotel/full-booking/${selectedRoom.booking.bookingId} @ Maa-Baglamkhi-Resort-frontend\src\components\Dashboard\Stayover.jsx; PUT /hotel/full-booking/${selectedRoom.booking.bookingId} @ Maa-Baglamkhi-Resort-frontend\src\components\Dashboard\Stayover.jsx; PUT /hotel/${action}/${selectedRoom.booking.bookingId} @ Maa-Baglamkhi-Resort-frontend\src\components\Dashboard\Stayover.jsx |
-| GET | `/rooms` | **REDUNDANT** | PUT /hotel/rooms/state/${roomNumber} @ Maa-Baglamkhi-Resort-frontend\src\components\Dashboard\Stayover.jsx; PUT /hotel/rooms/state/${roomNumber} @ Maa-Baglamkhi-Resort-frontend\src\components\Dashboard\Stayover.jsx; GET /hotel/rooms/setup @ Maa-Baglamkhi-Resort-frontend\src\components\Hotel\BookingFlow.jsx |
-| GET | `/rooms-availability` | **REDUNDANT** | PUT /hotel/rooms/state/${roomNumber} @ Maa-Baglamkhi-Resort-frontend\src\components\Dashboard\Stayover.jsx; PUT /hotel/rooms/state/${roomNumber} @ Maa-Baglamkhi-Resort-frontend\src\components\Dashboard\Stayover.jsx; GET /hotel/rooms/setup @ Maa-Baglamkhi-Resort-frontend\src\components\Hotel\BookingFlow.jsx |
-| POST | `/rooms/validate-availability` | **REDUNDANT** | PUT /hotel/rooms/state/${roomNumber} @ Maa-Baglamkhi-Resort-frontend\src\components\Dashboard\Stayover.jsx; PUT /hotel/rooms/state/${roomNumber} @ Maa-Baglamkhi-Resort-frontend\src\components\Dashboard\Stayover.jsx; GET /hotel/rooms/setup @ Maa-Baglamkhi-Resort-frontend\src\components\Hotel\BookingFlow.jsx |
-| DELETE | `/folio/entry/:entryId` | **REDUNDANT** | GET /hotel/folio/${bookingId} @ Maa-Baglamkhi-Resort-frontend\src\components\Hotel\BookingFlow.jsx; GET /hotel/folio/${bookingId} @ Maa-Baglamkhi-Resort-frontend\src\components\Hotel\BookingFlow.jsx; GET /hotel/folio/${booking.bookingId} @ Maa-Baglamkhi-Resort-frontend\src\components\Hotel\BookingFlow.jsx |
-| GET | `/room-block/` | **REDUNDANT** | POST /hotel/room-tariff/${bookingId} @ Maa-Baglamkhi-Resort-frontend\src\components\Hotel\BookingFlow.jsx; GET /hotel/room-blocks @ Maa-Baglamkhi-Resort-frontend\src\components\Hotel\OccupancyForecast.jsx; GET /hotel/room-blocks?status=Active @ Maa-Baglamkhi-Resort-frontend\src\components\Hotel\Room.jsx |
-| POST | `/room-blocks/` | **REDUNDANT** | POST /hotel/room-tariff/${bookingId} @ Maa-Baglamkhi-Resort-frontend\src\components\Hotel\BookingFlow.jsx; GET /hotel/room-blocks @ Maa-Baglamkhi-Resort-frontend\src\components\Hotel\OccupancyForecast.jsx; GET /hotel/room-blocks?status=Active @ Maa-Baglamkhi-Resort-frontend\src\components\Hotel\Room.jsx |
-| GET | `/guests/search` | **GAP** | Hotel / Front Desk - no live frontend caller of this feature |
-
-### chefRoutes.js (4)
-
-| method | route | verdict | evidence / suggested area |
-| --- | --- | --- | --- |
-| GET | `/` | **GAP** | Chef dashboard - no live frontend caller of this feature |
-| PUT | `/orders/:id/cancel` | **REDUNDANT** | PUT /banquet/${editingBookingId}/cancel @ Maa-Baglamkhi-Resort-frontend\src\pages\Banquet.jsx; PUT /banquet/${booking.id}/cancel @ Maa-Baglamkhi-Resort-frontend\src\pages\Banquet.jsx; GET /chef/orders @ Maa-Baglamkhi-Resort-frontend\src\services\chefService.js |
-| PUT | `/orders/:id/save` | **REDUNDANT** | GET /chef/orders @ Maa-Baglamkhi-Resort-frontend\src\services\chefService.js; PUT /chef/orders/${id}/status @ Maa-Baglamkhi-Resort-frontend\src\services\chefService.js; PUT /kitchen/orders/${id}/save @ Maa-Baglamkhi-Resort-frontend\src\services\restaurantService.js |
-| DELETE | `/orders/:id` | **REDUNDANT** | GET /chef/orders @ Maa-Baglamkhi-Resort-frontend\src\services\chefService.js; PUT /chef/orders/${id}/status @ Maa-Baglamkhi-Resort-frontend\src\services\chefService.js |
-
-### dashboardRoutes.js (1)
-
-| method | route | verdict | evidence / suggested area |
-| --- | --- | --- | --- |
-| GET | `/` | **GAP** | Dashboards - no live frontend caller of this feature |
-
-### employeeRoutes.js (8)
-
-| method | route | verdict | evidence / suggested area |
-| --- | --- | --- | --- |
-| GET | `/departments` | **GAP** | HR / Employees - no live frontend caller of this feature |
-| GET | `/designations` | **GAP** | HR / Employees - no live frontend caller of this feature |
-| GET | `/stats` | **REDUNDANT** | GET /inventory/stats @ Maa-Baglamkhi-Resort-frontend\src\components\Inventory\InventoryFlow.jsx; GET /assignments/stats @ Maa-Baglamkhi-Resort-frontend\src\pages\Assignments.jsx |
-| GET | `/attendance/employees` | **REDUNDANT** | GET /attendance/employees @ Maa-Baglamkhi-Resort-frontend\src\pages\Attendance.jsx; GET /employees @ Maa-Baglamkhi-Resort-frontend\src\pages\Payroll.jsx; GET /employees @ Maa-Baglamkhi-Resort-frontend\src\pages\ZkAttendance.jsx |
-| GET | `/employees` | **REDUNDANT** | GET /attendance/employees @ Maa-Baglamkhi-Resort-frontend\src\pages\Attendance.jsx; GET /employees @ Maa-Baglamkhi-Resort-frontend\src\pages\Payroll.jsx; GET /employees @ Maa-Baglamkhi-Resort-frontend\src\pages\ZkAttendance.jsx |
-| POST | `/` | **REDUNDANT** | GET /attendance/employees @ Maa-Baglamkhi-Resort-frontend\src\pages\Attendance.jsx; GET /employees @ Maa-Baglamkhi-Resort-frontend\src\pages\Payroll.jsx; GET /employees @ Maa-Baglamkhi-Resort-frontend\src\pages\ZkAttendance.jsx |
-| GET | `/:id` | **GAP** | HR / Employees - no live frontend caller of this feature |
-| PATCH | `/:id` | **GAP** | HR / Employees - no live frontend caller of this feature |
-
-### housekeepingRoutes.js (4)
-
-| method | route | verdict | evidence / suggested area |
-| --- | --- | --- | --- |
-| GET | `/parameters` | **GAP** | Housekeeping - no live frontend caller of this feature |
-| POST | `/parameters` | **GAP** | Housekeeping - no live frontend caller of this feature |
-| GET | `/inspections/:id` | **REDUNDANT** | GET /housekeeping/inspections @ Maa-Baglamkhi-Resort-frontend\src\components\Housekeeping\InspectionChecklistModal.jsx; POST /housekeeping/inspections @ Maa-Baglamkhi-Resort-frontend\src\components\Housekeeping\InspectionChecklistModal.jsx |
-| DELETE | `/lost-found/:id` | **REDUNDANT** | GET /housekeeping/lost-found @ Maa-Baglamkhi-Resort-frontend\src\components\Housekeeping\LostFoundModal.jsx; PUT /housekeeping/lost-found/${id} @ Maa-Baglamkhi-Resort-frontend\src\components\Housekeeping\LostFoundModal.jsx; POST /housekeeping/lost-found @ Maa-Baglamkhi-Resort-frontend\src\components\Housekeeping\LostFoundModal.jsx |
-
-### inventoryRoutes.js (9)
-
-| method | route | verdict | evidence / suggested area |
-| --- | --- | --- | --- |
-| GET | `/items` | **REDUNDANT** | PUT /token/item @ Maa-Baglamkhi-Resort-frontend\src\components\Restaurant\EditToken.jsx; PUT /token/item @ Maa-Baglamkhi-Resort-frontend\src\components\Restaurant\EditToken.jsx; POST /token/item @ Maa-Baglamkhi-Resort-frontend\src\components\Restaurant\MenuPage.jsx |
-| GET | `/vendors` | **REDUNDANT** | GET /inventory/setup/vendors @ Maa-Baglamkhi-Resort-frontend\src\components\Inventory\InventoryFlow.jsx; GET /inventory-masters/vendors @ Maa-Baglamkhi-Resort-frontend\src\pages\InventoryHubPage.jsx |
-| GET | `/menu-list` | **REDUNDANT** | GET /inventory-masters/menu-categories @ Maa-Baglamkhi-Resort-frontend\src\pages\InventoryHubPage.jsx; GET /inventory-masters/menu-categories @ Maa-Baglamkhi-Resort-frontend\src\pages\InventoryMenuItemsPage.jsx; GET /menu-recipes/inventory-items @ Maa-Baglamkhi-Resort-frontend\src\services\menuRecipeService.js |
-| GET | `/menu-items` | **REDUNDANT** | GET /inventory-masters/menu-categories @ Maa-Baglamkhi-Resort-frontend\src\pages\InventoryHubPage.jsx; GET /inventory-masters/menu-categories @ Maa-Baglamkhi-Resort-frontend\src\pages\InventoryMenuItemsPage.jsx; GET /menu-recipes/menu-items @ Maa-Baglamkhi-Resort-frontend\src\services\menuRecipeService.js |
-| GET | `/reports` | **REDUNDANT** | GET /inventory/audit/report @ Maa-Baglamkhi-Resort-frontend\src\components\Inventory\InventoryDashboard.jsx; GET /inventory/reports/stock-flow @ Maa-Baglamkhi-Resort-frontend\src\components\Inventory\InventoryDashboard.jsx; GET /inventory/audit/report @ Maa-Baglamkhi-Resort-frontend\src\components\Inventory\InventoryDashboard.jsx |
-| GET | `/chef-issues/:id` | **REDUNDANT** | GET /inventory/chef-issues @ Maa-Baglamkhi-Resort-frontend\src\pages\AdminChefIssuesPage.jsx; GET /inventory/chef-issues${qs ?  @ Maa-Baglamkhi-Resort-frontend\src\services\chefService.js; POST /inventory/chef-issues @ Maa-Baglamkhi-Resort-frontend\src\services\chefService.js |
-| POST | `/purchases` | **REDUNDANT** | GET /inventory/purchases @ Maa-Baglamkhi-Resort-frontend\src\components\Inventory\InventoryFlow.jsx |
-| POST | `/stock` | **REDUNDANT** | GET /inventory/stock-ledger @ Maa-Baglamkhi-Resort-frontend\src\components\Inventory\InventoryDashboard.jsx; GET /inventory/reports/stock-flow @ Maa-Baglamkhi-Resort-frontend\src\components\Inventory\InventoryDashboard.jsx; GET /inventory/stock-ledger @ Maa-Baglamkhi-Resort-frontend\src\components\Inventory\InventoryDashboard.jsx |
-| POST | `/stock-action` | **REDUNDANT** | GET /inventory/stock-ledger @ Maa-Baglamkhi-Resort-frontend\src\components\Inventory\InventoryDashboard.jsx; GET /inventory/reports/stock-flow @ Maa-Baglamkhi-Resort-frontend\src\components\Inventory\InventoryDashboard.jsx; GET /inventory/stock-ledger @ Maa-Baglamkhi-Resort-frontend\src\components\Inventory\InventoryDashboard.jsx |
-
-### kitchenRoutes.js (1)
-
-| method | route | verdict | evidence / suggested area |
-| --- | --- | --- | --- |
-| GET | `/` | **GAP** | Kitchen / KOT - no live frontend caller of this feature |
-
-### notificationRoutes.js (4)
-
-| method | route | verdict | evidence / suggested area |
-| --- | --- | --- | --- |
-| GET | `/` | **REDUNDANT** | GET /housekeeping/notifications @ Maa-Baglamkhi-Resort-frontend\src\components\Dashboard\Stayover.jsx; GET /housekeeping/notifications @ Maa-Baglamkhi-Resort-frontend\src\components\Dashboard\Stayover.jsx; GET /housekeeping/notifications @ Maa-Baglamkhi-Resort-frontend\src\components\Housekeeping\Housekeeping.jsx |
-| POST | `/:id/read` | **REDUNDANT** | POST /chef/notifications/${id}/read @ Maa-Baglamkhi-Resort-frontend\src\services\chefService.js; POST /chef/notifications/mark-all-read @ Maa-Baglamkhi-Resort-frontend\src\services\chefService.js |
-| POST | `/mark-all-read` | **REDUNDANT** | POST /chef/notifications/${id}/read @ Maa-Baglamkhi-Resort-frontend\src\services\chefService.js; POST /chef/notifications/mark-all-read @ Maa-Baglamkhi-Resort-frontend\src\services\chefService.js |
-| POST | `/` | **REDUNDANT** | GET /housekeeping/notifications @ Maa-Baglamkhi-Resort-frontend\src\components\Dashboard\Stayover.jsx; GET /housekeeping/notifications @ Maa-Baglamkhi-Resort-frontend\src\components\Dashboard\Stayover.jsx; GET /housekeeping/notifications @ Maa-Baglamkhi-Resort-frontend\src\components\Housekeeping\Housekeeping.jsx |
-
-### paymentRoutes.js (2)
-
-| method | route | verdict | evidence / suggested area |
-| --- | --- | --- | --- |
-| POST | `/` | **REDUNDANT** | GET /payroll/payments @ Maa-Baglamkhi-Resort-frontend\src\pages\Payroll.jsx; POST /payroll/payments @ Maa-Baglamkhi-Resort-frontend\src\pages\Payroll.jsx; GET /payroll/payments @ Maa-Baglamkhi-Resort-frontend\src\pages\Payroll.jsx |
-| GET | `/` | **REDUNDANT** | GET /payroll/payments @ Maa-Baglamkhi-Resort-frontend\src\pages\Payroll.jsx; POST /payroll/payments @ Maa-Baglamkhi-Resort-frontend\src\pages\Payroll.jsx; GET /payroll/payments @ Maa-Baglamkhi-Resort-frontend\src\pages\Payroll.jsx |
-
-### payrollRoutes.js (3)
-
-| method | route | verdict | evidence / suggested area |
-| --- | --- | --- | --- |
-| GET | `/payments/:id` | **REDUNDANT** | GET /payroll/payments @ Maa-Baglamkhi-Resort-frontend\src\pages\Payroll.jsx; POST /payroll/payments @ Maa-Baglamkhi-Resort-frontend\src\pages\Payroll.jsx; GET /payroll/payments @ Maa-Baglamkhi-Resort-frontend\src\pages\Payroll.jsx |
-| PATCH | `/payments/:id` | **REDUNDANT** | GET /payroll/payments @ Maa-Baglamkhi-Resort-frontend\src\pages\Payroll.jsx; POST /payroll/payments @ Maa-Baglamkhi-Resort-frontend\src\pages\Payroll.jsx; GET /payroll/payments @ Maa-Baglamkhi-Resort-frontend\src\pages\Payroll.jsx |
-| GET | `/estimate/:employeeId` | **GAP** | Payroll - no live frontend caller of this feature |
-
-### reportRoutes.js (2)
-
-| method | route | verdict | evidence / suggested area |
-| --- | --- | --- | --- |
-| GET | `/daywise` | **GAP** | Reports - no live frontend caller of this feature |
-| GET | `/items` | **REDUNDANT** | PUT /token/item @ Maa-Baglamkhi-Resort-frontend\src\components\Restaurant\EditToken.jsx; PUT /token/item @ Maa-Baglamkhi-Resort-frontend\src\components\Restaurant\EditToken.jsx; POST /token/item @ Maa-Baglamkhi-Resort-frontend\src\components\Restaurant\MenuPage.jsx |
-
-### reportsRoutes.js (2)
-
-| method | route | verdict | evidence / suggested area |
-| --- | --- | --- | --- |
-| GET | `/` | **REDUNDANT** | GET /inventory/audit/report @ Maa-Baglamkhi-Resort-frontend\src\components\Inventory\InventoryDashboard.jsx; GET /inventory/audit/report @ Maa-Baglamkhi-Resort-frontend\src\components\Inventory\InventoryDashboard.jsx; GET /attendance/report @ Maa-Baglamkhi-Resort-frontend\src\pages\Reports.jsx |
-| GET | `/data` | **GAP** | Reports - no live frontend caller of this feature |
-
-### restaurantRoutes.js (6)
-
-| method | route | verdict | evidence / suggested area |
-| --- | --- | --- | --- |
-| GET | `/` | **GAP** | Restaurant POS - no live frontend caller of this feature |
-| GET | `/payment` | **REDUNDANT** | GET /payroll/payments @ Maa-Baglamkhi-Resort-frontend\src\pages\Payroll.jsx; POST /payroll/payments @ Maa-Baglamkhi-Resort-frontend\src\pages\Payroll.jsx; GET /payroll/payments @ Maa-Baglamkhi-Resort-frontend\src\pages\Payroll.jsx |
-| GET | `/payment-bills` | **REDUNDANT** | GET /restaurant/bills @ Maa-Baglamkhi-Resort-frontend\src\components\Restaurant\Payment.jsx; GET /restaurant/bills @ Maa-Baglamkhi-Resort-frontend\src\components\Restaurant\PaymentBills.jsx; GET /restaurant/bills @ Maa-Baglamkhi-Resort-frontend\src\components\Restaurant\Roomitem.jsx |
-| GET | `/room-items` | **REDUNDANT** | GET /restaurant/order-items/${orderId} @ Maa-Baglamkhi-Resort-frontend\src\services\restaurantService.js |
-| GET | `/bill` | **REDUNDANT** | GET /restaurant/bills @ Maa-Baglamkhi-Resort-frontend\src\components\Restaurant\Payment.jsx; GET /restaurant/bills @ Maa-Baglamkhi-Resort-frontend\src\components\Restaurant\PaymentBills.jsx; GET /restaurant/bills @ Maa-Baglamkhi-Resort-frontend\src\components\Restaurant\Roomitem.jsx |
-| GET | `/split-bills` | **REDUNDANT** | GET /restaurant/bills @ Maa-Baglamkhi-Resort-frontend\src\components\Restaurant\Payment.jsx; GET /restaurant/bills @ Maa-Baglamkhi-Resort-frontend\src\components\Restaurant\PaymentBills.jsx; GET /restaurant/bills @ Maa-Baglamkhi-Resort-frontend\src\components\Restaurant\Roomitem.jsx |
-
-### roleRoutes.js (6)
-
-| method | route | verdict | evidence / suggested area |
-| --- | --- | --- | --- |
-| GET | `/permissions` | **GAP** | Admin / Roles - no live frontend caller of this feature |
-| POST | `/` | **REDUNDANT** | GET /roles @ Maa-Baglamkhi-Resort-frontend\src\pages\Payroll.jsx |
-| GET | `/:id` | **GAP** | Admin / Roles - no live frontend caller of this feature |
-| PATCH | `/:id` | **GAP** | Admin / Roles - no live frontend caller of this feature |
-| GET | `/:id/permissions` | **GAP** | Admin / Roles - no live frontend caller of this feature |
-| PUT | `/:id/permissions` | **GAP** | Admin / Roles - no live frontend caller of this feature |
-
-### roomServiceRoutes.js (7)
-
-| method | route | verdict | evidence / suggested area |
-| --- | --- | --- | --- |
-| DELETE | `/menu/:id` | **REDUNDANT** | POST /room-service-delivery/assign-waiter @ Maa-Baglamkhi-Resort-frontend\src\components\Restaurant\WaiterAssignmentCard.jsx; POST /room-service-delivery/mark-delivered/${assignmentId} @ Maa-Baglamkhi-Resort-frontend\src\components\Restaurant\WaiterAssignmentCard.jsx; GET /room-service-delivery/waiter-queue @ Maa-Baglamkhi-Resort-frontend\src\pages\WaiterDeliveryQueue.jsx |
-| GET | `/order/:roomNumber` | **REDUNDANT** | POST /room-service-delivery/assign-waiter @ Maa-Baglamkhi-Resort-frontend\src\components\Restaurant\WaiterAssignmentCard.jsx; POST /room-service-delivery/mark-delivered/${assignmentId} @ Maa-Baglamkhi-Resort-frontend\src\components\Restaurant\WaiterAssignmentCard.jsx; GET /room-service-delivery/waiter-queue @ Maa-Baglamkhi-Resort-frontend\src\pages\WaiterDeliveryQueue.jsx |
-| PUT | `/order/:roomNumber/pay` | **REDUNDANT** | PUT /restaurant/order/${invoice.table}/pay @ Maa-Baglamkhi-Resort-frontend\src\components\Restaurant\Payment.jsx; POST /room-service-delivery/assign-waiter @ Maa-Baglamkhi-Resort-frontend\src\components\Restaurant\WaiterAssignmentCard.jsx; POST /room-service-delivery/mark-delivered/${assignmentId} @ Maa-Baglamkhi-Resort-frontend\src\components\Restaurant\WaiterAssignmentCard.jsx |
-| GET | `/order-items/:orderId` | **REDUNDANT** | POST /room-service-delivery/assign-waiter @ Maa-Baglamkhi-Resort-frontend\src\components\Restaurant\WaiterAssignmentCard.jsx; POST /room-service-delivery/mark-delivered/${assignmentId} @ Maa-Baglamkhi-Resort-frontend\src\components\Restaurant\WaiterAssignmentCard.jsx; GET /room-service-delivery/waiter-queue @ Maa-Baglamkhi-Resort-frontend\src\pages\WaiterDeliveryQueue.jsx |
-| POST | `/bill` | **REDUNDANT** | GET /restaurant/bills @ Maa-Baglamkhi-Resort-frontend\src\components\Restaurant\Payment.jsx; GET /restaurant/bills @ Maa-Baglamkhi-Resort-frontend\src\components\Restaurant\PaymentBills.jsx; GET /restaurant/bills @ Maa-Baglamkhi-Resort-frontend\src\components\Restaurant\Roomitem.jsx |
-| GET | `/bill/:roomNumber` | **REDUNDANT** | POST /room-service-delivery/assign-waiter @ Maa-Baglamkhi-Resort-frontend\src\components\Restaurant\WaiterAssignmentCard.jsx; POST /room-service-delivery/mark-delivered/${assignmentId} @ Maa-Baglamkhi-Resort-frontend\src\components\Restaurant\WaiterAssignmentCard.jsx; GET /room-service-delivery/waiter-queue @ Maa-Baglamkhi-Resort-frontend\src\pages\WaiterDeliveryQueue.jsx |
-| PUT | `/order/:orderId/status` | **REDUNDANT** | POST /room-service-delivery/assign-waiter @ Maa-Baglamkhi-Resort-frontend\src\components\Restaurant\WaiterAssignmentCard.jsx; POST /room-service-delivery/mark-delivered/${assignmentId} @ Maa-Baglamkhi-Resort-frontend\src\components\Restaurant\WaiterAssignmentCard.jsx; PATCH /assignments/${item.id}/status @ Maa-Baglamkhi-Resort-frontend\src\pages\assignmentnotification.jsx |
-
-### salaryRoutes.js (5)
-
-| method | route | verdict | evidence / suggested area |
-| --- | --- | --- | --- |
-| GET | `/employees` | **REDUNDANT** | GET /attendance/employees @ Maa-Baglamkhi-Resort-frontend\src\pages\Attendance.jsx; GET /employees @ Maa-Baglamkhi-Resort-frontend\src\pages\Payroll.jsx; GET /employees @ Maa-Baglamkhi-Resort-frontend\src\pages\ZkAttendance.jsx |
-| GET | `/me` | **REDUNDANT** | GET /auth/me @ Maa-Baglamkhi-Resort-frontend\src\App.jsx; GET /auth/me @ Maa-Baglamkhi-Resort-frontend\src\components\ProtectedRoute.jsx; GET /auth/me @ Maa-Baglamkhi-Resort-frontend\src\components\RoleHomeRedirect.jsx |
-| GET | `/me/attendance` | **REDUNDANT** | GET /attendance @ Maa-Baglamkhi-Resort-frontend\src\pages\Attendance.jsx; POST /attendance @ Maa-Baglamkhi-Resort-frontend\src\pages\Attendance.jsx; POST /attendance @ Maa-Baglamkhi-Resort-frontend\src\pages\Attendance.jsx |
-| GET | `/:userId` | **GAP** | Payroll / Salary - no live frontend caller of this feature |
-| POST | `/:userId/recalculate` | **GAP** | Payroll / Salary - no live frontend caller of this feature |
-
-### zkRoutes.js (1)
-
-| method | route | verdict | evidence / suggested area |
-| --- | --- | --- | --- |
-| GET | `/machines/:id/pulls` | **GAP** | Attendance (ZKTime) - no live frontend caller of this feature |
+| # | Route | Suggested UI placement |
+|---|---|---|
+| 29 | `GET /api/employees/departments` (employeeRoutes.js) | HAG-12: department picker on the Employees page (feeds the create/edit form) |
+| 30 | `GET /api/employees/designations` (employeeRoutes.js) | HAG-12: designation picker on the Employees page |
+| 31 | `GET /api/employees/stats` (employeeRoutes.js) | HAG-12: HR headcount strip on a people/dashboard page |
+| 34 | `POST /api/employees/` (employeeRoutes.js) | HAG-12: employee create form on the Employees page (POST /api/employees) |
+| 35 | `GET /api/employees/:id` (employeeRoutes.js) | HAG-12: employee detail view on the Employees page |
+| 36 | `PATCH /api/employees/:id` (employeeRoutes.js) | HAG-12: employee edit form on the Employees page |
+| 37 | `GET /api/housekeeping/parameters` (housekeepingRoutes.js) | HAG-12: housekeeping parameters dialog (read current values via GET) |
+| 38 | `POST /api/housekeeping/parameters` (housekeepingRoutes.js) | HAG-12: same parameters dialog as #37 (both verbs are one feature) |
+| 51 | `GET /api/notifications/` (notificationRoutes.js) | HAG-12: global notification bell in the app header (GET /api/notifications) |
+| 52 | `POST /api/notifications/:id/read` (notificationRoutes.js) | HAG-12: notification bell — mark single item read |
+| 53 | `POST /api/notifications/mark-all-read` (notificationRoutes.js) | HAG-12: notification bell — mark all read |
+| 54 | `POST /api/notifications/` (notificationRoutes.js) | HAG-12: admin create-notification from a notifications admin page |
+| 55 | `POST /api/payment/` (paymentRoutes.js) | HAG-12: generic payment capture (booking top-up) on the front-desk booking view |
+| 56 | `GET /api/payment/` (paymentRoutes.js) | HAG-12: payment history list on the front-desk view |
+| 59 | `GET /api/payroll/estimate/:employeeId` (payrollRoutes.js) | HAG-12: 'estimate salary' button on the Payroll page |
+| 69 | `GET /api/restaurant/split-bills` (restaurantRoutes.js) | HAG-12: split-bill list/detail view on the restaurant POS page |
+| 71 | `POST /api/roles/` (roleRoutes.js) | HAG-12: role management (create + assign permissions) on an admin Roles page |
+| 73 | `PATCH /api/roles/:id` (roleRoutes.js) | HAG-12: role edit on the admin Roles page |
+| 78 | `PUT /api/room-service/order/:roomNumber/pay` (roomServiceRoutes.js) | HAG-12: room-service pay step on the room-service order view |
+| 80 | `POST /api/room-service/bill` (roomServiceRoutes.js) | HAG-12: room-service bill action on the room-service order view |
+| 87 | `POST /api/salary/:userId/recalculate` (salaryRoutes.js) | HAG-12: 'recalculate attendance' button next to salary save on the Salary page |
+| 88 | `GET /api/zk/machines/:id/pulls` (zkRoutes.js) | HAG-12: sync-history panel per ZK machine on the ZkAttendance page |
