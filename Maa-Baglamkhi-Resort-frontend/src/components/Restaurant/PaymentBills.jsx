@@ -92,6 +92,27 @@ const PaymentBills = () => {
   const [selectedBill, setSelectedBill] = useState(null);
   const [billPage, setBillPage] = useState(1);
 
+  // Split-bills list (HAG-12, gap 7): GET /api/restaurant/split-bills
+  const [view, setView] = useState("bills");
+  const [splitBills, setSplitBills] = useState([]);
+  const [splitLoading, setSplitLoading] = useState(false);
+
+  const loadSplitBills = useCallback(async () => {
+    setSplitLoading(true);
+    try {
+      const res = await API.get("/restaurant/split-bills");
+      setSplitBills(Array.isArray(res.data) ? res.data : []);
+    } catch {
+      setSplitBills([]);
+    } finally {
+      setSplitLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (view === "splits") loadSplitBills();
+  }, [view, loadSplitBills]);
+
   const closeBillDetail = useCallback(() => setSelectedBill(null), []);
 
   // Create guest info lookup from rooms (for enriching bill data)
@@ -402,12 +423,79 @@ const PaymentBills = () => {
                 </h3>
               </div>
             </div>
-            <div className="shrink-0 rounded-full bg-blue-50 px-3 py-1.5 text-[13px] font-bold text-blue-700 ring-1 ring-blue-100 sm:px-4 sm:py-2 sm:text-[15px]">
-              {uniqueBills.length} Bills
+            <div className="flex shrink-0 items-center gap-2">
+              <button
+                type="button"
+                onClick={() => setView("bills")}
+                className={`rounded-full px-3 py-1.5 text-[13px] font-bold ring-1 transition sm:px-4 sm:py-2 sm:text-[15px] ${
+                  view === "bills"
+                    ? "bg-blue-700 text-white ring-blue-700"
+                    : "bg-blue-50 text-blue-700 ring-blue-100 hover:bg-blue-100"
+                }`}
+              >
+                Bills
+              </button>
+              <button
+                type="button"
+                onClick={() => setView("splits")}
+                className={`rounded-full px-3 py-1.5 text-[13px] font-bold ring-1 transition sm:px-4 sm:py-2 sm:text-[15px] ${
+                  view === "splits"
+                    ? "bg-blue-700 text-white ring-blue-700"
+                    : "bg-blue-50 text-blue-700 ring-blue-100 hover:bg-blue-100"
+                }`}
+              >
+                Split Bills
+              </button>
             </div>
           </div>
 
-          {loading ? (
+          {/* Split bills (HAG-12, gap 7): GET /restaurant/split-bills */}
+          {view === "splits" ? (
+            splitLoading ? (
+              <div className="mt-5 rounded-[16px] border border-blue-100 bg-blue-50/40 px-4 py-10 text-center text-base font-semibold text-slate-500 sm:mt-6 sm:rounded-[22px] sm:py-12 sm:text-[20px]">
+                Split bills loading...
+              </div>
+            ) : splitBills.length ? (
+              <div className="mt-5 space-y-3 sm:mt-6">
+                {splitBills.map((bill) => (
+                  <div
+                    key={bill.id}
+                    className="flex flex-wrap items-center justify-between gap-3 rounded-[16px] border border-blue-100 bg-white p-3.5 shadow-sm sm:p-4"
+                  >
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-1.5 text-[15px] font-bold text-slate-900 sm:text-[17px]">
+                        {getEntityLabel(bill)}
+                        <span className="rounded-full bg-violet-100 px-2.5 py-0.5 text-[11px] font-bold text-violet-700">
+                          Split {bill.splitNo || 1}/{bill.splitCount || 1}
+                        </span>
+                      </div>
+                      <div className="mt-0.5 truncate text-[13px] text-slate-500">
+                        {bill.customerName || "--"} · {formatDate(bill.created_at)}
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <div className="text-[15px] font-black text-emerald-600 sm:text-[17px]">
+                        {formatCurrency(bill.total)}
+                      </div>
+                      <span
+                        className={`mt-0.5 inline-block rounded-full px-2.5 py-0.5 text-[11px] font-bold ${
+                          getStatusMeta(bill).classes
+                        }`}
+                      >
+                        {getStatusMeta(bill).label}
+                      </span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="mt-5 flex flex-col items-center gap-2.5 rounded-[16px] border border-dashed border-blue-200 bg-blue-50/40 px-4 py-10 text-center sm:mt-6 sm:py-12">
+                <p className="base font-semibold text-slate-500 sm:text-[20px]">No split bills yet.</p>
+              </div>
+            )
+          ) : view === "bills" ? (
+            <>
+            {loading ? (
             <div className="mt-5 rounded-[16px] border border-blue-100 bg-blue-50/40 px-4 py-10 text-center text-base font-semibold text-slate-500 sm:mt-6 sm:rounded-[22px] sm:py-12 sm:text-[20px]">
               Bills loading...
             </div>
@@ -613,6 +701,8 @@ const PaymentBills = () => {
               <p className="text-base text-slate-500 sm:text-[20px] md:text-[22px]">After generating the bill, the bill card will appear here.</p>
             </div>
           )}
+            </>
+          ) : null}
         </div>
       </div>
 

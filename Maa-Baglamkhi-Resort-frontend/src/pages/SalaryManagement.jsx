@@ -273,6 +273,23 @@ const SalaryManagement = () => {
     setEditForm({ salary: "", designation: "" });
   };
 
+  /* Recalculate attendance-based salary (HAG-12, gap 8):
+     POST /api/salary/:userId/recalculate */
+  const [recalcingId, setRecalcingId] = useState(null);
+  const recalculate = async (emp) => {
+    setRecalcingId(emp.id);
+    try {
+      await API.post(`/salary/${emp.id}/recalculate`, {});
+      setMsg({ type: "success", text: `${emp.name}'s attendance salary recalculated` });
+      fetchEmployees();
+    } catch (err) {
+      console.error("Recalculate failed:", err);
+      setMsg({ type: "error", text: err.response?.data?.message || "Recalculate failed" });
+    } finally {
+      setRecalcingId(null);
+    }
+  };
+
   const handleSave = async (emp) => {
     if (!editForm.salary && editForm.salary !== 0) {
       setMsg({ type: "error", text: "Salary is required" });
@@ -550,12 +567,28 @@ const SalaryManagement = () => {
                             </button>
                           </div>
                         ) : (
-                          <button
-                            onClick={() => startEdit(emp)}
-                            className="inline-flex items-center gap-1.5 rounded-xl bg-gradient-to-br from-blue-600 to-sky-500 px-4 py-2 text-[14px] font-bold text-white shadow-sm transition-all duration-250 hover:shadow-md hover:-translate-y-0.5"
-                          >
-                            <FaEdit /> Edit
-                          </button>
+                          <div className="flex flex-wrap gap-2">
+                            <button
+                              onClick={() => startEdit(emp)}
+                              className="inline-flex items-center gap-1.5 rounded-xl bg-gradient-to-br from-blue-600 to-sky-500 px-4 py-2 text-[14px] font-bold text-white shadow-sm transition-all duration-250 hover:shadow-md hover:-translate-y-0.5"
+                            >
+                              <FaEdit /> Edit
+                            </button>
+                            {isAdmin && (
+                              <button
+                                onClick={() => recalculate(emp)}
+                                disabled={recalcingId === emp.id}
+                                className="inline-flex items-center gap-1.5 rounded-xl border border-violet-200 bg-violet-50 px-4 py-2 text-[14px] font-bold text-violet-700 shadow-sm transition-all duration-250 hover:bg-violet-100 hover:shadow-md disabled:opacity-50"
+                              >
+                                {recalcingId === emp.id ? (
+                                  <FaSpinner className="animate-spin" />
+                                ) : (
+                                  <FaCogs />
+                                )}
+                                Recalculate
+                              </button>
+                            )}
+                          </div>
                         )}
                       </td>
                     </tr>

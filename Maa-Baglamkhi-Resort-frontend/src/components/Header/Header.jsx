@@ -14,6 +14,7 @@ import {
 
 import { getDashboardNotifications } from "../Dashboard/dashboardNotifications";
 import { getDashboardSearchResults } from "../../utils/dashboardSearch";
+import NotificationBell from "../Dashboard/NotificationBell";
 
 const Header = ({
   setIsAuthenticated,
@@ -223,6 +224,9 @@ const Header = ({
         </div>
 
         <div className="ml-2 flex shrink-0 items-center gap-1.5 sm:ml-4 sm:gap-3 md:gap-4" ref={headerActionsRef}>
+          {/* Live REST notification bell (HAG-12) — separate from the static dashboard bell */}
+          <NotificationBell />
+
           <div className="relative">
             <button
               type="button"

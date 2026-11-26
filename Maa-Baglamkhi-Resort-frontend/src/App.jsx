@@ -62,7 +62,9 @@ import ChefInventoryPage from "./pages/ChefInventoryPage";
 import AdminChefIssuePage from "./pages/AdminChefIssuePage";
 import WaiterDeliveryQueue from "./pages/WaiterDeliveryQueue";
 import Login from "./pages/Login";
+import Employees from "./pages/Employees";
 import ManagerDashboard from "./pages/ManagerDashboard";
+import PaymentDesk from "./pages/PaymentDesk";
 import Profile from "./pages/Profile";
 import ReceptionDashboard from "./pages/ReceptionDashboard";
 import Register from "./pages/Register";
@@ -338,6 +340,11 @@ function AppRoutes({ isAuthenticated, setIsAuthenticated, protect }) {
           <Route path="/kitchen" element={protect(<Kitchen />, ROLES.KITCHEN)} />
           <Route path="/waiter-delivery" element={protect(<WaiterDeliveryQueue />, ROLES.RESTAURANT)} />
           <Route path="/user" element={protect(<User />, ROLES.ADMIN_ONLY)} />
+          <Route
+            path="/employees"
+            element={protect(<Employees />, ["admin", "manager", "accountant"])}
+          />
+          <Route path="/payment-desk" element={protect(<PaymentDesk />, ROLES.HOTEL)} />
           <Route path="/print" element={protect(<PrintManagement />, ["admin"])} />
           <Route path="/backup-settings" element={protect(<BackupSettings />, ROLES.ADMIN_ONLY)} />
           <Route path="/settings" element={protect(<Settings />, ROLES.ADMIN_ONLY)} />

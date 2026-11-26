@@ -19,6 +19,7 @@ import RoomCostingModal from "./RoomCostingModal";
 import ShiftRosterModal from "./ShiftRosterModal";
 import HousekeepingRow from "./HousekeepingRow";
 import CleaningLogPanel from "./CleaningLogPanel";
+import HousekeepingParameters from "./HousekeepingParameters";
 
 const normalizeNotification = (row) => ({
   id: row.id,
@@ -573,6 +574,11 @@ export default function Housekeeping() {
             {actionMsg}
           </div>
         )}
+
+        {/* Housekeeping Parameters (HAG-12, gap 2): GET+POST /housekeeping/parameters */}
+        <div className="mb-5">
+          <HousekeepingParameters />
+        </div>
 
         {/* Room Status Controls */}
         <div className="mb-5">

@@ -60,6 +60,63 @@ const Roomitem = () => {
   const [search, setSearch] = useState("");
   const [menuItems, setMenuItems] = useState([]);
 
+  /* Room-service order actions (HAG-12, gap 5):
+     PUT  /api/room-service/order/:roomNumber/pay  -> mark the pending order paid
+     POST /api/room-service/bill                    -> create a room bill record */
+  const [roomServiceBusy, setRoomServiceBusy] = useState("");
+  const [roomServiceMsg, setRoomServiceMsg] = useState("");
+
+  const sayRoomService = (text) => {
+    setRoomServiceMsg(text);
+    setTimeout(() => setRoomServiceMsg(""), 6000);
+  };
+
+  const markRoomOrderPaid = async (room) => {
+    const roomRef = String(room.roomNo);
+    setRoomServiceBusy(`${roomRef}:pay`);
+    try {
+      await API.put(`/room-service/order/${roomRef}/pay`);
+      sayRoomService(`Room ${roomRef} order marked paid.`);
+      refreshTokenSnapshots([room]);
+    } catch (error) {
+      if (error.response?.status === 404) {
+        sayRoomService(`No pending room order for room ${roomRef}.`);
+      } else {
+        console.error(error);
+        sayRoomService(error.response?.data?.message || "Could not mark room order paid.");
+      }
+    } finally {
+      setRoomServiceBusy("");
+    }
+  };
+
+  const createRoomServiceBill = async (room) => {
+    const roomRef = String(room.roomNo);
+    const snapshot = tokenSnapshots[roomRef];
+    const items = snapshot?.items || [];
+    const subtotal = items.reduce(
+      (sum, item) => sum + Number(item.qty || 0) * Number(item.rate || 0),
+      0,
+    );
+    const gst = subtotal * 0.05;
+    setRoomServiceBusy(`${roomRef}:bill`);
+    try {
+      const res = await API.post("/room-service/bill", {
+        roomNumber: roomRef,
+        subtotal,
+        gst,
+        total: subtotal + gst,
+        paymentMethod: "Cash",
+      });
+      sayRoomService(`Room bill created${res.data?.id ? ` (bill #${res.data.id})` : ""} for room ${roomRef}.`);
+    } catch (error) {
+      console.error(error);
+      sayRoomService(error.response?.data?.message || "Could not create room bill.");
+    } finally {
+      setRoomServiceBusy("");
+    }
+  };
+
   const focusRoomNo = String(location.state?.focusRoomNo || "");
 
   /* ---------- data loading (unchanged: real rooms + bookings from the same
@@ -605,6 +662,13 @@ const Roomitem = () => {
         </div>
       </div>
 
+      {/* ---------- room-service action status (HAG-12) ---------- */}
+      {roomServiceMsg && (
+        <div className="mb-4 rounded-[14px] border border-emerald-200 bg-emerald-50 px-4 py-3 text-[14px] font-bold text-emerald-800 sm:mb-5">
+          {roomServiceMsg}
+        </div>
+      )}
+
       {/* ---------- stat cards ---------- */}
       <div className="mb-5 sm:mb-8 grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-5 lg:grid-cols-3">
         <div className="group flex h-full items-center justify-between gap-3 rounded-[18px] sm:rounded-[26px] border border-blue-100 bg-white/90 p-4 sm:p-6 shadow-[0_10px_30px_rgba(29,78,216,0.08)] backdrop-blur-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_16px_40px_rgba(29,78,216,0.14)] sm:col-span-2 lg:col-span-1">
@@ -764,6 +828,24 @@ const Roomitem = () => {
                       ) : (
                         <span />
                       )}
+
+                      {/* Room-service settlement actions (HAG-12) */}
+                      <button
+                        type="button"
+                        onClick={() => markRoomOrderPaid(room)}
+                        disabled={roomServiceBusy === `${roomRef}:pay`}
+                        className="col-span-2 rounded-lg border border-emerald-200 bg-emerald-50 px-2 py-1.5 text-[11px] font-bold text-emerald-700 shadow-sm transition-all duration-200 hover:bg-emerald-100 disabled:opacity-50 sm:text-[12px]"
+                      >
+                        {roomServiceBusy === `${roomRef}:pay` ? "Marking paid…" : "Mark Order Paid"}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => createRoomServiceBill(room)}
+                        disabled={roomServiceBusy === `${roomRef}:bill`}
+                        className="col-span-2 rounded-lg border border-slate-200 bg-white px-2 py-1.5 text-[11px] font-bold text-slate-700 shadow-sm transition-all duration-200 hover:bg-slate-50 disabled:opacity-50 sm:text-[12px]"
+                      >
+                        {roomServiceBusy === `${roomRef}:bill` ? "Creating…" : "Create Room Bill"}
+                      </button>
                     </div>
                   </>
                 ) : (

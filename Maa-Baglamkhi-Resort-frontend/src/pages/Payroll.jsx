@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
 import {
+  FaCalculator,
   FaCoins,
   FaHandHoldingUsd,
   FaPlus,
@@ -23,12 +24,20 @@ const inr = (n) =>
     maximumFractionDigits: 2,
   })}`;
 
+const getEstimateError = (err) =>
+  err?.response?.data?.message || "Could not estimate salary";
+
 const Payroll = () => {
   const [tab, setTab] = useState("payments");
   const [payments, setPayments] = useState([]);
   const [employees, setEmployees] = useState([]);
   const [roles, setRoles] = useState([]);
   const [payees, setPayees] = useState([]);
+  // Salary estimate panel (HAG-12): GET /api/payroll/estimate/:employeeId
+  const [estimateEmployee, setEstimateEmployee] = useState("");
+  const [estimateMonth, setEstimateMonth] = useState(localMonth());
+  const [estimate, setEstimate] = useState(null);
+  const [estimateLoading, setEstimateLoading] = useState(false);
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [msg, setMsg] = useState({ type: "", text: "" });
@@ -82,6 +91,19 @@ const Payroll = () => {
   }, []);
 
 
+  const refreshRoles = async () => {
+    try {
+      const r = await API.get("/roles");
+      setRoles(Array.isArray(r.data) ? r.data : []);
+    } catch (err) {
+      flash("error", "Failed to refresh roles");
+    }
+  };
+
+  // Role create/edit UI state lives here so the roles table's Edit button
+  // and the RoleManager card stay in sync.
+  const [roleEditing, setRoleEditing] = useState(null); // role row or "create"
+
   const pickEmployee = (id) => {
     const row = payees.find((p) => String(p.value) === String(id));
     setForm((f) => ({
@@ -124,6 +146,24 @@ const Payroll = () => {
     }
   };
 
+  // Pull the backend's own estimate (GET /payroll/estimate/:employeeId) for
+  // the selected month; it reflects attendance-based pay rules.
+  const runEstimate = async () => {
+    if (!estimateEmployee) return;
+    setEstimateLoading(true);
+    setEstimate(null);
+    try {
+      const res = await API.get(`/payroll/estimate/${estimateEmployee}`, {
+        params: { month: estimateMonth },
+      });
+      setEstimate(res.data);
+    } catch (err) {
+      flash("error", getEstimateError(err));
+    } finally {
+      setEstimateLoading(false);
+    }
+  };
+
   const totals = useMemo(
     () =>
       payments.reduce(
@@ -159,17 +199,21 @@ const Payroll = () => {
           </h2>
         </div>
         <div className="flex gap-2">
-          {["payments", "roles"].map((t) => (
+          {[
+            ["payments", "Salary Payments"],
+            ["estimate", "Estimate"],
+            ["roles", "Roles & Permissions"],
+          ].map(([key, title]) => (
             <button
-              key={t}
-              onClick={() => setTab(t)}
+              key={key}
+              onClick={() => setTab(key)}
               className={`rounded-full px-5 py-2.5 text-[15px] font-bold transition ${
-                tab === t
+                tab === key
                   ? "bg-gradient-to-r from-blue-700 to-sky-500 text-white shadow-lg"
                   : "border border-blue-100 bg-white text-slate-600 hover:border-blue-300"
               }`}
             >
-              {t === "payments" ? "Salary Payments" : "Roles & Permissions"}
+              {title}
             </button>
           ))}
         </div>
@@ -363,12 +407,102 @@ const Payroll = () => {
         </>
       )}
 
-      {tab === "roles" && (
-        <section className="rounded-[22px] border border-blue-100 bg-white shadow-[0_8px_24px_-8px_rgba(37,99,235,0.18)] overflow-hidden">
-          <div className="flex items-center gap-2 border-b border-blue-50 px-5 py-4">
-            <FaShieldAlt className="text-blue-600" />
-            <h3 className="text-[19px] font-extrabold text-slate-900">Roles &amp; Permissions</h3>
+      {tab === "estimate" && (
+        <section className={card}>
+          <div className="mb-4 flex items-center gap-2">
+            <FaCalculator className="text-blue-600" />
+            <h3 className="text-[19px] font-extrabold text-slate-900">Salary Estimate</h3>
           </div>
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+            <div>
+              <label className={label}>Employee</label>
+              <select
+                className={input}
+                value={estimateEmployee}
+                onChange={(e) => setEstimateEmployee(e.target.value)}
+              >
+                <option value="">Select employee…</option>
+                {payees.map((p) => (
+                  <option key={p.value} value={p.value}>
+                    {p.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className={label}>Month</label>
+              <input
+                type="month"
+                className={input}
+                value={estimateMonth}
+                onChange={(e) => setEstimateMonth(e.target.value)}
+              />
+            </div>
+            <div className="flex items-end">
+              <button
+                onClick={runEstimate}
+                disabled={estimateLoading || !estimateEmployee}
+                className="w-full rounded-full bg-gradient-to-r from-blue-700 to-sky-500 px-6 py-2.5 text-[15px] font-bold text-white shadow-lg transition hover:-translate-y-0.5 disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                {estimateLoading ? <FaSpinner className="mr-2 animate-spin" /> : null}
+                Estimate
+              </button>
+            </div>
+          </div>
+
+          {estimate && (
+            <div className="mt-5">
+              <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+                <div className="rounded-[16px] bg-slate-50 p-4">
+                  <p className={label}>Base Salary</p>
+                  <p className="text-[22px] font-extrabold text-slate-900">
+                    {inr(estimate.baseSalary)}
+                  </p>
+                </div>
+                <div className="rounded-[16px] bg-slate-50 p-4">
+                  <p className={label}>Days Present</p>
+                  <p className="text-[22px] font-extrabold text-blue-700">
+                    {estimate.daysPresent ?? 0} / {estimate.totalDays ?? "—"}
+                  </p>
+                </div>
+                <div className="rounded-[16px] bg-slate-50 p-4">
+                  <p className={label}>Daily Rate</p>
+                  <p className="text-[22px] font-extrabold text-slate-900">
+                    {inr(estimate.dailyRate)}
+                  </p>
+                </div>
+                <div className="rounded-[16px] bg-emerald-50 p-4">
+                  <p className={label}>Net Payable</p>
+                  <p className="text-[22px] font-extrabold text-emerald-700">
+                    {inr(estimate.netPayable)}
+                  </p>
+                </div>
+              </div>
+              <p className="mt-3 text-[14px] font-semibold text-slate-500">
+                {estimate.employee?.name || "Employee"} · {String(estimate.month || "").slice(0, 7)} ·
+                earned {inr(estimate.totalEarned)} from {estimate.daysPresent ?? 0} days present
+              </p>
+            </div>
+          )}
+        </section>
+      )}
+
+      {tab === "roles" && (
+        <>
+          {/* Role create + edit (HAG-12): POST /api/roles, PATCH /api/roles/:id */}
+          <RoleManager
+            mode={roleEditing}
+            onModeChange={setRoleEditing}
+            onChanged={refreshRoles}
+            input={input}
+            label={label}
+            flash={flash}
+          />
+          <section className="rounded-[22px] border border-blue-100 bg-white shadow-[0_8px_24px_-8px_rgba(37,99,235,0.18)] overflow-hidden">
+            <div className="flex items-center gap-2 border-b border-blue-50 px-5 py-4">
+              <FaShieldAlt className="text-blue-600" />
+              <h3 className="text-[19px] font-extrabold text-slate-900">Roles &amp; Permissions</h3>
+            </div>
           <div className="overflow-x-auto">
             <table className="w-full text-left text-[16px]">
               <thead className="bg-gradient-to-b from-[#f4f9ff] to-[#e8f2ff] text-[13px] font-bold uppercase tracking-[0.14em] text-slate-500">
@@ -378,6 +512,7 @@ const Payroll = () => {
                   <th className="px-4 py-3.5">System</th>
                   <th className="px-4 py-3.5">Permissions</th>
                   <th className="px-4 py-3.5">Description</th>
+                  <th className="px-4 py-3.5">Action</th>
                 </tr>
               </thead>
               <tbody>
@@ -406,11 +541,19 @@ const Payroll = () => {
                       {r.permission_count || 0}
                     </td>
                     <td className="px-4 py-3.5 text-slate-500">{r.description || "—"}</td>
+                    <td className="px-4 py-3.5">
+                      <button
+                        onClick={() => setRoleEditing(r)}
+                        className="rounded-full border border-blue-200 bg-blue-50 px-4 py-1.5 text-[13px] font-bold text-blue-700 transition hover:bg-blue-100"
+                      >
+                        Edit
+                      </button>
+                    </td>
                   </tr>
                 ))}
                 {roles.length === 0 && !loading && (
                   <tr>
-                    <td colSpan={5} className="p-6 text-center text-slate-500">
+                    <td colSpan={6} className="p-6 text-center text-slate-500">
                       No roles
                     </td>
                   </tr>
@@ -422,11 +565,132 @@ const Payroll = () => {
             <FaUsersCog className="text-blue-500" />
             Assign users to roles from User Management. Roles are managed with <code>POST /api/roles</code>.
           </div>
-        </section>
+          </section>
+        </>
       )}
 
       {loading && <div className="flex justify-center py-10"><FaSpinner className="animate-spin text-blue-500" /></div>}
     </div>
+  );
+};
+
+/* ---------- RoleManager: create + edit roles (HAG-12, gap 3) ----------
+   mode: null (collapsed card) | "create" | role row (edit). Controlled by
+   the parent so the roles table's Edit buttons can open the panel too.   */
+const RoleManager = ({ mode, onModeChange, onChanged, input, label, flash }) => {
+  const [busy, setBusy] = useState(false);
+  const editingRole = mode && mode !== "create" ? mode : null;
+
+  const [form, setForm] = useState({ name: "", display_name: "", description: "" });
+
+  // Hydrate the form whenever the mode switches.
+  useEffect(() => {
+    if (!mode) return;
+    if (mode === "create") {
+      setForm({ name: "", display_name: "", description: "" });
+    } else {
+      setForm({
+        name: String(mode.name || ""),
+        display_name: String(mode.display_name || ""),
+        description: String(mode.description || ""),
+      });
+    }
+  }, [mode]);
+
+  const close = () => onModeChange(null);
+
+  const submit = async () => {
+    setBusy(true);
+    try {
+      if (editingRole) {
+        await API.patch(`/roles/${editingRole.id}`, {
+          name: form.name.trim() || undefined,
+          display_name: form.display_name.trim() || undefined,
+          description: form.description.trim() || undefined,
+        });
+        flash("success", "Role updated");
+      } else {
+        if (!form.name.trim()) {
+          flash("error", "Role name is required");
+          setBusy(false);
+          return;
+        }
+        await API.post("/roles", {
+          name: form.name.trim(),
+          display_name: form.display_name.trim() || undefined,
+          description: form.description.trim() || undefined,
+        });
+        flash("success", "Role created");
+      }
+      close();
+      await onChanged();
+    } catch (err) {
+      flash("error", err.response?.data?.message || "Role change failed");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  if (!mode) {
+    return (
+      <section className="flex items-center justify-between rounded-[22px] border border-blue-100 bg-white p-5 shadow-[0_8px_24px_-8px_rgba(37,99,235,0.18)]">
+        <div>
+          <h3 className="text-[17px] font-extrabold text-slate-900">Create a role</h3>
+          <p className="text-[14px] font-semibold text-slate-500">
+            New roles become selectable in User Management and the Employees screen.
+          </p>
+        </div>
+        <button
+          onClick={() => onModeChange("create")}
+          className="inline-flex items-center gap-2 rounded-full bg-gradient-to-r from-blue-700 to-sky-500 px-5 py-2.5 text-[14px] font-bold text-white shadow-lg transition hover:-translate-y-0.5"
+        >
+          <FaPlus /> New Role
+        </button>
+      </section>
+    );
+  }
+
+  return (
+    <section className="rounded-[22px] border border-blue-200 bg-gradient-to-br from-blue-50 to-white p-5 shadow-sm">
+      <div className="mb-4 flex items-center justify-between">
+        <h3 className="text-[17px] font-extrabold text-slate-900">
+          {editingRole ? `Edit role: ${editingRole.name}` : "New role"}
+        </h3>
+        <button onClick={close} className="rounded-full border border-slate-200 px-4 py-1.5 text-[13px] font-bold text-slate-500 transition hover:bg-slate-50">
+          Close
+        </button>
+      </div>
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+        <div>
+          <label className={label}>Role key *</label>
+          <input
+            className={input}
+            value={form.name}
+            onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
+            placeholder="e.g. supervisor"
+            disabled={Boolean(editingRole?.is_system)}
+          />
+        </div>
+        <div>
+          <label className={label}>Display name</label>
+          <input className={input} value={form.display_name} onChange={(e) => setForm((f) => ({ ...f, display_name: e.target.value }))} />
+        </div>
+        <div>
+          <label className={label}>Description</label>
+          <input className={input} value={form.description} onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))} />
+        </div>
+      </div>
+      <div className="mt-4 flex justify-end">
+        <button
+          onClick={submit}
+          disabled={busy}
+          className="inline-flex items-center gap-2 rounded-full bg-gradient-to-r from-blue-700 to-sky-500 px-6 py-2.5 text-[14px] font-bold text-white shadow-lg transition hover:-translate-y-0.5 disabled:cursor-not-allowed disabled:opacity-60"
+        >
+          {busy ? <FaSpinner className="animate-spin" /> : null}
+          {editingRole ? "Save Role" : "Create Role"}
+        </button>
+      </div>
+    </section>
   );
 };
 

@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState } from "react";
 import {
   FaClock,
   FaFingerprint,
+  FaHistory,
   FaPlus,
   FaPlug,
   FaSync,
@@ -54,6 +55,11 @@ const ZkAttendance = () => {
   const [pinning, setPinning] = useState(null);
   const [deviceIds, setDeviceIds] = useState([]);
   const [fetchingAll, setFetchingAll] = useState(false);
+
+  // Pull-history (HAG-12): GET /api/zk/machines/:id/pulls
+  const [pullsFor, setPullsFor] = useState(null); // machine id expanded
+  const [pulls, setPulls] = useState([]);
+  const [pullsLoading, setPullsLoading] = useState(false);
   // Guards: never fire two fetches at once. The machine list may refresh after
   // each fetch, so ref-compare the ids already on the wire instead of the
   // stale closure.
@@ -273,10 +279,29 @@ const ZkAttendance = () => {
           clockNote
       );
       loadMachines();
+      // Keep the history tab current when it is open for this machine.
+      if (pullsFor === machine.id) loadPulls(machine, { silent: true }).then(() => {});
     } catch (err) {
       setError(`Sync failed for ${machine.name}: ${err.response?.data?.message || err.message}`);
     } finally {
       setSyncing(null);
+    }
+  };
+
+  const loadPulls = async (machine, { silent = false } = {}) => {
+    if (!silent) {
+      setPullsFor(machine.id);
+      setPulls([]);
+      setPullsLoading(true);
+    }
+    try {
+      const res = await API.get(`/zk/machines/${machine.id}/pulls`);
+      setPulls(Array.isArray(res.data?.pulls) ? res.data.pulls : []);
+    } catch (err) {
+      setError(`Pull history unavailable for ${machine.name}: ${err.response?.data?.message || err.message}`);
+      setPulls([]);
+    } finally {
+      if (!silent) setPullsLoading(false);
     }
   };
 
@@ -657,6 +682,9 @@ const ZkAttendance = () => {
                       <ActionBtn onClick={() => loadDeviceUsers(m)} disabled={fetchingUsers === m.id}>
                         <FaFingerprint /> {fetchingUsers === m.id ? "Reading…" : "Registered users"}
                       </ActionBtn>
+                      <ActionBtn onClick={() => loadPulls(m)} accent={pullsFor === m.id}>
+                        <FaHistory /> {pullsFor === m.id ? "Hide history" : "Pull history"}
+                      </ActionBtn>
                       <ActionBtn onClick={() => startEdit(m)}><FaTimes style={{ display: "none" }} />Edit</ActionBtn>
                       <ActionBtn onClick={() => removeMachine(m.id)} danger><FaTrash />Remove</ActionBtn>
                     </div>
@@ -667,6 +695,58 @@ const ZkAttendance = () => {
           </tbody>
         </table>
       </div>
+
+      {/* Pull history for the expanded machine (GET /zk/machines/:id/pulls) */}
+      {pullsFor && (
+        <div style={{ marginTop: 16 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10 }}>
+            <FaHistory style={{ color: "#059669" }} />
+            <h3 style={{ fontSize: 16, fontWeight: 700, color: "#1f2a44" }}>
+              Pull history {pullsLoading ? "(loading…)" : `(${pulls.length} recent)`}
+            </h3>
+          </div>
+          {pullsLoading ? (
+            <div style={{ ...tdStyle, color: "#777" }}>Loading pull history…</div>
+          ) : pulls.length === 0 ? (
+            <div style={{ ...tdStyle, color: "#777" }}>No pulls recorded for this machine yet.</div>
+          ) : (
+            <div style={{ overflowX: "auto" }}>
+              <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
+                <thead>
+                  <tr>
+                    <th style={thStyle}>#</th>
+                    <th style={thStyle}>Pulled at</th>
+                    <th style={thStyle}>Records created</th>
+                    <th style={thStyle}>Records matched</th>
+                    <th style={thStyle}>Status</th>
+                    <th style={thStyle}>Error</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {pulls.map((p) => (
+                    <tr key={p.id} style={{ borderBottom: "1px solid #eee" }}>
+                      <td style={tdStyle}>#{p.id}</td>
+                      <td style={tdStyle}>{p.pulled_at ? new Date(p.pulled_at).toLocaleString() : "—"}</td>
+                      <td style={tdStyle}>{p.records_created ?? 0}</td>
+                      <td style={tdStyle}>{p.records_matched ?? 0}</td>
+                      <td style={tdStyle}>
+                        <span style={{
+                          padding: "2px 10px", borderRadius: 10, fontSize: 12, fontWeight: 600,
+                          background: p.status === "success" ? "#e8f5e9" : p.status === "failed" ? "#fdecea" : "#fff8e1",
+                          color: p.status === "success" ? "#1b5e20" : p.status === "failed" ? "#c62828" : "#8d6e0f",
+                        }}>
+                          {p.status || "unknown"}
+                        </span>
+                      </td>
+                      <td style={{ ...tdStyle, color: "#c62828" }}>{p.error_message || ""}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 };

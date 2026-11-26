@@ -18,6 +18,7 @@ import {
   FaHotel,
   FaListAlt,
   FaMoneyBillWave,
+  FaUsers,
   FaShoppingCart,
   FaSignOutAlt,
   FaStar,
@@ -142,6 +143,8 @@ const Sidebar = ({ isMobile, sidebarOpen, setSidebarOpen, setIsAuthenticated }) 
       { id: 1110, name: "Reports Suite", icon: FaListAlt, path: "/reports/suite", section: "records" },
       { id: 112, name: "Audit Logs", icon: FaHistory, path: "/audit-logs", section: "records" },
       { id: 113, name: "User Management", icon: FaUserCheck, path: "/user", section: "records" },
+      { id: 1132, name: "Employees", icon: FaUsers, path: "/employees", section: "records" },
+      { id: 1133, name: "Payment Desk", icon: FaMoneyBillWave, path: "/payment-desk", section: "records" },
       { id: 1131, name: "Print Management", icon: FaClipboardList, path: "/print", section: "records" },
 
       { id: 114, name: "Salary", icon: FaMoneyBillWave, path: "/salary", section: "records" },
