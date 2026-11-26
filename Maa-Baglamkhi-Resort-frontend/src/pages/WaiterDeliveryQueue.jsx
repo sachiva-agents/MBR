@@ -8,6 +8,7 @@ import { FaSyncAlt, FaCheckCircle, FaClock, FaUtensils } from "react-icons/fa";
 import { useNavigate } from "react-router-dom";
 import API from "../api";
 import { getCurrentActor } from "../utils/currentActor";
+import { getRestaurantSocket, releaseRestaurantSocket } from "../utils/restaurantSocket";
 import WaiterAssignmentCard from "../components/Restaurant/WaiterAssignmentCard";
 import ReadyOrdersPanel from "../components/Waiter/ReadyOrdersPanel";
 
@@ -50,6 +51,41 @@ export default function WaiterDeliveryQueue() {
     const interval = setInterval(fetchQueue, POLL_INTERVAL);
     return () => clearInterval(interval);
   }, [fetchQueue, waiterName]);
+
+  // Realtime: the backend emits "room-order-status" ({ orderId, status }) on
+  // every room-service order status change (pending/preparing/served/paid).
+  // The shared restaurant socket client delivers it; we refresh via the same
+  // REST call the poll uses, so REST polling stays the fallback and this is
+  // purely additive.
+  useEffect(() => {
+    if (!waiterName) return;
+
+    let activeSocket = null;
+    let unsubscribed = false;
+
+    const handleRoomOrderStatus = () => {
+      fetchQueue();
+    };
+
+    const setupSocket = async () => {
+      const socket = await getRestaurantSocket();
+      if (!socket || unsubscribed) return;
+      activeSocket = socket;
+      socket.on("room-order-status", handleRoomOrderStatus);
+      return () => {
+        socket.off("room-order-status", handleRoomOrderStatus);
+      };
+    };
+
+    const teardownPromise = setupSocket();
+
+    return () => {
+      unsubscribed = true;
+      Promise.resolve(teardownPromise).then((teardown) => teardown && teardown());
+      activeSocket = null;
+      releaseRestaurantSocket();
+    };
+  }, [waiterName, fetchQueue]);
 
   const handleDelivered = (orderId, result) => {
     setOrders((prev) => prev.filter((o) => String(o.id) !== String(orderId)));
