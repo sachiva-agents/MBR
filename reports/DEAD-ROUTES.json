@@ -1,0 +1,1187 @@
+{
+  "generatedFor": "HAG-11",
+  "main": "449da93",
+  "totals": {
+    "dead": 88,
+    "redundant": 59,
+    "gap": 29
+  },
+  "results": [
+    {
+      "route": "/payment-status/:id",
+      "method": "PATCH",
+      "module": "InvoiceRoutes.js",
+      "line": 21,
+      "aliases": [
+        "/api/invoices/payment-status/:id",
+        "/api/invoice/payment-status/:id"
+      ],
+      "handler": "updateInvoicePaymentStatus",
+      "verdict": "GAP",
+      "reason": "no live frontend caller of this feature",
+      "suggestedArea": "Hotel / Front Desk (invoices)"
+    },
+    {
+      "route": "/dashboard",
+      "method": "GET",
+      "module": "accountsRoutes.js",
+      "line": 114,
+      "aliases": [
+        "/api/accounts/dashboard"
+      ],
+      "handler": "getSummary",
+      "verdict": "GAP",
+      "reason": "no live frontend caller of this feature",
+      "suggestedArea": "Accounts"
+    },
+    {
+      "route": "/",
+      "method": "GET",
+      "module": "accountsRoutes.js",
+      "line": 122,
+      "aliases": [
+        "/api/accounts"
+      ],
+      "handler": "getSummary",
+      "verdict": "GAP",
+      "reason": "no live frontend caller of this feature",
+      "suggestedArea": "Accounts"
+    },
+    {
+      "route": "/transactions/:id",
+      "method": "GET",
+      "module": "accountsRoutes.js",
+      "line": 124,
+      "aliases": [
+        "/api/accounts/transactions/:id"
+      ],
+      "handler": "getTransactionById",
+      "verdict": "REDUNDANT",
+      "reason": "feature reachable via a different live endpoint",
+      "evidence": "GET /accounts/transactions @ Maa-Baglamkhi-Resort-frontend\\src\\pages\\Accounts.jsx; PUT /accounts/transactions/${editingRecord.id} @ Maa-Baglamkhi-Resort-frontend\\src\\pages\\Accounts.jsx; DELETE /accounts/transactions/${id} @ Maa-Baglamkhi-Resort-frontend\\src\\pages\\Accounts.jsx"
+    },
+    {
+      "route": "/payment-settings/:id",
+      "method": "GET",
+      "module": "accountsRoutes.js",
+      "line": 176,
+      "aliases": [
+        "/api/accounts/payment-settings/:id"
+      ],
+      "handler": "getPaymentGatewaySettingById",
+      "verdict": "REDUNDANT",
+      "reason": "feature reachable via a different live endpoint",
+      "evidence": "GET /accounts/payment-settings @ Maa-Baglamkhi-Resort-frontend\\src\\pages\\Accounts.jsx; GET /accounts/payment-history @ Maa-Baglamkhi-Resort-frontend\\src\\pages\\Accounts.jsx; GET /accounts/payment-history @ Maa-Baglamkhi-Resort-frontend\\src\\pages\\Accounts.jsx"
+    },
+    {
+      "route": "/payroll",
+      "method": "GET",
+      "module": "attendanceRoutes.js",
+      "line": 13,
+      "aliases": [
+        "/api/attendance/payroll"
+      ],
+      "handler": "inline@attendanceRoutes.js:13",
+      "verdict": "REDUNDANT",
+      "reason": "feature reachable via a different live endpoint",
+      "evidence": "GET /accounts/payroll @ Maa-Baglamkhi-Resort-frontend\\src\\pages\\Accounts.jsx"
+    },
+    {
+      "route": "/mark",
+      "method": "POST",
+      "module": "attendanceRoutes.js",
+      "line": 18,
+      "aliases": [
+        "/api/attendance/mark"
+      ],
+      "handler": "inline@attendanceRoutes.js:18",
+      "verdict": "REDUNDANT",
+      "reason": "feature reachable via a different live endpoint",
+      "evidence": "POST /attendance/mark-holiday @ Maa-Baglamkhi-Resort-frontend\\src\\pages\\Attendance.jsx; POST /attendance/mark-own @ Maa-Baglamkhi-Resort-frontend\\src\\pages\\MyAttendance.jsx"
+    },
+    {
+      "route": "/:id",
+      "method": "PATCH",
+      "module": "attendanceRoutes.js",
+      "line": 30,
+      "aliases": [
+        "/api/attendance/:id"
+      ],
+      "handler": "inline@attendanceRoutes.js:30",
+      "verdict": "GAP",
+      "reason": "no live frontend caller of this feature",
+      "suggestedArea": "Attendance"
+    },
+    {
+      "route": "/config",
+      "method": "GET",
+      "module": "banquetRoutes.js",
+      "line": 81,
+      "aliases": [
+        "/api/banquet/config"
+      ],
+      "handler": "getBanquetPricingConfig",
+      "verdict": "REDUNDANT",
+      "reason": "feature reachable via a different live endpoint",
+      "evidence": "PUT /banquet/config @ Maa-Baglamkhi-Resort-frontend\\src\\pages\\Banquet.jsx; GET /web/dining/config @ Maa-Baglamkhi-Resort-frontend\\src\\services\\websiteDiningService.js"
+    },
+    {
+      "route": "/halls",
+      "method": "GET",
+      "module": "banquetRoutes.js",
+      "line": 84,
+      "aliases": [
+        "/api/banquet/halls"
+      ],
+      "handler": "inline@banquetRoutes.js:84",
+      "verdict": "REDUNDANT",
+      "reason": "feature reachable via a different live endpoint",
+      "evidence": "PUT /banquet/halls/${editingHallId} @ Maa-Baglamkhi-Resort-frontend\\src\\pages\\Banquet.jsx; POST /banquet/halls @ Maa-Baglamkhi-Resort-frontend\\src\\pages\\Banquet.jsx; DELETE /banquet/halls/${hallDeleteTarget.id} @ Maa-Baglamkhi-Resort-frontend\\src\\pages\\Banquet.jsx"
+    },
+    {
+      "route": "/bookings",
+      "method": "GET",
+      "module": "banquetRoutes.js",
+      "line": 102,
+      "aliases": [
+        "/api/banquet/bookings"
+      ],
+      "handler": "inline@banquetRoutes.js:102",
+      "verdict": "GAP",
+      "reason": "no live frontend caller of this feature",
+      "suggestedArea": "Banquet"
+    },
+    {
+      "route": "/",
+      "method": "GET",
+      "module": "bookingRoutes.js",
+      "line": 35,
+      "aliases": [
+        "/api/hotel",
+        "/api/booking"
+      ],
+      "handler": "bookingController.getAllBookings",
+      "verdict": "GAP",
+      "reason": "no live frontend caller of this feature",
+      "suggestedArea": "Hotel / Front Desk"
+    },
+    {
+      "route": "/payment-history",
+      "method": "GET",
+      "module": "bookingRoutes.js",
+      "line": 36,
+      "aliases": [
+        "/api/hotel/payment-history",
+        "/api/booking/payment-history"
+      ],
+      "handler": "bookingController.getAllBookings",
+      "verdict": "REDUNDANT",
+      "reason": "feature reachable via a different live endpoint",
+      "evidence": "GET /hotel/booking-history @ Maa-Baglamkhi-Resort-frontend\\src\\components\\Hotel\\AllBooking.jsx; GET /hotel/payment-history/${booking.bookingId} @ Maa-Baglamkhi-Resort-frontend\\src\\components\\Hotel\\BookingFlow.jsx; GET /hotel/payment-history/${bookingId} @ Maa-Baglamkhi-Resort-frontend\\src\\components\\Hotel\\BookingFlow.jsx"
+    },
+    {
+      "route": "/room-tariff",
+      "method": "GET",
+      "module": "bookingRoutes.js",
+      "line": 37,
+      "aliases": [
+        "/api/hotel/room-tariff",
+        "/api/booking/room-tariff"
+      ],
+      "handler": "bookingController.getBookingHistory",
+      "verdict": "REDUNDANT",
+      "reason": "feature reachable via a different live endpoint",
+      "evidence": "POST /hotel/room-tariff/${bookingId} @ Maa-Baglamkhi-Resort-frontend\\src\\components\\Hotel\\BookingFlow.jsx; GET /hotel/room-blocks @ Maa-Baglamkhi-Resort-frontend\\src\\components\\Hotel\\OccupancyForecast.jsx; GET /hotel/room-blocks?status=Active @ Maa-Baglamkhi-Resort-frontend\\src\\components\\Hotel\\Room.jsx"
+    },
+    {
+      "route": "/communication",
+      "method": "GET",
+      "module": "bookingRoutes.js",
+      "line": 38,
+      "aliases": [
+        "/api/hotel/communication",
+        "/api/booking/communication"
+      ],
+      "handler": "bookingController.getBookingHistory",
+      "verdict": "GAP",
+      "reason": "no live frontend caller of this feature",
+      "suggestedArea": "Hotel / Front Desk"
+    },
+    {
+      "route": "/booking/:id",
+      "method": "GET",
+      "module": "bookingRoutes.js",
+      "line": 39,
+      "aliases": [
+        "/api/hotel/booking/:id",
+        "/api/booking/booking/:id"
+      ],
+      "handler": "bookingController.getBookingById",
+      "verdict": "REDUNDANT",
+      "reason": "feature reachable via a different live endpoint",
+      "evidence": "GET /hotel/full-booking/${selectedRoom.booking.bookingId} @ Maa-Baglamkhi-Resort-frontend\\src\\components\\Dashboard\\Stayover.jsx; PUT /hotel/full-booking/${selectedRoom.booking.bookingId} @ Maa-Baglamkhi-Resort-frontend\\src\\components\\Dashboard\\Stayover.jsx; PUT /hotel/${action}/${selectedRoom.booking.bookingId} @ Maa-Baglamkhi-Resort-frontend\\src\\components\\Dashboard\\Stayover.jsx"
+    },
+    {
+      "route": "/rooms",
+      "method": "GET",
+      "module": "bookingRoutes.js",
+      "line": 42,
+      "aliases": [
+        "/api/hotel/rooms",
+        "/api/booking/rooms"
+      ],
+      "handler": "hotelRoomInventoryController.getRoomSetup",
+      "verdict": "REDUNDANT",
+      "reason": "feature reachable via a different live endpoint",
+      "evidence": "PUT /hotel/rooms/state/${roomNumber} @ Maa-Baglamkhi-Resort-frontend\\src\\components\\Dashboard\\Stayover.jsx; PUT /hotel/rooms/state/${roomNumber} @ Maa-Baglamkhi-Resort-frontend\\src\\components\\Dashboard\\Stayover.jsx; GET /hotel/rooms/setup @ Maa-Baglamkhi-Resort-frontend\\src\\components\\Hotel\\BookingFlow.jsx"
+    },
+    {
+      "route": "/rooms-availability",
+      "method": "GET",
+      "module": "bookingRoutes.js",
+      "line": 43,
+      "aliases": [
+        "/api/hotel/rooms-availability",
+        "/api/booking/rooms-availability"
+      ],
+      "handler": "hotelRoomInventoryController.getRoomSetup",
+      "verdict": "REDUNDANT",
+      "reason": "feature reachable via a different live endpoint",
+      "evidence": "PUT /hotel/rooms/state/${roomNumber} @ Maa-Baglamkhi-Resort-frontend\\src\\components\\Dashboard\\Stayover.jsx; PUT /hotel/rooms/state/${roomNumber} @ Maa-Baglamkhi-Resort-frontend\\src\\components\\Dashboard\\Stayover.jsx; GET /hotel/rooms/setup @ Maa-Baglamkhi-Resort-frontend\\src\\components\\Hotel\\BookingFlow.jsx"
+    },
+    {
+      "route": "/rooms/validate-availability",
+      "method": "POST",
+      "module": "bookingRoutes.js",
+      "line": 55,
+      "aliases": [
+        "/api/hotel/rooms/validate-availability",
+        "/api/booking/rooms/validate-availability"
+      ],
+      "handler": "hotelRoomInventoryController.validateRoomAvailability",
+      "verdict": "REDUNDANT",
+      "reason": "feature reachable via a different live endpoint",
+      "evidence": "PUT /hotel/rooms/state/${roomNumber} @ Maa-Baglamkhi-Resort-frontend\\src\\components\\Dashboard\\Stayover.jsx; PUT /hotel/rooms/state/${roomNumber} @ Maa-Baglamkhi-Resort-frontend\\src\\components\\Dashboard\\Stayover.jsx; GET /hotel/rooms/setup @ Maa-Baglamkhi-Resort-frontend\\src\\components\\Hotel\\BookingFlow.jsx"
+    },
+    {
+      "route": "/folio/entry/:entryId",
+      "method": "DELETE",
+      "module": "bookingRoutes.js",
+      "line": 74,
+      "aliases": [
+        "/api/hotel/folio/entry/:entryId",
+        "/api/booking/folio/entry/:entryId"
+      ],
+      "handler": "folioController.deleteEntry",
+      "verdict": "REDUNDANT",
+      "reason": "feature reachable via a different live endpoint",
+      "evidence": "GET /hotel/folio/${bookingId} @ Maa-Baglamkhi-Resort-frontend\\src\\components\\Hotel\\BookingFlow.jsx; GET /hotel/folio/${bookingId} @ Maa-Baglamkhi-Resort-frontend\\src\\components\\Hotel\\BookingFlow.jsx; GET /hotel/folio/${booking.bookingId} @ Maa-Baglamkhi-Resort-frontend\\src\\components\\Hotel\\BookingFlow.jsx"
+    },
+    {
+      "route": "/room-block/",
+      "method": "GET",
+      "module": "bookingRoutes.js",
+      "line": 81,
+      "aliases": [
+        "/api/hotel/room-block",
+        "/api/booking/room-block"
+      ],
+      "handler": "roomBlockRouter",
+      "verdict": "REDUNDANT",
+      "reason": "feature reachable via a different live endpoint",
+      "evidence": "POST /hotel/room-tariff/${bookingId} @ Maa-Baglamkhi-Resort-frontend\\src\\components\\Hotel\\BookingFlow.jsx; GET /hotel/room-blocks @ Maa-Baglamkhi-Resort-frontend\\src\\components\\Hotel\\OccupancyForecast.jsx; GET /hotel/room-blocks?status=Active @ Maa-Baglamkhi-Resort-frontend\\src\\components\\Hotel\\Room.jsx"
+    },
+    {
+      "route": "/room-blocks/",
+      "method": "POST",
+      "module": "bookingRoutes.js",
+      "line": 82,
+      "aliases": [
+        "/api/hotel/room-blocks",
+        "/api/booking/room-blocks"
+      ],
+      "handler": "roomBlockRouter",
+      "verdict": "REDUNDANT",
+      "reason": "feature reachable via a different live endpoint",
+      "evidence": "POST /hotel/room-tariff/${bookingId} @ Maa-Baglamkhi-Resort-frontend\\src\\components\\Hotel\\BookingFlow.jsx; GET /hotel/room-blocks @ Maa-Baglamkhi-Resort-frontend\\src\\components\\Hotel\\OccupancyForecast.jsx; GET /hotel/room-blocks?status=Active @ Maa-Baglamkhi-Resort-frontend\\src\\components\\Hotel\\Room.jsx"
+    },
+    {
+      "route": "/guests/search",
+      "method": "GET",
+      "module": "bookingRoutes.js",
+      "line": 89,
+      "aliases": [
+        "/api/hotel/guests/search",
+        "/api/booking/guests/search"
+      ],
+      "handler": "guestProfileController.searchList",
+      "verdict": "GAP",
+      "reason": "no live frontend caller of this feature",
+      "suggestedArea": "Hotel / Front Desk"
+    },
+    {
+      "route": "/",
+      "method": "GET",
+      "module": "chefRoutes.js",
+      "line": 10,
+      "aliases": [
+        "/api/chef"
+      ],
+      "handler": "chefController.getKitchenOrders",
+      "verdict": "GAP",
+      "reason": "no live frontend caller of this feature",
+      "suggestedArea": "Chef dashboard"
+    },
+    {
+      "route": "/orders/:id/cancel",
+      "method": "PUT",
+      "module": "chefRoutes.js",
+      "line": 13,
+      "aliases": [
+        "/api/chef/orders/:id/cancel"
+      ],
+      "handler": "kitchenController.cancelOrder",
+      "verdict": "REDUNDANT",
+      "reason": "feature reachable via a different live endpoint",
+      "evidence": "PUT /banquet/${editingBookingId}/cancel @ Maa-Baglamkhi-Resort-frontend\\src\\pages\\Banquet.jsx; PUT /banquet/${booking.id}/cancel @ Maa-Baglamkhi-Resort-frontend\\src\\pages\\Banquet.jsx; GET /chef/orders @ Maa-Baglamkhi-Resort-frontend\\src\\services\\chefService.js"
+    },
+    {
+      "route": "/orders/:id/save",
+      "method": "PUT",
+      "module": "chefRoutes.js",
+      "line": 14,
+      "aliases": [
+        "/api/chef/orders/:id/save"
+      ],
+      "handler": "kitchenController.saveOrder",
+      "verdict": "REDUNDANT",
+      "reason": "feature reachable via a different live endpoint",
+      "evidence": "GET /chef/orders @ Maa-Baglamkhi-Resort-frontend\\src\\services\\chefService.js; PUT /chef/orders/${id}/status @ Maa-Baglamkhi-Resort-frontend\\src\\services\\chefService.js; PUT /kitchen/orders/${id}/save @ Maa-Baglamkhi-Resort-frontend\\src\\services\\restaurantService.js"
+    },
+    {
+      "route": "/orders/:id",
+      "method": "DELETE",
+      "module": "chefRoutes.js",
+      "line": 15,
+      "aliases": [
+        "/api/chef/orders/:id"
+      ],
+      "handler": "kitchenController.removeOrder",
+      "verdict": "REDUNDANT",
+      "reason": "feature reachable via a different live endpoint",
+      "evidence": "GET /chef/orders @ Maa-Baglamkhi-Resort-frontend\\src\\services\\chefService.js; PUT /chef/orders/${id}/status @ Maa-Baglamkhi-Resort-frontend\\src\\services\\chefService.js"
+    },
+    {
+      "route": "/",
+      "method": "GET",
+      "module": "dashboardRoutes.js",
+      "line": 17,
+      "aliases": [
+        "/api/dashboard"
+      ],
+      "handler": "getMetrics",
+      "verdict": "GAP",
+      "reason": "no live frontend caller of this feature",
+      "suggestedArea": "Dashboards"
+    },
+    {
+      "route": "/departments",
+      "method": "GET",
+      "module": "employeeRoutes.js",
+      "line": 16,
+      "aliases": [
+        "/api/employees/departments",
+        "/api/employee/departments"
+      ],
+      "handler": "inline@employeeRoutes.js:16",
+      "verdict": "GAP",
+      "reason": "no live frontend caller of this feature",
+      "suggestedArea": "HR / Employees"
+    },
+    {
+      "route": "/designations",
+      "method": "GET",
+      "module": "employeeRoutes.js",
+      "line": 17,
+      "aliases": [
+        "/api/employees/designations",
+        "/api/employee/designations"
+      ],
+      "handler": "inline@employeeRoutes.js:17",
+      "verdict": "GAP",
+      "reason": "no live frontend caller of this feature",
+      "suggestedArea": "HR / Employees"
+    },
+    {
+      "route": "/stats",
+      "method": "GET",
+      "module": "employeeRoutes.js",
+      "line": 18,
+      "aliases": [
+        "/api/employees/stats",
+        "/api/employee/stats"
+      ],
+      "handler": "inline@employeeRoutes.js:18",
+      "verdict": "REDUNDANT",
+      "reason": "feature reachable via a different live endpoint",
+      "evidence": "GET /inventory/stats @ Maa-Baglamkhi-Resort-frontend\\src\\components\\Inventory\\InventoryFlow.jsx; GET /assignments/stats @ Maa-Baglamkhi-Resort-frontend\\src\\pages\\Assignments.jsx"
+    },
+    {
+      "route": "/attendance/employees",
+      "method": "GET",
+      "module": "employeeRoutes.js",
+      "line": 19,
+      "aliases": [
+        "/api/employees/attendance/employees",
+        "/api/employee/attendance/employees"
+      ],
+      "handler": "inline@employeeRoutes.js:19",
+      "verdict": "REDUNDANT",
+      "reason": "feature reachable via a different live endpoint",
+      "evidence": "GET /attendance/employees @ Maa-Baglamkhi-Resort-frontend\\src\\pages\\Attendance.jsx; GET /employees @ Maa-Baglamkhi-Resort-frontend\\src\\pages\\Payroll.jsx; GET /employees @ Maa-Baglamkhi-Resort-frontend\\src\\pages\\ZkAttendance.jsx"
+    },
+    {
+      "route": "/employees",
+      "method": "GET",
+      "module": "employeeRoutes.js",
+      "line": 20,
+      "aliases": [
+        "/api/employees/employees",
+        "/api/employee/employees"
+      ],
+      "handler": "inline@employeeRoutes.js:20",
+      "verdict": "REDUNDANT",
+      "reason": "feature reachable via a different live endpoint",
+      "evidence": "GET /attendance/employees @ Maa-Baglamkhi-Resort-frontend\\src\\pages\\Attendance.jsx; GET /employees @ Maa-Baglamkhi-Resort-frontend\\src\\pages\\Payroll.jsx; GET /employees @ Maa-Baglamkhi-Resort-frontend\\src\\pages\\ZkAttendance.jsx"
+    },
+    {
+      "route": "/",
+      "method": "POST",
+      "module": "employeeRoutes.js",
+      "line": 23,
+      "aliases": [
+        "/api/employees",
+        "/api/employee"
+      ],
+      "handler": "inline@employeeRoutes.js:23",
+      "verdict": "REDUNDANT",
+      "reason": "feature reachable via a different live endpoint",
+      "evidence": "GET /attendance/employees @ Maa-Baglamkhi-Resort-frontend\\src\\pages\\Attendance.jsx; GET /employees @ Maa-Baglamkhi-Resort-frontend\\src\\pages\\Payroll.jsx; GET /employees @ Maa-Baglamkhi-Resort-frontend\\src\\pages\\ZkAttendance.jsx"
+    },
+    {
+      "route": "/:id",
+      "method": "GET",
+      "module": "employeeRoutes.js",
+      "line": 24,
+      "aliases": [
+        "/api/employees/:id",
+        "/api/employee/:id"
+      ],
+      "handler": "inline@employeeRoutes.js:24",
+      "verdict": "GAP",
+      "reason": "no live frontend caller of this feature",
+      "suggestedArea": "HR / Employees"
+    },
+    {
+      "route": "/:id",
+      "method": "PATCH",
+      "module": "employeeRoutes.js",
+      "line": 26,
+      "aliases": [
+        "/api/employees/:id",
+        "/api/employee/:id"
+      ],
+      "handler": "inline@employeeRoutes.js:26",
+      "verdict": "GAP",
+      "reason": "no live frontend caller of this feature",
+      "suggestedArea": "HR / Employees"
+    },
+    {
+      "route": "/parameters",
+      "method": "GET",
+      "module": "housekeepingRoutes.js",
+      "line": 24,
+      "aliases": [
+        "/api/housekeeping/parameters"
+      ],
+      "handler": "inline@housekeepingRoutes.js:24",
+      "verdict": "GAP",
+      "reason": "no live frontend caller of this feature",
+      "suggestedArea": "Housekeeping"
+    },
+    {
+      "route": "/parameters",
+      "method": "POST",
+      "module": "housekeepingRoutes.js",
+      "line": 25,
+      "aliases": [
+        "/api/housekeeping/parameters"
+      ],
+      "handler": "inline@housekeepingRoutes.js:25",
+      "verdict": "GAP",
+      "reason": "no live frontend caller of this feature",
+      "suggestedArea": "Housekeeping"
+    },
+    {
+      "route": "/inspections/:id",
+      "method": "GET",
+      "module": "housekeepingRoutes.js",
+      "line": 36,
+      "aliases": [
+        "/api/housekeeping/inspections/:id"
+      ],
+      "handler": "inline@housekeepingRoutes.js:36",
+      "verdict": "REDUNDANT",
+      "reason": "feature reachable via a different live endpoint",
+      "evidence": "GET /housekeeping/inspections @ Maa-Baglamkhi-Resort-frontend\\src\\components\\Housekeeping\\InspectionChecklistModal.jsx; POST /housekeeping/inspections @ Maa-Baglamkhi-Resort-frontend\\src\\components\\Housekeeping\\InspectionChecklistModal.jsx"
+    },
+    {
+      "route": "/lost-found/:id",
+      "method": "DELETE",
+      "module": "housekeepingRoutes.js",
+      "line": 41,
+      "aliases": [
+        "/api/housekeeping/lost-found/:id"
+      ],
+      "handler": "inline@housekeepingRoutes.js:41",
+      "verdict": "REDUNDANT",
+      "reason": "feature reachable via a different live endpoint",
+      "evidence": "GET /housekeeping/lost-found @ Maa-Baglamkhi-Resort-frontend\\src\\components\\Housekeeping\\LostFoundModal.jsx; PUT /housekeeping/lost-found/${id} @ Maa-Baglamkhi-Resort-frontend\\src\\components\\Housekeeping\\LostFoundModal.jsx; POST /housekeeping/lost-found @ Maa-Baglamkhi-Resort-frontend\\src\\components\\Housekeeping\\LostFoundModal.jsx"
+    },
+    {
+      "route": "/items",
+      "method": "GET",
+      "module": "inventoryRoutes.js",
+      "line": 23,
+      "aliases": [
+        "/api/inventory/items"
+      ],
+      "handler": "inline@inventoryRoutes.js:23",
+      "verdict": "REDUNDANT",
+      "reason": "feature reachable via a different live endpoint",
+      "evidence": "PUT /token/item @ Maa-Baglamkhi-Resort-frontend\\src\\components\\Restaurant\\EditToken.jsx; PUT /token/item @ Maa-Baglamkhi-Resort-frontend\\src\\components\\Restaurant\\EditToken.jsx; POST /token/item @ Maa-Baglamkhi-Resort-frontend\\src\\components\\Restaurant\\MenuPage.jsx"
+    },
+    {
+      "route": "/vendors",
+      "method": "GET",
+      "module": "inventoryRoutes.js",
+      "line": 24,
+      "aliases": [
+        "/api/inventory/vendors"
+      ],
+      "handler": "inline@inventoryRoutes.js:24",
+      "verdict": "REDUNDANT",
+      "reason": "feature reachable via a different live endpoint",
+      "evidence": "GET /inventory/setup/vendors @ Maa-Baglamkhi-Resort-frontend\\src\\components\\Inventory\\InventoryFlow.jsx; GET /inventory-masters/vendors @ Maa-Baglamkhi-Resort-frontend\\src\\pages\\InventoryHubPage.jsx"
+    },
+    {
+      "route": "/menu-list",
+      "method": "GET",
+      "module": "inventoryRoutes.js",
+      "line": 25,
+      "aliases": [
+        "/api/inventory/menu-list"
+      ],
+      "handler": "inline@inventoryRoutes.js:25",
+      "verdict": "REDUNDANT",
+      "reason": "feature reachable via a different live endpoint",
+      "evidence": "GET /inventory-masters/menu-categories @ Maa-Baglamkhi-Resort-frontend\\src\\pages\\InventoryHubPage.jsx; GET /inventory-masters/menu-categories @ Maa-Baglamkhi-Resort-frontend\\src\\pages\\InventoryMenuItemsPage.jsx; GET /menu-recipes/inventory-items @ Maa-Baglamkhi-Resort-frontend\\src\\services\\menuRecipeService.js"
+    },
+    {
+      "route": "/menu-items",
+      "method": "GET",
+      "module": "inventoryRoutes.js",
+      "line": 26,
+      "aliases": [
+        "/api/inventory/menu-items"
+      ],
+      "handler": "inline@inventoryRoutes.js:26",
+      "verdict": "REDUNDANT",
+      "reason": "feature reachable via a different live endpoint",
+      "evidence": "GET /inventory-masters/menu-categories @ Maa-Baglamkhi-Resort-frontend\\src\\pages\\InventoryHubPage.jsx; GET /inventory-masters/menu-categories @ Maa-Baglamkhi-Resort-frontend\\src\\pages\\InventoryMenuItemsPage.jsx; GET /menu-recipes/menu-items @ Maa-Baglamkhi-Resort-frontend\\src\\services\\menuRecipeService.js"
+    },
+    {
+      "route": "/reports",
+      "method": "GET",
+      "module": "inventoryRoutes.js",
+      "line": 27,
+      "aliases": [
+        "/api/inventory/reports"
+      ],
+      "handler": "inline@inventoryRoutes.js:27",
+      "verdict": "REDUNDANT",
+      "reason": "feature reachable via a different live endpoint",
+      "evidence": "GET /inventory/audit/report @ Maa-Baglamkhi-Resort-frontend\\src\\components\\Inventory\\InventoryDashboard.jsx; GET /inventory/reports/stock-flow @ Maa-Baglamkhi-Resort-frontend\\src\\components\\Inventory\\InventoryDashboard.jsx; GET /inventory/audit/report @ Maa-Baglamkhi-Resort-frontend\\src\\components\\Inventory\\InventoryDashboard.jsx"
+    },
+    {
+      "route": "/chef-issues/:id",
+      "method": "GET",
+      "module": "inventoryRoutes.js",
+      "line": 67,
+      "aliases": [
+        "/api/inventory/chef-issues/:id"
+      ],
+      "handler": "inline@inventoryRoutes.js:67",
+      "verdict": "REDUNDANT",
+      "reason": "feature reachable via a different live endpoint",
+      "evidence": "GET /inventory/chef-issues @ Maa-Baglamkhi-Resort-frontend\\src\\pages\\AdminChefIssuesPage.jsx; GET /inventory/chef-issues${qs ?  @ Maa-Baglamkhi-Resort-frontend\\src\\services\\chefService.js; POST /inventory/chef-issues @ Maa-Baglamkhi-Resort-frontend\\src\\services\\chefService.js"
+    },
+    {
+      "route": "/purchases",
+      "method": "POST",
+      "module": "inventoryRoutes.js",
+      "line": 87,
+      "aliases": [
+        "/api/inventory/purchases"
+      ],
+      "handler": "inline@inventoryRoutes.js:87",
+      "verdict": "REDUNDANT",
+      "reason": "feature reachable via a different live endpoint",
+      "evidence": "GET /inventory/purchases @ Maa-Baglamkhi-Resort-frontend\\src\\components\\Inventory\\InventoryFlow.jsx"
+    },
+    {
+      "route": "/stock",
+      "method": "POST",
+      "module": "inventoryRoutes.js",
+      "line": 157,
+      "aliases": [
+        "/api/inventory/stock"
+      ],
+      "handler": "inline@inventoryRoutes.js:157",
+      "verdict": "REDUNDANT",
+      "reason": "feature reachable via a different live endpoint",
+      "evidence": "GET /inventory/stock-ledger @ Maa-Baglamkhi-Resort-frontend\\src\\components\\Inventory\\InventoryDashboard.jsx; GET /inventory/reports/stock-flow @ Maa-Baglamkhi-Resort-frontend\\src\\components\\Inventory\\InventoryDashboard.jsx; GET /inventory/stock-ledger @ Maa-Baglamkhi-Resort-frontend\\src\\components\\Inventory\\InventoryDashboard.jsx"
+    },
+    {
+      "route": "/stock-action",
+      "method": "POST",
+      "module": "inventoryRoutes.js",
+      "line": 160,
+      "aliases": [
+        "/api/inventory/stock-action"
+      ],
+      "handler": "inline@inventoryRoutes.js:160",
+      "verdict": "REDUNDANT",
+      "reason": "feature reachable via a different live endpoint",
+      "evidence": "GET /inventory/stock-ledger @ Maa-Baglamkhi-Resort-frontend\\src\\components\\Inventory\\InventoryDashboard.jsx; GET /inventory/reports/stock-flow @ Maa-Baglamkhi-Resort-frontend\\src\\components\\Inventory\\InventoryDashboard.jsx; GET /inventory/stock-ledger @ Maa-Baglamkhi-Resort-frontend\\src\\components\\Inventory\\InventoryDashboard.jsx"
+    },
+    {
+      "route": "/",
+      "method": "GET",
+      "module": "kitchenRoutes.js",
+      "line": 12,
+      "aliases": [
+        "/api/kitchen"
+      ],
+      "handler": "kitchenController.getOrders",
+      "verdict": "GAP",
+      "reason": "no live frontend caller of this feature",
+      "suggestedArea": "Kitchen / KOT"
+    },
+    {
+      "route": "/",
+      "method": "GET",
+      "module": "notificationRoutes.js",
+      "line": 29,
+      "aliases": [
+        "/api/notifications",
+        "/api/notification"
+      ],
+      "handler": "listNotifications",
+      "verdict": "REDUNDANT",
+      "reason": "feature reachable via a different live endpoint",
+      "evidence": "GET /housekeeping/notifications @ Maa-Baglamkhi-Resort-frontend\\src\\components\\Dashboard\\Stayover.jsx; GET /housekeeping/notifications @ Maa-Baglamkhi-Resort-frontend\\src\\components\\Dashboard\\Stayover.jsx; GET /housekeeping/notifications @ Maa-Baglamkhi-Resort-frontend\\src\\components\\Housekeeping\\Housekeeping.jsx"
+    },
+    {
+      "route": "/:id/read",
+      "method": "POST",
+      "module": "notificationRoutes.js",
+      "line": 30,
+      "aliases": [
+        "/api/notifications/:id/read",
+        "/api/notification/:id/read"
+      ],
+      "handler": "markAsRead",
+      "verdict": "REDUNDANT",
+      "reason": "feature reachable via a different live endpoint",
+      "evidence": "POST /chef/notifications/${id}/read @ Maa-Baglamkhi-Resort-frontend\\src\\services\\chefService.js; POST /chef/notifications/mark-all-read @ Maa-Baglamkhi-Resort-frontend\\src\\services\\chefService.js"
+    },
+    {
+      "route": "/mark-all-read",
+      "method": "POST",
+      "module": "notificationRoutes.js",
+      "line": 31,
+      "aliases": [
+        "/api/notifications/mark-all-read",
+        "/api/notification/mark-all-read"
+      ],
+      "handler": "markAllAsRead",
+      "verdict": "REDUNDANT",
+      "reason": "feature reachable via a different live endpoint",
+      "evidence": "POST /chef/notifications/${id}/read @ Maa-Baglamkhi-Resort-frontend\\src\\services\\chefService.js; POST /chef/notifications/mark-all-read @ Maa-Baglamkhi-Resort-frontend\\src\\services\\chefService.js"
+    },
+    {
+      "route": "/",
+      "method": "POST",
+      "module": "notificationRoutes.js",
+      "line": 32,
+      "aliases": [
+        "/api/notifications",
+        "/api/notification"
+      ],
+      "handler": "createNotification",
+      "verdict": "REDUNDANT",
+      "reason": "feature reachable via a different live endpoint",
+      "evidence": "GET /housekeeping/notifications @ Maa-Baglamkhi-Resort-frontend\\src\\components\\Dashboard\\Stayover.jsx; GET /housekeeping/notifications @ Maa-Baglamkhi-Resort-frontend\\src\\components\\Dashboard\\Stayover.jsx; GET /housekeeping/notifications @ Maa-Baglamkhi-Resort-frontend\\src\\components\\Housekeeping\\Housekeeping.jsx"
+    },
+    {
+      "route": "/",
+      "method": "POST",
+      "module": "paymentRoutes.js",
+      "line": 10,
+      "aliases": [
+        "/api/payment"
+      ],
+      "handler": "controller.createPayment",
+      "verdict": "REDUNDANT",
+      "reason": "feature reachable via a different live endpoint",
+      "evidence": "GET /payroll/payments @ Maa-Baglamkhi-Resort-frontend\\src\\pages\\Payroll.jsx; POST /payroll/payments @ Maa-Baglamkhi-Resort-frontend\\src\\pages\\Payroll.jsx; GET /payroll/payments @ Maa-Baglamkhi-Resort-frontend\\src\\pages\\Payroll.jsx"
+    },
+    {
+      "route": "/",
+      "method": "GET",
+      "module": "paymentRoutes.js",
+      "line": 11,
+      "aliases": [
+        "/api/payment"
+      ],
+      "handler": "controller.getPayments",
+      "verdict": "REDUNDANT",
+      "reason": "feature reachable via a different live endpoint",
+      "evidence": "GET /payroll/payments @ Maa-Baglamkhi-Resort-frontend\\src\\pages\\Payroll.jsx; POST /payroll/payments @ Maa-Baglamkhi-Resort-frontend\\src\\pages\\Payroll.jsx; GET /payroll/payments @ Maa-Baglamkhi-Resort-frontend\\src\\pages\\Payroll.jsx"
+    },
+    {
+      "route": "/payments/:id",
+      "method": "GET",
+      "module": "payrollRoutes.js",
+      "line": 14,
+      "aliases": [
+        "/api/payroll/payments/:id"
+      ],
+      "handler": "inline@payrollRoutes.js:14",
+      "verdict": "REDUNDANT",
+      "reason": "feature reachable via a different live endpoint",
+      "evidence": "GET /payroll/payments @ Maa-Baglamkhi-Resort-frontend\\src\\pages\\Payroll.jsx; POST /payroll/payments @ Maa-Baglamkhi-Resort-frontend\\src\\pages\\Payroll.jsx; GET /payroll/payments @ Maa-Baglamkhi-Resort-frontend\\src\\pages\\Payroll.jsx"
+    },
+    {
+      "route": "/payments/:id",
+      "method": "PATCH",
+      "module": "payrollRoutes.js",
+      "line": 15,
+      "aliases": [
+        "/api/payroll/payments/:id"
+      ],
+      "handler": "inline@payrollRoutes.js:15",
+      "verdict": "REDUNDANT",
+      "reason": "feature reachable via a different live endpoint",
+      "evidence": "GET /payroll/payments @ Maa-Baglamkhi-Resort-frontend\\src\\pages\\Payroll.jsx; POST /payroll/payments @ Maa-Baglamkhi-Resort-frontend\\src\\pages\\Payroll.jsx; GET /payroll/payments @ Maa-Baglamkhi-Resort-frontend\\src\\pages\\Payroll.jsx"
+    },
+    {
+      "route": "/estimate/:employeeId",
+      "method": "GET",
+      "module": "payrollRoutes.js",
+      "line": 17,
+      "aliases": [
+        "/api/payroll/estimate/:employeeId"
+      ],
+      "handler": "inline@payrollRoutes.js:17",
+      "verdict": "GAP",
+      "reason": "no live frontend caller of this feature",
+      "suggestedArea": "Payroll"
+    },
+    {
+      "route": "/daywise",
+      "method": "GET",
+      "module": "reportRoutes.js",
+      "line": 10,
+      "aliases": [
+        "/api/report/daywise"
+      ],
+      "handler": "controller.daywise",
+      "verdict": "GAP",
+      "reason": "no live frontend caller of this feature",
+      "suggestedArea": "Reports"
+    },
+    {
+      "route": "/items",
+      "method": "GET",
+      "module": "reportRoutes.js",
+      "line": 11,
+      "aliases": [
+        "/api/report/items"
+      ],
+      "handler": "controller.itemConsumption",
+      "verdict": "REDUNDANT",
+      "reason": "feature reachable via a different live endpoint",
+      "evidence": "PUT /token/item @ Maa-Baglamkhi-Resort-frontend\\src\\components\\Restaurant\\EditToken.jsx; PUT /token/item @ Maa-Baglamkhi-Resort-frontend\\src\\components\\Restaurant\\EditToken.jsx; POST /token/item @ Maa-Baglamkhi-Resort-frontend\\src\\components\\Restaurant\\MenuPage.jsx"
+    },
+    {
+      "route": "/",
+      "method": "GET",
+      "module": "reportsRoutes.js",
+      "line": 11,
+      "aliases": [
+        "/api/reports"
+      ],
+      "handler": "summary",
+      "verdict": "REDUNDANT",
+      "reason": "feature reachable via a different live endpoint",
+      "evidence": "GET /inventory/audit/report @ Maa-Baglamkhi-Resort-frontend\\src\\components\\Inventory\\InventoryDashboard.jsx; GET /inventory/audit/report @ Maa-Baglamkhi-Resort-frontend\\src\\components\\Inventory\\InventoryDashboard.jsx; GET /attendance/report @ Maa-Baglamkhi-Resort-frontend\\src\\pages\\Reports.jsx"
+    },
+    {
+      "route": "/data",
+      "method": "GET",
+      "module": "reportsRoutes.js",
+      "line": 13,
+      "aliases": [
+        "/api/reports/data"
+      ],
+      "handler": "getReportData",
+      "verdict": "GAP",
+      "reason": "no live frontend caller of this feature",
+      "suggestedArea": "Reports"
+    },
+    {
+      "route": "/",
+      "method": "GET",
+      "module": "restaurantRoutes.js",
+      "line": 41,
+      "aliases": [
+        "/api/restaurant"
+      ],
+      "handler": "controller.getBills",
+      "verdict": "GAP",
+      "reason": "no live frontend caller of this feature",
+      "suggestedArea": "Restaurant POS"
+    },
+    {
+      "route": "/payment",
+      "method": "GET",
+      "module": "restaurantRoutes.js",
+      "line": 42,
+      "aliases": [
+        "/api/restaurant/payment"
+      ],
+      "handler": "controller.getBills",
+      "verdict": "REDUNDANT",
+      "reason": "feature reachable via a different live endpoint",
+      "evidence": "GET /payroll/payments @ Maa-Baglamkhi-Resort-frontend\\src\\pages\\Payroll.jsx; POST /payroll/payments @ Maa-Baglamkhi-Resort-frontend\\src\\pages\\Payroll.jsx; GET /payroll/payments @ Maa-Baglamkhi-Resort-frontend\\src\\pages\\Payroll.jsx"
+    },
+    {
+      "route": "/payment-bills",
+      "method": "GET",
+      "module": "restaurantRoutes.js",
+      "line": 43,
+      "aliases": [
+        "/api/restaurant/payment-bills"
+      ],
+      "handler": "controller.getBills",
+      "verdict": "REDUNDANT",
+      "reason": "feature reachable via a different live endpoint",
+      "evidence": "GET /restaurant/bills @ Maa-Baglamkhi-Resort-frontend\\src\\components\\Restaurant\\Payment.jsx; GET /restaurant/bills @ Maa-Baglamkhi-Resort-frontend\\src\\components\\Restaurant\\PaymentBills.jsx; GET /restaurant/bills @ Maa-Baglamkhi-Resort-frontend\\src\\components\\Restaurant\\Roomitem.jsx"
+    },
+    {
+      "route": "/room-items",
+      "method": "GET",
+      "module": "restaurantRoutes.js",
+      "line": 44,
+      "aliases": [
+        "/api/restaurant/room-items"
+      ],
+      "handler": "controller.getOrders",
+      "verdict": "REDUNDANT",
+      "reason": "feature reachable via a different live endpoint",
+      "evidence": "GET /restaurant/order-items/${orderId} @ Maa-Baglamkhi-Resort-frontend\\src\\services\\restaurantService.js"
+    },
+    {
+      "route": "/bill",
+      "method": "GET",
+      "module": "restaurantRoutes.js",
+      "line": 45,
+      "aliases": [
+        "/api/restaurant/bill"
+      ],
+      "handler": "controller.getBills",
+      "verdict": "REDUNDANT",
+      "reason": "feature reachable via a different live endpoint",
+      "evidence": "GET /restaurant/bills @ Maa-Baglamkhi-Resort-frontend\\src\\components\\Restaurant\\Payment.jsx; GET /restaurant/bills @ Maa-Baglamkhi-Resort-frontend\\src\\components\\Restaurant\\PaymentBills.jsx; GET /restaurant/bills @ Maa-Baglamkhi-Resort-frontend\\src\\components\\Restaurant\\Roomitem.jsx"
+    },
+    {
+      "route": "/split-bills",
+      "method": "GET",
+      "module": "restaurantRoutes.js",
+      "line": 46,
+      "aliases": [
+        "/api/restaurant/split-bills"
+      ],
+      "handler": "controller.getBills",
+      "verdict": "REDUNDANT",
+      "reason": "feature reachable via a different live endpoint",
+      "evidence": "GET /restaurant/bills @ Maa-Baglamkhi-Resort-frontend\\src\\components\\Restaurant\\Payment.jsx; GET /restaurant/bills @ Maa-Baglamkhi-Resort-frontend\\src\\components\\Restaurant\\PaymentBills.jsx; GET /restaurant/bills @ Maa-Baglamkhi-Resort-frontend\\src\\components\\Restaurant\\Roomitem.jsx"
+    },
+    {
+      "route": "/permissions",
+      "method": "GET",
+      "module": "roleRoutes.js",
+      "line": 13,
+      "aliases": [
+        "/api/roles/permissions"
+      ],
+      "handler": "inline@roleRoutes.js:13",
+      "verdict": "GAP",
+      "reason": "no live frontend caller of this feature",
+      "suggestedArea": "Admin / Roles"
+    },
+    {
+      "route": "/",
+      "method": "POST",
+      "module": "roleRoutes.js",
+      "line": 16,
+      "aliases": [
+        "/api/roles"
+      ],
+      "handler": "inline@roleRoutes.js:16",
+      "verdict": "REDUNDANT",
+      "reason": "feature reachable via a different live endpoint",
+      "evidence": "GET /roles @ Maa-Baglamkhi-Resort-frontend\\src\\pages\\Payroll.jsx"
+    },
+    {
+      "route": "/:id",
+      "method": "GET",
+      "module": "roleRoutes.js",
+      "line": 17,
+      "aliases": [
+        "/api/roles/:id"
+      ],
+      "handler": "inline@roleRoutes.js:17",
+      "verdict": "GAP",
+      "reason": "no live frontend caller of this feature",
+      "suggestedArea": "Admin / Roles"
+    },
+    {
+      "route": "/:id",
+      "method": "PATCH",
+      "module": "roleRoutes.js",
+      "line": 18,
+      "aliases": [
+        "/api/roles/:id"
+      ],
+      "handler": "inline@roleRoutes.js:18",
+      "verdict": "GAP",
+      "reason": "no live frontend caller of this feature",
+      "suggestedArea": "Admin / Roles"
+    },
+    {
+      "route": "/:id/permissions",
+      "method": "GET",
+      "module": "roleRoutes.js",
+      "line": 21,
+      "aliases": [
+        "/api/roles/:id/permissions"
+      ],
+      "handler": "inline@roleRoutes.js:21",
+      "verdict": "GAP",
+      "reason": "no live frontend caller of this feature",
+      "suggestedArea": "Admin / Roles"
+    },
+    {
+      "route": "/:id/permissions",
+      "method": "PUT",
+      "module": "roleRoutes.js",
+      "line": 22,
+      "aliases": [
+        "/api/roles/:id/permissions"
+      ],
+      "handler": "inline@roleRoutes.js:22",
+      "verdict": "GAP",
+      "reason": "no live frontend caller of this feature",
+      "suggestedArea": "Admin / Roles"
+    },
+    {
+      "route": "/menu/:id",
+      "method": "DELETE",
+      "module": "roomServiceRoutes.js",
+      "line": 22,
+      "aliases": [
+        "/api/room-service/menu/:id",
+        "/api/roomservice/menu/:id"
+      ],
+      "handler": "controller.deleteMenuItem",
+      "verdict": "REDUNDANT",
+      "reason": "feature reachable via a different live endpoint",
+      "evidence": "POST /room-service-delivery/assign-waiter @ Maa-Baglamkhi-Resort-frontend\\src\\components\\Restaurant\\WaiterAssignmentCard.jsx; POST /room-service-delivery/mark-delivered/${assignmentId} @ Maa-Baglamkhi-Resort-frontend\\src\\components\\Restaurant\\WaiterAssignmentCard.jsx; GET /room-service-delivery/waiter-queue @ Maa-Baglamkhi-Resort-frontend\\src\\pages\\WaiterDeliveryQueue.jsx"
+    },
+    {
+      "route": "/order/:roomNumber",
+      "method": "GET",
+      "module": "roomServiceRoutes.js",
+      "line": 26,
+      "aliases": [
+        "/api/room-service/order/:roomNumber",
+        "/api/roomservice/order/:roomNumber"
+      ],
+      "handler": "controller.getOrder",
+      "verdict": "REDUNDANT",
+      "reason": "feature reachable via a different live endpoint",
+      "evidence": "POST /room-service-delivery/assign-waiter @ Maa-Baglamkhi-Resort-frontend\\src\\components\\Restaurant\\WaiterAssignmentCard.jsx; POST /room-service-delivery/mark-delivered/${assignmentId} @ Maa-Baglamkhi-Resort-frontend\\src\\components\\Restaurant\\WaiterAssignmentCard.jsx; GET /room-service-delivery/waiter-queue @ Maa-Baglamkhi-Resort-frontend\\src\\pages\\WaiterDeliveryQueue.jsx"
+    },
+    {
+      "route": "/order/:roomNumber/pay",
+      "method": "PUT",
+      "module": "roomServiceRoutes.js",
+      "line": 27,
+      "aliases": [
+        "/api/room-service/order/:roomNumber/pay",
+        "/api/roomservice/order/:roomNumber/pay"
+      ],
+      "handler": "controller.payOrder",
+      "verdict": "REDUNDANT",
+      "reason": "feature reachable via a different live endpoint",
+      "evidence": "PUT /restaurant/order/${invoice.table}/pay @ Maa-Baglamkhi-Resort-frontend\\src\\components\\Restaurant\\Payment.jsx; POST /room-service-delivery/assign-waiter @ Maa-Baglamkhi-Resort-frontend\\src\\components\\Restaurant\\WaiterAssignmentCard.jsx; POST /room-service-delivery/mark-delivered/${assignmentId} @ Maa-Baglamkhi-Resort-frontend\\src\\components\\Restaurant\\WaiterAssignmentCard.jsx"
+    },
+    {
+      "route": "/order-items/:orderId",
+      "method": "GET",
+      "module": "roomServiceRoutes.js",
+      "line": 29,
+      "aliases": [
+        "/api/room-service/order-items/:orderId",
+        "/api/roomservice/order-items/:orderId"
+      ],
+      "handler": "controller.getOrderItems",
+      "verdict": "REDUNDANT",
+      "reason": "feature reachable via a different live endpoint",
+      "evidence": "POST /room-service-delivery/assign-waiter @ Maa-Baglamkhi-Resort-frontend\\src\\components\\Restaurant\\WaiterAssignmentCard.jsx; POST /room-service-delivery/mark-delivered/${assignmentId} @ Maa-Baglamkhi-Resort-frontend\\src\\components\\Restaurant\\WaiterAssignmentCard.jsx; GET /room-service-delivery/waiter-queue @ Maa-Baglamkhi-Resort-frontend\\src\\pages\\WaiterDeliveryQueue.jsx"
+    },
+    {
+      "route": "/bill",
+      "method": "POST",
+      "module": "roomServiceRoutes.js",
+      "line": 30,
+      "aliases": [
+        "/api/room-service/bill",
+        "/api/roomservice/bill"
+      ],
+      "handler": "controller.createBill",
+      "verdict": "REDUNDANT",
+      "reason": "feature reachable via a different live endpoint",
+      "evidence": "GET /restaurant/bills @ Maa-Baglamkhi-Resort-frontend\\src\\components\\Restaurant\\Payment.jsx; GET /restaurant/bills @ Maa-Baglamkhi-Resort-frontend\\src\\components\\Restaurant\\PaymentBills.jsx; GET /restaurant/bills @ Maa-Baglamkhi-Resort-frontend\\src\\components\\Restaurant\\Roomitem.jsx"
+    },
+    {
+      "route": "/bill/:roomNumber",
+      "method": "GET",
+      "module": "roomServiceRoutes.js",
+      "line": 31,
+      "aliases": [
+        "/api/room-service/bill/:roomNumber",
+        "/api/roomservice/bill/:roomNumber"
+      ],
+      "handler": "controller.generateBillForRoom",
+      "verdict": "REDUNDANT",
+      "reason": "feature reachable via a different live endpoint",
+      "evidence": "POST /room-service-delivery/assign-waiter @ Maa-Baglamkhi-Resort-frontend\\src\\components\\Restaurant\\WaiterAssignmentCard.jsx; POST /room-service-delivery/mark-delivered/${assignmentId} @ Maa-Baglamkhi-Resort-frontend\\src\\components\\Restaurant\\WaiterAssignmentCard.jsx; GET /room-service-delivery/waiter-queue @ Maa-Baglamkhi-Resort-frontend\\src\\pages\\WaiterDeliveryQueue.jsx"
+    },
+    {
+      "route": "/order/:orderId/status",
+      "method": "PUT",
+      "module": "roomServiceRoutes.js",
+      "line": 32,
+      "aliases": [
+        "/api/room-service/order/:orderId/status",
+        "/api/roomservice/order/:orderId/status"
+      ],
+      "handler": "controller.updateStatus",
+      "verdict": "REDUNDANT",
+      "reason": "feature reachable via a different live endpoint",
+      "evidence": "POST /room-service-delivery/assign-waiter @ Maa-Baglamkhi-Resort-frontend\\src\\components\\Restaurant\\WaiterAssignmentCard.jsx; POST /room-service-delivery/mark-delivered/${assignmentId} @ Maa-Baglamkhi-Resort-frontend\\src\\components\\Restaurant\\WaiterAssignmentCard.jsx; PATCH /assignments/${item.id}/status @ Maa-Baglamkhi-Resort-frontend\\src\\pages\\assignmentnotification.jsx"
+    },
+    {
+      "route": "/employees",
+      "method": "GET",
+      "module": "salaryRoutes.js",
+      "line": 8,
+      "aliases": [
+        "/api/salary/employees"
+      ],
+      "handler": "inline@salaryRoutes.js:8",
+      "verdict": "REDUNDANT",
+      "reason": "feature reachable via a different live endpoint",
+      "evidence": "GET /attendance/employees @ Maa-Baglamkhi-Resort-frontend\\src\\pages\\Attendance.jsx; GET /employees @ Maa-Baglamkhi-Resort-frontend\\src\\pages\\Payroll.jsx; GET /employees @ Maa-Baglamkhi-Resort-frontend\\src\\pages\\ZkAttendance.jsx"
+    },
+    {
+      "route": "/me",
+      "method": "GET",
+      "module": "salaryRoutes.js",
+      "line": 12,
+      "aliases": [
+        "/api/salary/me"
+      ],
+      "handler": "inline@salaryRoutes.js:12",
+      "verdict": "REDUNDANT",
+      "reason": "feature reachable via a different live endpoint",
+      "evidence": "GET /auth/me @ Maa-Baglamkhi-Resort-frontend\\src\\App.jsx; GET /auth/me @ Maa-Baglamkhi-Resort-frontend\\src\\components\\ProtectedRoute.jsx; GET /auth/me @ Maa-Baglamkhi-Resort-frontend\\src\\components\\RoleHomeRedirect.jsx"
+    },
+    {
+      "route": "/me/attendance",
+      "method": "GET",
+      "module": "salaryRoutes.js",
+      "line": 15,
+      "aliases": [
+        "/api/salary/me/attendance"
+      ],
+      "handler": "inline@salaryRoutes.js:15",
+      "verdict": "REDUNDANT",
+      "reason": "feature reachable via a different live endpoint",
+      "evidence": "GET /attendance @ Maa-Baglamkhi-Resort-frontend\\src\\pages\\Attendance.jsx; POST /attendance @ Maa-Baglamkhi-Resort-frontend\\src\\pages\\Attendance.jsx; POST /attendance @ Maa-Baglamkhi-Resort-frontend\\src\\pages\\Attendance.jsx"
+    },
+    {
+      "route": "/:userId",
+      "method": "GET",
+      "module": "salaryRoutes.js",
+      "line": 24,
+      "aliases": [
+        "/api/salary/:userId"
+      ],
+      "handler": "inline@salaryRoutes.js:24",
+      "verdict": "GAP",
+      "reason": "no live frontend caller of this feature",
+      "suggestedArea": "Payroll / Salary"
+    },
+    {
+      "route": "/:userId/recalculate",
+      "method": "POST",
+      "module": "salaryRoutes.js",
+      "line": 27,
+      "aliases": [
+        "/api/salary/:userId/recalculate"
+      ],
+      "handler": "inline@salaryRoutes.js:27",
+      "verdict": "GAP",
+      "reason": "no live frontend caller of this feature",
+      "suggestedArea": "Payroll / Salary"
+    },
+    {
+      "route": "/machines/:id/pulls",
+      "method": "GET",
+      "module": "zkRoutes.js",
+      "line": 19,
+      "aliases": [
+        "/api/zk/machines/:id/pulls"
+      ],
+      "handler": "zkController.pulls",
+      "verdict": "GAP",
+      "reason": "no live frontend caller of this feature",
+      "suggestedArea": "Attendance (ZKTime)"
+    }
+  ]
+}
