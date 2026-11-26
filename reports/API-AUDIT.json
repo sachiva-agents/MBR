@@ -1,0 +1,1427 @@
+{
+  "generatedFor": {
+    "repo": "X:/agent/MBR",
+    "commit": "d35dd73",
+    "date": "2026-11-26",
+    "pdfPipeline": "FROZEN - untouched, not counted",
+    "readonly": true
+  },
+  "counts": {
+    "frontendCallsLiteral": 601,
+    "frontendCallsByMethod": {
+      "GET": 328,
+      "PUT": 90,
+      "POST": 135,
+      "DELETE": 35,
+      "PATCH": 13
+    },
+    "frontendCallsDynamic": 6,
+    "frontendCallsTotal": 607,
+    "frontendDistinctTemplates": 359,
+    "backendDefinitions": 467,
+    "backendEndpointPathsAliasExpanded": 562,
+    "axiosClients": [
+      "API",
+      "axios",
+      "bookingAPI"
+    ]
+  },
+  "flags": {
+    "missing": 0,
+    "mismatch": 0,
+    "orphanHandlers": 0,
+    "deadDefinitions": 88,
+    "deadBeforeDynamicReclass": 123,
+    "coveredByDynamicCalls": 35,
+    "socket": {
+      "serverEmits": [
+        "kitchen-order-updated",
+        "kitchen-order-ready",
+        "kitchen-order-created",
+        "housekeeping-task-updated",
+        "room-order-status"
+      ],
+      "clientListens": [
+        "housekeeping-task-updated",
+        "kitchen-order-created",
+        "kitchen-order-updated",
+        "kitchen-order-ready",
+        "kitchen-order-ready"
+      ],
+      "clientEmits": [],
+      "serverListens": [],
+      "serverEmitNoClientListener": [
+        "room-order-status"
+      ],
+      "clientListenNoServerEmit": [],
+      "clientEmitNoServerHandler": []
+    }
+  },
+  "details": {
+    "MISSING": [],
+    "MISMATCH": [],
+    "SOCKET": {
+      "serverEmits": [
+        "kitchen-order-updated",
+        "kitchen-order-ready",
+        "kitchen-order-created",
+        "housekeeping-task-updated",
+        "room-order-status"
+      ],
+      "clientListens": [
+        "housekeeping-task-updated",
+        "kitchen-order-created",
+        "kitchen-order-updated",
+        "kitchen-order-ready",
+        "kitchen-order-ready"
+      ],
+      "clientEmits": [],
+      "serverListens": [],
+      "serverEmitNoClientListener": [
+        "room-order-status"
+      ],
+      "clientListenNoServerEmit": [],
+      "clientEmitNoServerHandler": []
+    },
+    "DEAD": [
+      {
+        "method": "PATCH",
+        "raw": "/payment-status/:id",
+        "aliases": [
+          "/api/invoices/payment-status/:id",
+          "/api/invoice/payment-status/:id"
+        ],
+        "module": "InvoiceRoutes.js",
+        "line": 21,
+        "mounted": true
+      },
+      {
+        "method": "GET",
+        "raw": "/dashboard",
+        "aliases": [
+          "/api/accounts/dashboard"
+        ],
+        "module": "accountsRoutes.js",
+        "line": 114,
+        "mounted": true
+      },
+      {
+        "method": "GET",
+        "raw": "/",
+        "aliases": [
+          "/api/accounts"
+        ],
+        "module": "accountsRoutes.js",
+        "line": 122,
+        "mounted": true
+      },
+      {
+        "method": "GET",
+        "raw": "/transactions/:id",
+        "aliases": [
+          "/api/accounts/transactions/:id"
+        ],
+        "module": "accountsRoutes.js",
+        "line": 124,
+        "mounted": true
+      },
+      {
+        "method": "GET",
+        "raw": "/payment-settings/:id",
+        "aliases": [
+          "/api/accounts/payment-settings/:id"
+        ],
+        "module": "accountsRoutes.js",
+        "line": 176,
+        "mounted": true
+      },
+      {
+        "method": "GET",
+        "raw": "/payroll",
+        "aliases": [
+          "/api/attendance/payroll"
+        ],
+        "module": "attendanceRoutes.js",
+        "line": 13,
+        "mounted": true
+      },
+      {
+        "method": "POST",
+        "raw": "/mark",
+        "aliases": [
+          "/api/attendance/mark"
+        ],
+        "module": "attendanceRoutes.js",
+        "line": 18,
+        "mounted": true
+      },
+      {
+        "method": "PATCH",
+        "raw": "/:id",
+        "aliases": [
+          "/api/attendance/:id"
+        ],
+        "module": "attendanceRoutes.js",
+        "line": 30,
+        "mounted": true
+      },
+      {
+        "method": "GET",
+        "raw": "/config",
+        "aliases": [
+          "/api/banquet/config"
+        ],
+        "module": "banquetRoutes.js",
+        "line": 81,
+        "mounted": true
+      },
+      {
+        "method": "GET",
+        "raw": "/halls",
+        "aliases": [
+          "/api/banquet/halls"
+        ],
+        "module": "banquetRoutes.js",
+        "line": 84,
+        "mounted": true
+      },
+      {
+        "method": "GET",
+        "raw": "/bookings",
+        "aliases": [
+          "/api/banquet/bookings"
+        ],
+        "module": "banquetRoutes.js",
+        "line": 102,
+        "mounted": true
+      },
+      {
+        "method": "GET",
+        "raw": "/",
+        "aliases": [
+          "/api/hotel",
+          "/api/booking"
+        ],
+        "module": "bookingRoutes.js",
+        "line": 35,
+        "mounted": true
+      },
+      {
+        "method": "GET",
+        "raw": "/payment-history",
+        "aliases": [
+          "/api/hotel/payment-history",
+          "/api/booking/payment-history"
+        ],
+        "module": "bookingRoutes.js",
+        "line": 36,
+        "mounted": true
+      },
+      {
+        "method": "GET",
+        "raw": "/room-tariff",
+        "aliases": [
+          "/api/hotel/room-tariff",
+          "/api/booking/room-tariff"
+        ],
+        "module": "bookingRoutes.js",
+        "line": 37,
+        "mounted": true
+      },
+      {
+        "method": "GET",
+        "raw": "/communication",
+        "aliases": [
+          "/api/hotel/communication",
+          "/api/booking/communication"
+        ],
+        "module": "bookingRoutes.js",
+        "line": 38,
+        "mounted": true
+      },
+      {
+        "method": "GET",
+        "raw": "/booking/:id",
+        "aliases": [
+          "/api/hotel/booking/:id",
+          "/api/booking/booking/:id"
+        ],
+        "module": "bookingRoutes.js",
+        "line": 39,
+        "mounted": true
+      },
+      {
+        "method": "GET",
+        "raw": "/rooms",
+        "aliases": [
+          "/api/hotel/rooms",
+          "/api/booking/rooms"
+        ],
+        "module": "bookingRoutes.js",
+        "line": 42,
+        "mounted": true
+      },
+      {
+        "method": "GET",
+        "raw": "/rooms-availability",
+        "aliases": [
+          "/api/hotel/rooms-availability",
+          "/api/booking/rooms-availability"
+        ],
+        "module": "bookingRoutes.js",
+        "line": 43,
+        "mounted": true
+      },
+      {
+        "method": "POST",
+        "raw": "/rooms/validate-availability",
+        "aliases": [
+          "/api/hotel/rooms/validate-availability",
+          "/api/booking/rooms/validate-availability"
+        ],
+        "module": "bookingRoutes.js",
+        "line": 55,
+        "mounted": true
+      },
+      {
+        "method": "DELETE",
+        "raw": "/folio/entry/:entryId",
+        "aliases": [
+          "/api/hotel/folio/entry/:entryId",
+          "/api/booking/folio/entry/:entryId"
+        ],
+        "module": "bookingRoutes.js",
+        "line": 74,
+        "mounted": true
+      },
+      {
+        "method": "GET",
+        "raw": "/room-block/",
+        "aliases": [
+          "/api/hotel/room-block",
+          "/api/booking/room-block"
+        ],
+        "module": "bookingRoutes.js",
+        "line": 81,
+        "mounted": true
+      },
+      {
+        "method": "POST",
+        "raw": "/room-blocks/",
+        "aliases": [
+          "/api/hotel/room-blocks",
+          "/api/booking/room-blocks"
+        ],
+        "module": "bookingRoutes.js",
+        "line": 82,
+        "mounted": true
+      },
+      {
+        "method": "GET",
+        "raw": "/guests/search",
+        "aliases": [
+          "/api/hotel/guests/search",
+          "/api/booking/guests/search"
+        ],
+        "module": "bookingRoutes.js",
+        "line": 89,
+        "mounted": true
+      },
+      {
+        "method": "GET",
+        "raw": "/",
+        "aliases": [
+          "/api/chef"
+        ],
+        "module": "chefRoutes.js",
+        "line": 10,
+        "mounted": true
+      },
+      {
+        "method": "PUT",
+        "raw": "/orders/:id/cancel",
+        "aliases": [
+          "/api/chef/orders/:id/cancel"
+        ],
+        "module": "chefRoutes.js",
+        "line": 13,
+        "mounted": true
+      },
+      {
+        "method": "PUT",
+        "raw": "/orders/:id/save",
+        "aliases": [
+          "/api/chef/orders/:id/save"
+        ],
+        "module": "chefRoutes.js",
+        "line": 14,
+        "mounted": true
+      },
+      {
+        "method": "DELETE",
+        "raw": "/orders/:id",
+        "aliases": [
+          "/api/chef/orders/:id"
+        ],
+        "module": "chefRoutes.js",
+        "line": 15,
+        "mounted": true
+      },
+      {
+        "method": "GET",
+        "raw": "/",
+        "aliases": [
+          "/api/dashboard"
+        ],
+        "module": "dashboardRoutes.js",
+        "line": 17,
+        "mounted": true
+      },
+      {
+        "method": "GET",
+        "raw": "/departments",
+        "aliases": [
+          "/api/employees/departments",
+          "/api/employee/departments"
+        ],
+        "module": "employeeRoutes.js",
+        "line": 16,
+        "mounted": true
+      },
+      {
+        "method": "GET",
+        "raw": "/designations",
+        "aliases": [
+          "/api/employees/designations",
+          "/api/employee/designations"
+        ],
+        "module": "employeeRoutes.js",
+        "line": 17,
+        "mounted": true
+      },
+      {
+        "method": "GET",
+        "raw": "/stats",
+        "aliases": [
+          "/api/employees/stats",
+          "/api/employee/stats"
+        ],
+        "module": "employeeRoutes.js",
+        "line": 18,
+        "mounted": true
+      },
+      {
+        "method": "GET",
+        "raw": "/attendance/employees",
+        "aliases": [
+          "/api/employees/attendance/employees",
+          "/api/employee/attendance/employees"
+        ],
+        "module": "employeeRoutes.js",
+        "line": 19,
+        "mounted": true
+      },
+      {
+        "method": "GET",
+        "raw": "/employees",
+        "aliases": [
+          "/api/employees/employees",
+          "/api/employee/employees"
+        ],
+        "module": "employeeRoutes.js",
+        "line": 20,
+        "mounted": true
+      },
+      {
+        "method": "POST",
+        "raw": "/",
+        "aliases": [
+          "/api/employees",
+          "/api/employee"
+        ],
+        "module": "employeeRoutes.js",
+        "line": 23,
+        "mounted": true
+      },
+      {
+        "method": "GET",
+        "raw": "/:id",
+        "aliases": [
+          "/api/employees/:id",
+          "/api/employee/:id"
+        ],
+        "module": "employeeRoutes.js",
+        "line": 24,
+        "mounted": true
+      },
+      {
+        "method": "PATCH",
+        "raw": "/:id",
+        "aliases": [
+          "/api/employees/:id",
+          "/api/employee/:id"
+        ],
+        "module": "employeeRoutes.js",
+        "line": 26,
+        "mounted": true
+      },
+      {
+        "method": "GET",
+        "raw": "/parameters",
+        "aliases": [
+          "/api/housekeeping/parameters"
+        ],
+        "module": "housekeepingRoutes.js",
+        "line": 24,
+        "mounted": true
+      },
+      {
+        "method": "POST",
+        "raw": "/parameters",
+        "aliases": [
+          "/api/housekeeping/parameters"
+        ],
+        "module": "housekeepingRoutes.js",
+        "line": 25,
+        "mounted": true
+      },
+      {
+        "method": "GET",
+        "raw": "/inspections/:id",
+        "aliases": [
+          "/api/housekeeping/inspections/:id"
+        ],
+        "module": "housekeepingRoutes.js",
+        "line": 36,
+        "mounted": true
+      },
+      {
+        "method": "DELETE",
+        "raw": "/lost-found/:id",
+        "aliases": [
+          "/api/housekeeping/lost-found/:id"
+        ],
+        "module": "housekeepingRoutes.js",
+        "line": 41,
+        "mounted": true
+      },
+      {
+        "method": "GET",
+        "raw": "/items",
+        "aliases": [
+          "/api/inventory/items"
+        ],
+        "module": "inventoryRoutes.js",
+        "line": 23,
+        "mounted": true
+      },
+      {
+        "method": "GET",
+        "raw": "/vendors",
+        "aliases": [
+          "/api/inventory/vendors"
+        ],
+        "module": "inventoryRoutes.js",
+        "line": 24,
+        "mounted": true
+      },
+      {
+        "method": "GET",
+        "raw": "/menu-list",
+        "aliases": [
+          "/api/inventory/menu-list"
+        ],
+        "module": "inventoryRoutes.js",
+        "line": 25,
+        "mounted": true
+      },
+      {
+        "method": "GET",
+        "raw": "/menu-items",
+        "aliases": [
+          "/api/inventory/menu-items"
+        ],
+        "module": "inventoryRoutes.js",
+        "line": 26,
+        "mounted": true
+      },
+      {
+        "method": "GET",
+        "raw": "/reports",
+        "aliases": [
+          "/api/inventory/reports"
+        ],
+        "module": "inventoryRoutes.js",
+        "line": 27,
+        "mounted": true
+      },
+      {
+        "method": "GET",
+        "raw": "/chef-issues/:id",
+        "aliases": [
+          "/api/inventory/chef-issues/:id"
+        ],
+        "module": "inventoryRoutes.js",
+        "line": 67,
+        "mounted": true
+      },
+      {
+        "method": "POST",
+        "raw": "/purchases",
+        "aliases": [
+          "/api/inventory/purchases"
+        ],
+        "module": "inventoryRoutes.js",
+        "line": 87,
+        "mounted": true
+      },
+      {
+        "method": "POST",
+        "raw": "/stock",
+        "aliases": [
+          "/api/inventory/stock"
+        ],
+        "module": "inventoryRoutes.js",
+        "line": 157,
+        "mounted": true
+      },
+      {
+        "method": "POST",
+        "raw": "/stock-action",
+        "aliases": [
+          "/api/inventory/stock-action"
+        ],
+        "module": "inventoryRoutes.js",
+        "line": 160,
+        "mounted": true
+      },
+      {
+        "method": "GET",
+        "raw": "/",
+        "aliases": [
+          "/api/kitchen"
+        ],
+        "module": "kitchenRoutes.js",
+        "line": 12,
+        "mounted": true
+      },
+      {
+        "method": "GET",
+        "raw": "/",
+        "aliases": [
+          "/api/notifications",
+          "/api/notification"
+        ],
+        "module": "notificationRoutes.js",
+        "line": 29,
+        "mounted": true
+      },
+      {
+        "method": "POST",
+        "raw": "/:id/read",
+        "aliases": [
+          "/api/notifications/:id/read",
+          "/api/notification/:id/read"
+        ],
+        "module": "notificationRoutes.js",
+        "line": 30,
+        "mounted": true
+      },
+      {
+        "method": "POST",
+        "raw": "/mark-all-read",
+        "aliases": [
+          "/api/notifications/mark-all-read",
+          "/api/notification/mark-all-read"
+        ],
+        "module": "notificationRoutes.js",
+        "line": 31,
+        "mounted": true
+      },
+      {
+        "method": "POST",
+        "raw": "/",
+        "aliases": [
+          "/api/notifications",
+          "/api/notification"
+        ],
+        "module": "notificationRoutes.js",
+        "line": 32,
+        "mounted": true
+      },
+      {
+        "method": "POST",
+        "raw": "/",
+        "aliases": [
+          "/api/payment"
+        ],
+        "module": "paymentRoutes.js",
+        "line": 10,
+        "mounted": true
+      },
+      {
+        "method": "GET",
+        "raw": "/",
+        "aliases": [
+          "/api/payment"
+        ],
+        "module": "paymentRoutes.js",
+        "line": 11,
+        "mounted": true
+      },
+      {
+        "method": "GET",
+        "raw": "/payments/:id",
+        "aliases": [
+          "/api/payroll/payments/:id"
+        ],
+        "module": "payrollRoutes.js",
+        "line": 14,
+        "mounted": true
+      },
+      {
+        "method": "PATCH",
+        "raw": "/payments/:id",
+        "aliases": [
+          "/api/payroll/payments/:id"
+        ],
+        "module": "payrollRoutes.js",
+        "line": 15,
+        "mounted": true
+      },
+      {
+        "method": "GET",
+        "raw": "/estimate/:employeeId",
+        "aliases": [
+          "/api/payroll/estimate/:employeeId"
+        ],
+        "module": "payrollRoutes.js",
+        "line": 17,
+        "mounted": true
+      },
+      {
+        "method": "GET",
+        "raw": "/daywise",
+        "aliases": [
+          "/api/report/daywise"
+        ],
+        "module": "reportRoutes.js",
+        "line": 10,
+        "mounted": true
+      },
+      {
+        "method": "GET",
+        "raw": "/items",
+        "aliases": [
+          "/api/report/items"
+        ],
+        "module": "reportRoutes.js",
+        "line": 11,
+        "mounted": true
+      },
+      {
+        "method": "GET",
+        "raw": "/",
+        "aliases": [
+          "/api/reports"
+        ],
+        "module": "reportsRoutes.js",
+        "line": 11,
+        "mounted": true
+      },
+      {
+        "method": "GET",
+        "raw": "/data",
+        "aliases": [
+          "/api/reports/data"
+        ],
+        "module": "reportsRoutes.js",
+        "line": 13,
+        "mounted": true
+      },
+      {
+        "method": "GET",
+        "raw": "/",
+        "aliases": [
+          "/api/restaurant"
+        ],
+        "module": "restaurantRoutes.js",
+        "line": 41,
+        "mounted": true
+      },
+      {
+        "method": "GET",
+        "raw": "/payment",
+        "aliases": [
+          "/api/restaurant/payment"
+        ],
+        "module": "restaurantRoutes.js",
+        "line": 42,
+        "mounted": true
+      },
+      {
+        "method": "GET",
+        "raw": "/payment-bills",
+        "aliases": [
+          "/api/restaurant/payment-bills"
+        ],
+        "module": "restaurantRoutes.js",
+        "line": 43,
+        "mounted": true
+      },
+      {
+        "method": "GET",
+        "raw": "/room-items",
+        "aliases": [
+          "/api/restaurant/room-items"
+        ],
+        "module": "restaurantRoutes.js",
+        "line": 44,
+        "mounted": true
+      },
+      {
+        "method": "GET",
+        "raw": "/bill",
+        "aliases": [
+          "/api/restaurant/bill"
+        ],
+        "module": "restaurantRoutes.js",
+        "line": 45,
+        "mounted": true
+      },
+      {
+        "method": "GET",
+        "raw": "/split-bills",
+        "aliases": [
+          "/api/restaurant/split-bills"
+        ],
+        "module": "restaurantRoutes.js",
+        "line": 46,
+        "mounted": true
+      },
+      {
+        "method": "GET",
+        "raw": "/permissions",
+        "aliases": [
+          "/api/roles/permissions"
+        ],
+        "module": "roleRoutes.js",
+        "line": 13,
+        "mounted": true
+      },
+      {
+        "method": "POST",
+        "raw": "/",
+        "aliases": [
+          "/api/roles"
+        ],
+        "module": "roleRoutes.js",
+        "line": 16,
+        "mounted": true
+      },
+      {
+        "method": "GET",
+        "raw": "/:id",
+        "aliases": [
+          "/api/roles/:id"
+        ],
+        "module": "roleRoutes.js",
+        "line": 17,
+        "mounted": true
+      },
+      {
+        "method": "PATCH",
+        "raw": "/:id",
+        "aliases": [
+          "/api/roles/:id"
+        ],
+        "module": "roleRoutes.js",
+        "line": 18,
+        "mounted": true
+      },
+      {
+        "method": "GET",
+        "raw": "/:id/permissions",
+        "aliases": [
+          "/api/roles/:id/permissions"
+        ],
+        "module": "roleRoutes.js",
+        "line": 21,
+        "mounted": true
+      },
+      {
+        "method": "PUT",
+        "raw": "/:id/permissions",
+        "aliases": [
+          "/api/roles/:id/permissions"
+        ],
+        "module": "roleRoutes.js",
+        "line": 22,
+        "mounted": true
+      },
+      {
+        "method": "DELETE",
+        "raw": "/menu/:id",
+        "aliases": [
+          "/api/room-service/menu/:id",
+          "/api/roomservice/menu/:id"
+        ],
+        "module": "roomServiceRoutes.js",
+        "line": 22,
+        "mounted": true
+      },
+      {
+        "method": "GET",
+        "raw": "/order/:roomNumber",
+        "aliases": [
+          "/api/room-service/order/:roomNumber",
+          "/api/roomservice/order/:roomNumber"
+        ],
+        "module": "roomServiceRoutes.js",
+        "line": 26,
+        "mounted": true
+      },
+      {
+        "method": "PUT",
+        "raw": "/order/:roomNumber/pay",
+        "aliases": [
+          "/api/room-service/order/:roomNumber/pay",
+          "/api/roomservice/order/:roomNumber/pay"
+        ],
+        "module": "roomServiceRoutes.js",
+        "line": 27,
+        "mounted": true
+      },
+      {
+        "method": "GET",
+        "raw": "/order-items/:orderId",
+        "aliases": [
+          "/api/room-service/order-items/:orderId",
+          "/api/roomservice/order-items/:orderId"
+        ],
+        "module": "roomServiceRoutes.js",
+        "line": 29,
+        "mounted": true
+      },
+      {
+        "method": "POST",
+        "raw": "/bill",
+        "aliases": [
+          "/api/room-service/bill",
+          "/api/roomservice/bill"
+        ],
+        "module": "roomServiceRoutes.js",
+        "line": 30,
+        "mounted": true
+      },
+      {
+        "method": "GET",
+        "raw": "/bill/:roomNumber",
+        "aliases": [
+          "/api/room-service/bill/:roomNumber",
+          "/api/roomservice/bill/:roomNumber"
+        ],
+        "module": "roomServiceRoutes.js",
+        "line": 31,
+        "mounted": true
+      },
+      {
+        "method": "PUT",
+        "raw": "/order/:orderId/status",
+        "aliases": [
+          "/api/room-service/order/:orderId/status",
+          "/api/roomservice/order/:orderId/status"
+        ],
+        "module": "roomServiceRoutes.js",
+        "line": 32,
+        "mounted": true
+      },
+      {
+        "method": "GET",
+        "raw": "/employees",
+        "aliases": [
+          "/api/salary/employees"
+        ],
+        "module": "salaryRoutes.js",
+        "line": 8,
+        "mounted": true
+      },
+      {
+        "method": "GET",
+        "raw": "/me",
+        "aliases": [
+          "/api/salary/me"
+        ],
+        "module": "salaryRoutes.js",
+        "line": 12,
+        "mounted": true
+      },
+      {
+        "method": "GET",
+        "raw": "/me/attendance",
+        "aliases": [
+          "/api/salary/me/attendance"
+        ],
+        "module": "salaryRoutes.js",
+        "line": 15,
+        "mounted": true
+      },
+      {
+        "method": "GET",
+        "raw": "/:userId",
+        "aliases": [
+          "/api/salary/:userId"
+        ],
+        "module": "salaryRoutes.js",
+        "line": 24,
+        "mounted": true
+      },
+      {
+        "method": "POST",
+        "raw": "/:userId/recalculate",
+        "aliases": [
+          "/api/salary/:userId/recalculate"
+        ],
+        "module": "salaryRoutes.js",
+        "line": 27,
+        "mounted": true
+      },
+      {
+        "method": "GET",
+        "raw": "/machines/:id/pulls",
+        "aliases": [
+          "/api/zk/machines/:id/pulls"
+        ],
+        "module": "zkRoutes.js",
+        "line": 19,
+        "mounted": true
+      }
+    ],
+    "COVERED_BY_DYNAMIC_CALLS": [
+      {
+        "method": "POST",
+        "raw": "/petty-cash",
+        "module": "accountsRoutes.js",
+        "line": 152,
+        "aliases": [
+          "/api/accounts/petty-cash"
+        ],
+        "coveredBy": "Accounts.jsx create/update/deleteModuleEntry helpers"
+      },
+      {
+        "method": "PUT",
+        "raw": "/petty-cash/:id",
+        "module": "accountsRoutes.js",
+        "line": 153,
+        "aliases": [
+          "/api/accounts/petty-cash/:id"
+        ],
+        "coveredBy": "Accounts.jsx create/update/deleteModuleEntry helpers"
+      },
+      {
+        "method": "DELETE",
+        "raw": "/petty-cash/:id",
+        "module": "accountsRoutes.js",
+        "line": 154,
+        "aliases": [
+          "/api/accounts/petty-cash/:id"
+        ],
+        "coveredBy": "Accounts.jsx create/update/deleteModuleEntry helpers"
+      },
+      {
+        "method": "POST",
+        "raw": "/gst-returns",
+        "module": "accountsRoutes.js",
+        "line": 156,
+        "aliases": [
+          "/api/accounts/gst-returns"
+        ],
+        "coveredBy": "Accounts.jsx create/update/deleteModuleEntry helpers"
+      },
+      {
+        "method": "PUT",
+        "raw": "/gst-returns/:id",
+        "module": "accountsRoutes.js",
+        "line": 157,
+        "aliases": [
+          "/api/accounts/gst-returns/:id"
+        ],
+        "coveredBy": "Accounts.jsx create/update/deleteModuleEntry helpers"
+      },
+      {
+        "method": "DELETE",
+        "raw": "/gst-returns/:id",
+        "module": "accountsRoutes.js",
+        "line": 158,
+        "aliases": [
+          "/api/accounts/gst-returns/:id"
+        ],
+        "coveredBy": "Accounts.jsx create/update/deleteModuleEntry helpers"
+      },
+      {
+        "method": "POST",
+        "raw": "/vendor-payments",
+        "module": "accountsRoutes.js",
+        "line": 160,
+        "aliases": [
+          "/api/accounts/vendor-payments"
+        ],
+        "coveredBy": "Accounts.jsx create/update/deleteModuleEntry helpers"
+      },
+      {
+        "method": "PUT",
+        "raw": "/vendor-payments/:id",
+        "module": "accountsRoutes.js",
+        "line": 161,
+        "aliases": [
+          "/api/accounts/vendor-payments/:id"
+        ],
+        "coveredBy": "Accounts.jsx create/update/deleteModuleEntry helpers"
+      },
+      {
+        "method": "DELETE",
+        "raw": "/vendor-payments/:id",
+        "module": "accountsRoutes.js",
+        "line": 162,
+        "aliases": [
+          "/api/accounts/vendor-payments/:id"
+        ],
+        "coveredBy": "Accounts.jsx create/update/deleteModuleEntry helpers"
+      },
+      {
+        "method": "POST",
+        "raw": "/purchase-orders",
+        "module": "accountsRoutes.js",
+        "line": 164,
+        "aliases": [
+          "/api/accounts/purchase-orders"
+        ],
+        "coveredBy": "Accounts.jsx create/update/deleteModuleEntry helpers"
+      },
+      {
+        "method": "PUT",
+        "raw": "/purchase-orders/:id",
+        "module": "accountsRoutes.js",
+        "line": 165,
+        "aliases": [
+          "/api/accounts/purchase-orders/:id"
+        ],
+        "coveredBy": "Accounts.jsx create/update/deleteModuleEntry helpers"
+      },
+      {
+        "method": "DELETE",
+        "raw": "/purchase-orders/:id",
+        "module": "accountsRoutes.js",
+        "line": 166,
+        "aliases": [
+          "/api/accounts/purchase-orders/:id"
+        ],
+        "coveredBy": "Accounts.jsx create/update/deleteModuleEntry helpers"
+      },
+      {
+        "method": "POST",
+        "raw": "/payroll",
+        "module": "accountsRoutes.js",
+        "line": 168,
+        "aliases": [
+          "/api/accounts/payroll"
+        ],
+        "coveredBy": "Accounts.jsx create/update/deleteModuleEntry helpers"
+      },
+      {
+        "method": "PUT",
+        "raw": "/payroll/:id",
+        "module": "accountsRoutes.js",
+        "line": 169,
+        "aliases": [
+          "/api/accounts/payroll/:id"
+        ],
+        "coveredBy": "Accounts.jsx create/update/deleteModuleEntry helpers"
+      },
+      {
+        "method": "DELETE",
+        "raw": "/payroll/:id",
+        "module": "accountsRoutes.js",
+        "line": 170,
+        "aliases": [
+          "/api/accounts/payroll/:id"
+        ],
+        "coveredBy": "Accounts.jsx create/update/deleteModuleEntry helpers"
+      },
+      {
+        "method": "POST",
+        "raw": "/profit-centers",
+        "module": "accountsRoutes.js",
+        "line": 172,
+        "aliases": [
+          "/api/accounts/profit-centers"
+        ],
+        "coveredBy": "Accounts.jsx create/update/deleteModuleEntry helpers"
+      },
+      {
+        "method": "PUT",
+        "raw": "/profit-centers/:id",
+        "module": "accountsRoutes.js",
+        "line": 173,
+        "aliases": [
+          "/api/accounts/profit-centers/:id"
+        ],
+        "coveredBy": "Accounts.jsx create/update/deleteModuleEntry helpers"
+      },
+      {
+        "method": "DELETE",
+        "raw": "/profit-centers/:id",
+        "module": "accountsRoutes.js",
+        "line": 174,
+        "aliases": [
+          "/api/accounts/profit-centers/:id"
+        ],
+        "coveredBy": "Accounts.jsx create/update/deleteModuleEntry helpers"
+      },
+      {
+        "method": "GET",
+        "raw": "/alerts/low-stock",
+        "module": "inventoryRoutes.js",
+        "line": 28,
+        "aliases": [
+          "/api/inventory/alerts/low-stock"
+        ],
+        "coveredBy": "InventoryReportsPage.jsx tab.endpoint"
+      },
+      {
+        "method": "GET",
+        "raw": "/alerts/expiring",
+        "module": "inventoryRoutes.js",
+        "line": 29,
+        "aliases": [
+          "/api/inventory/alerts/expiring"
+        ],
+        "coveredBy": "InventoryReportsPage.jsx tab.endpoint"
+      },
+      {
+        "method": "GET",
+        "raw": "/reports/vendor-spend",
+        "module": "inventoryRoutes.js",
+        "line": 164,
+        "aliases": [
+          "/api/inventory/reports/vendor-spend"
+        ],
+        "coveredBy": "InventoryFlow.jsx endpointMap[type]"
+      },
+      {
+        "method": "GET",
+        "raw": "/reports/stock-value",
+        "module": "inventoryRoutes.js",
+        "line": 167,
+        "aliases": [
+          "/api/inventory/reports/stock-value"
+        ],
+        "coveredBy": "InventoryFlow.jsx endpointMap[type]"
+      },
+      {
+        "method": "GET",
+        "raw": "/reports/expiry-batches",
+        "module": "inventoryRoutes.js",
+        "line": 170,
+        "aliases": [
+          "/api/inventory/reports/expiry-batches"
+        ],
+        "coveredBy": "InventoryFlow.jsx endpointMap[type]"
+      },
+      {
+        "method": "GET",
+        "raw": "/reports/consumption",
+        "module": "inventoryRoutes.js",
+        "line": 173,
+        "aliases": [
+          "/api/inventory/reports/consumption"
+        ],
+        "coveredBy": "InventoryFlow.jsx endpointMap[type]"
+      },
+      {
+        "method": "GET",
+        "raw": "/reports/audit-trail",
+        "module": "inventoryRoutes.js",
+        "line": 176,
+        "aliases": [
+          "/api/inventory/reports/audit-trail"
+        ],
+        "coveredBy": "InventoryFlow.jsx endpointMap[type]"
+      },
+      {
+        "method": "GET",
+        "raw": "/reports/vendor-spend",
+        "module": "inventoryRoutes.js",
+        "line": 186,
+        "aliases": [
+          "/api/inventory/reports/vendor-spend"
+        ],
+        "coveredBy": "InventoryFlow.jsx endpointMap[type]"
+      },
+      {
+        "method": "GET",
+        "raw": "/reports/stock-value",
+        "module": "inventoryRoutes.js",
+        "line": 189,
+        "aliases": [
+          "/api/inventory/reports/stock-value"
+        ],
+        "coveredBy": "InventoryFlow.jsx endpointMap[type]"
+      },
+      {
+        "method": "GET",
+        "raw": "/reports/expiry-batches",
+        "module": "inventoryRoutes.js",
+        "line": 192,
+        "aliases": [
+          "/api/inventory/reports/expiry-batches"
+        ],
+        "coveredBy": "InventoryFlow.jsx endpointMap[type]"
+      },
+      {
+        "method": "GET",
+        "raw": "/reports/consumption",
+        "module": "inventoryRoutes.js",
+        "line": 195,
+        "aliases": [
+          "/api/inventory/reports/consumption"
+        ],
+        "coveredBy": "InventoryFlow.jsx endpointMap[type]"
+      },
+      {
+        "method": "POST",
+        "raw": "/bill/:id/charge-to-room",
+        "module": "restaurantRoutes.js",
+        "line": 48,
+        "aliases": [
+          "/api/restaurant/bill/:id/charge-to-room"
+        ],
+        "coveredBy": "restaurantService.js billId-conditional endpoints"
+      },
+      {
+        "method": "POST",
+        "raw": "/bill/charge-to-room",
+        "module": "restaurantRoutes.js",
+        "line": 49,
+        "aliases": [
+          "/api/restaurant/bill/charge-to-room"
+        ],
+        "coveredBy": "restaurantService.js billId-conditional endpoints"
+      },
+      {
+        "method": "POST",
+        "raw": "/bill/:id/pay",
+        "module": "restaurantRoutes.js",
+        "line": 50,
+        "aliases": [
+          "/api/restaurant/bill/:id/pay"
+        ],
+        "coveredBy": "restaurantService.js billId-conditional endpoints"
+      },
+      {
+        "method": "POST",
+        "raw": "/bill/pay",
+        "module": "restaurantRoutes.js",
+        "line": 51,
+        "aliases": [
+          "/api/restaurant/bill/pay"
+        ],
+        "coveredBy": "restaurantService.js billId-conditional endpoints"
+      },
+      {
+        "method": "POST",
+        "raw": "/split-bills/:id/charge-to-room",
+        "module": "restaurantRoutes.js",
+        "line": 52,
+        "aliases": [
+          "/api/restaurant/split-bills/:id/charge-to-room"
+        ],
+        "coveredBy": "restaurantService.js billId-conditional endpoints"
+      },
+      {
+        "method": "POST",
+        "raw": "/split-bills/charge-to-room",
+        "module": "restaurantRoutes.js",
+        "line": 53,
+        "aliases": [
+          "/api/restaurant/split-bills/charge-to-room"
+        ],
+        "coveredBy": "restaurantService.js billId-conditional endpoints"
+      }
+    ],
+    "byArea": {
+      "auth": {
+        "frontendCalls": 21,
+        "backendDefs": 22,
+        "dead": 6,
+        "coveredByDynamic": 0
+      },
+      "hotel/front-desk": {
+        "frontendCalls": 132,
+        "backendDefs": 59,
+        "dead": 15,
+        "coveredByDynamic": 0
+      },
+      "HR/assignments": {
+        "frontendCalls": 15,
+        "backendDefs": 6,
+        "dead": 0,
+        "coveredByDynamic": 0
+      },
+      "banquet": {
+        "frontendCalls": 23,
+        "backendDefs": 16,
+        "dead": 3,
+        "coveredByDynamic": 0
+      },
+      "dashboards/reports": {
+        "frontendCalls": 22,
+        "backendDefs": 49,
+        "dead": 5,
+        "coveredByDynamic": 0
+      },
+      "housekeeping": {
+        "frontendCalls": 63,
+        "backendDefs": 29,
+        "dead": 4,
+        "coveredByDynamic": 0
+      },
+      "inventory": {
+        "frontendCalls": 90,
+        "backendDefs": 76,
+        "dead": 9,
+        "coveredByDynamic": 11
+      },
+      "restaurant POS/KOT": {
+        "frontendCalls": 126,
+        "backendDefs": 93,
+        "dead": 18,
+        "coveredByDynamic": 6
+      },
+      "accounts/payroll": {
+        "frontendCalls": 99,
+        "backendDefs": 104,
+        "dead": 24,
+        "coveredByDynamic": 18
+      },
+      "other:*": {
+        "frontendCalls": 2,
+        "backendDefs": 0,
+        "dead": 0,
+        "coveredByDynamic": 0
+      },
+      "print": {
+        "frontendCalls": 8,
+        "backendDefs": 8,
+        "dead": 0,
+        "coveredByDynamic": 0
+      },
+      "notifications": {
+        "frontendCalls": 0,
+        "backendDefs": 5,
+        "dead": 4,
+        "coveredByDynamic": 0
+      }
+    }
+  }
+}
