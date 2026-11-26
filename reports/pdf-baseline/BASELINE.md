@@ -56,6 +56,16 @@ Data used: scratch DB `mbr_pdf_baseline` on local MariaDB 10.4 (XAMPP,
    Prod DB `resort_management1` is never connected.
 3. **Frontend:** `npm run dev` in `Maa-Baglamkhi-Resort-frontend` (Vite :5173;
    the app calls `http://127.0.0.1:5002` directly via `VITE_API_BASE`).
+   .env values in play (backend `.env`, values as on this host):
+   `PORT=5002`, `DB_HOST=127.0.0.1`, `DB_PORT=3306`, `DB_USER=root`,
+   `DB_NAME=resort_management1` (**overridden to `mbr_pdf_baseline` via env
+   for this capture — the .env file itself is never edited**),
+   `JWT_SECRET=<set>`, `AUTO_PRINT_ENABLED=true`;
+   frontend `.env`: `VITE_API_BASE=http://127.0.0.1:5002/api`,
+   `VITE_BACKEND_URL=http://127.0.0.1:5002`. Endpoints the capture touches:
+   `POST /api/auth/login`, `GET /api/hotel/all-bookings`,
+   `GET /api/hotel/full-booking/1`, `GET /api/hotel/folio/1`,
+   `GET /api/hotel/payment-history/1`.
 4. **Drive the UI** (Playwright 1.63 chromium, `acceptDownloads`):
    pin the browser clock to `2026-11-26 10:00` (`page.clock.install`) —
    the invoice date renders `new Date()` because `getFullBooking` returns no
@@ -82,6 +92,26 @@ Amount in words "Rupees Eleven Thousand Two Hundred Fifty Only", Paid
 
 After any fix commit: regenerate per the steps above. **PASS** = image-stream
 fingerprint `364fa75d…` unchanged **and** page count 1 **and** image dims
-1588×2246. Any change to `buildHotelInvoiceDocument`, the html2canvas/jsPDF
-paths, or invoice template rendering will move the fingerprint → **FAIL**,
-and the pipeline is frozen.
+1588×2246. Any change to the frozen pipeline will move the fingerprint →
+**FAIL**.
+
+## Freeze list (PDF pipeline files that MUST NOT be modified)
+
+Per the human rule "PDF print + saved-PDF format stays 100% identical", the
+following are frozen for round-2 work — do not edit them:
+
+- `Maa-Baglamkhi-Resort-frontend/src/components/Hotel/BookingFlow.jsx`
+  — `buildHotelInvoiceDocument()` (shared invoice document, ~line 4147) and
+  both `handlePrintInvoiceDirect` / `handleDownloadHotelInvoicePdf`
+- the html2canvas → jsPDF rendering paths in that file (`html2canvas` +
+  `jsPDF` usage, offscreen-iframe capture, A4 placement)
+- print queue services: `Maa-Baglamkhi-Resort-Backend/src/services/PrintQueue.js`
+  and the print pipeline it drives (`PrintService.js`, `InvoicePrintService.js`,
+  `KitchenPrintService.js`, `RestaurantPrintService.js`, `ThermalPrintService.js`,
+  `PrintUtils.js`, `pdf-to-printer` invocations)
+- invoice templates / generators: `invoicePdfService.js` (pdfkit customer
+  invoice), `banquetInvoicePdfService.js`, `restaurantInvoicePdfService.js`
+
+Round-2 fixes may change everything *around* the pipeline (data, routing,
+layout outside the invoice document, non-print services) but any change to the
+files above must be rejected or re-baselined with god's sign-off.
