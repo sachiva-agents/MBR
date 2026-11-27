@@ -31,14 +31,20 @@ exports.ensureSchema = async () => {
 
   // Waiter-queue columns: room_service_orders must carry the assignment the
   // delivery routes update/read, so add them if a pre-existing table lacks them.
+  // (HAG-18: the old form re-destructured the runQuery result, which already
+  // unwraps to the column array, so the array check always failed and the
+  // ALTERs never ran on fresh databases.)
   for (const col of [
     "waiter_name VARCHAR(100) DEFAULT NULL",
     "order_id INT DEFAULT NULL",
   ]) {
     try {
-      const [cols] = await runQuery("SHOW COLUMNS FROM room_service_orders");
       const colName = col.split(" ")[0].toLowerCase();
-      if (Array.isArray(cols) && !cols.some((c) => String(c.Field).toLowerCase() === colName)) {
+      const existing = await runQuery(
+        `SHOW COLUMNS FROM room_service_orders LIKE ?`,
+        [colName]
+      );
+      if (Array.isArray(existing) && existing.length === 0) {
         await runQuery(`ALTER TABLE room_service_orders ADD COLUMN ${col}`);
       }
     } catch (err) {

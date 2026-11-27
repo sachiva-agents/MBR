@@ -49,7 +49,9 @@ const PaymentDesk = () => {
     try {
       const res = await API.get("/accounts/payment-settings");
       const rows = Array.isArray(res.data) ? res.data : [];
-      setMethods(rows.map((m) => ({ id: m.id, name: field(m, "name", "payment_method", "title") })));
+      // The gateway-settings list returns the label under `payment_mode`
+      // (fresh installs) or `name`/`payment_method` (older shapes).
+      setMethods(rows.map((m) => ({ id: m.id, name: field(m, "name", "payment_method", "payment_mode", "title") })));
     } catch {
       setMethods([]);
     }

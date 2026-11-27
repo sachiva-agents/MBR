@@ -51,12 +51,15 @@ class PaymentMethods {
     try {
       const [existing] = await this.pool.execute('SELECT COUNT(*) as cnt FROM `payment_methods`')
       if (existing[0] && existing[0].cnt > 0) return
-      const rows = [{"name":"Cash","code":"cash"},{"name":"Credit Card","code":"card"},{"name":"Debit Card","code":"card"},{"name":"UPI","code":"upi"},{"name":"Net Banking","code":"net_banking"},{"name":"Credit (Hotel)","code":"credit"}]
-      const cols = '0, 1, 2, 3, 4, 5'
-      const placeholders = '?, ?, ?, ?, ?, ?'
+      const rows = [{"name":"Cash","code":"cash"},{"name":"Credit Card","code":"card"},{"name":"Debit Card","code":"debit_card"},{"name":"UPI","code":"upi"},{"name":"Net Banking","code":"net_banking"},{"name":"Credit (Hotel)","code":"credit"}]
+      // (HAG-18) the old column list was the literal string "0, 1, 2, 3, 4, 5"
+      // and Debit Card shared the "card" code with Credit Card, so this path
+      // could never succeed; INSERT IGNORE + distinct codes instead.
       for (const row of rows) {
-        const vals = Object.values(row)
-        await this.pool.execute('INSERT INTO `payment_methods` (' + cols + ') VALUES (' + placeholders + ')', vals)
+        await this.pool.execute(
+          'INSERT IGNORE INTO `payment_methods` (name, code) VALUES (?, ?)',
+          [row.name, row.code]
+        )
       }
     } catch (err) {
       console.error('Seed error for payment_methods:', err.message)

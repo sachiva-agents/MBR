@@ -112,6 +112,29 @@ const ensureLazyTables = async () => {
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
   `);
 
+  // restaurant_split_bills — HAG-18: same owner as the requests table above
+  // (RestaurantModel.ensureSchema, which boot never runs — only
+  // MenuRecipeModel chains to it, and that isn't a boot step). The split-bill
+  // write (POST /restaurant/split-bills) and its list both touch this table,
+  // so a fresh install 500s without it. DDL mirrors the production table.
+  await createTable(`
+    CREATE TABLE IF NOT EXISTS restaurant_split_bills (
+      id INT AUTO_INCREMENT PRIMARY KEY,
+      bill_id INT DEFAULT NULL,
+      table_number VARCHAR(50) NOT NULL,
+      entity_type VARCHAR(30) DEFAULT 'Table',
+      split_label VARCHAR(80) NOT NULL,
+      split_no INT NOT NULL,
+      split_count INT NOT NULL,
+      subtotal DECIMAL(10,2) NOT NULL DEFAULT 0,
+      gst DECIMAL(10,2) NOT NULL DEFAULT 0,
+      total DECIMAL(10,2) NOT NULL DEFAULT 0,
+      payment_method VARCHAR(50) DEFAULT NULL,
+      items_json LONGTEXT DEFAULT NULL,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+  `);
+
   // room_tariff — owned by roomTariffModel.js (app.js historically wired
   // ensureRoomTariffSchema to the wrong model, RatePlansModel).
   await require("./roomTariffModel").ensureSchema();
@@ -157,6 +180,49 @@ const ensureMigratedColumns = async () => {
   await ensureColumnSafe("restaurant_tables", "guestCount", "INT DEFAULT 4");
 };
 
+// Default payment method rows for fresh installs (HAG-18). The accounts
+// payment-settings form and every generic payment capture need this table to
+// carry at least one row, but its DDL only runs on demand (the accounts
+// controller) and nothing ever seeds it — a fresh install has an empty table,
+// so the Payment Desk method picker has nothing to choose. Mirrors the
+// ProductionDefaults + model column set; INSERT IGNORE and empty-table guard
+// make this a no-op on every running install.
+const ensurePaymentMethodSeed = async () => {
+  await createTable(`
+    CREATE TABLE IF NOT EXISTS payment_methods (
+      id INT UNSIGNED NOT NULL AUTO_INCREMENT,
+      name VARCHAR(50) NOT NULL UNIQUE,
+      code VARCHAR(30) NOT NULL UNIQUE,
+      is_active TINYINT(1) DEFAULT 1,
+      icon VARCHAR(100),
+      department VARCHAR(100),
+      provider_name VARCHAR(255),
+      upi_id VARCHAR(255),
+      account_holder_name VARCHAR(255),
+      bank_name VARCHAR(255),
+      qr_image_url LONGTEXT,
+      notes TEXT,
+      PRIMARY KEY (id)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+  `);
+  const [rows] = await db.query("SELECT COUNT(*) AS c FROM payment_methods");
+  if (!Array.isArray(rows) || rows.length === 0 || Number(rows[0].c || 0) > 0) return;
+  const defaults = [
+    ["Cash", "cash"],
+    ["Credit Card", "card"],
+    ["Debit Card", "debit_card"],
+    ["UPI", "upi"],
+    ["Net Banking", "net_banking"],
+    ["Credit (Hotel)", "credit"],
+  ];
+  for (const [name, code] of defaults) {
+    await db.query("INSERT IGNORE INTO payment_methods (name, code, is_active) VALUES (?, ?, 1)", [
+      name,
+      code,
+    ]);
+  }
+};
+
 // Single entry point wired into initializeDatabase() at boot and run by
 // `npm run init`. Each phase is fault-isolated: one failing object must
 // never block the ones after it (especially the roles seed).
@@ -167,6 +233,7 @@ const ensureBootSchema = async () => {
     ["Boot schema: lazy tables", ensureLazyTables],
     ["Boot schema: migrated columns", ensureMigratedColumns],
     ["Boot schema: system roles", ensureSystemRoles],
+    ["Boot schema: payment method seed", ensurePaymentMethodSeed],
   ]) {
     try {
       await step();
