@@ -1,8 +1,13 @@
 require("dotenv").config({ quiet: process.env.NODE_ENV === "test" });
 
+// HAG-22 zero-config defaults: on a machine with a stock local MariaDB/
+// MySQL (root, empty password, 127.0.0.1:3306) and no .env at all, the
+// server must just work. `resort_management` is the out-of-box schema name;
+// boot auto-creates it when missing (app.js ensureDatabaseExists).
 const DEFAULT_DB_HOST = "127.0.0.1";
-const DEFAULT_DB_PORT = 3301;
+const DEFAULT_DB_PORT = 3306;
 const DEFAULT_DB_USER = "root";
+const DEFAULT_DB_NAME = "resort_management";
 
 function parseDbPort(value) {
   const parsed = Number(value);

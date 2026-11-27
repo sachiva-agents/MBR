@@ -105,14 +105,88 @@ function getCorsOptions() {
   };
 }
 
-function getJwtSecret() {
-  const secret = String(process.env.JWT_SECRET || "").trim();
+// HAG-22: zero-config first start. A fresh machine has no .env — the server
+// must still boot. When JWT_SECRET is unset or empty we generate a 48-byte
+// random secret and persist it into <backend>/.env so it survives restarts
+// (a fresh secret on every boot would invalidate every issued token each
+// restart). The in-memory copy is used when persistence fails (read-only
+// install). This behavior is documented in INSTALL.md ("JWT secret
+// auto-provisioning").
+//
+// Behavior kept: NODE_ENV=test still throws on an empty JWT_SECRET so test
+// suites stay deterministic (they rely on a fixed secret).
+const generatedJwtSecret = { value: null, persisted: false };
 
-  if (!secret) {
+function persistJwtSecret(secret) {
+  try {
+    const fs = require("fs");
+    const path = require("path");
+    const envPath = path.join(__dirname, "..", "..", ".env");
+    if (fs.existsSync(envPath)) {
+      const content = fs.readFileSync(envPath, "utf8");
+      const lines = content.split(/\r?\n/);
+      const i = lines.findIndex((l) => l.startsWith("JWT_SECRET="));
+      if (i >= 0) {
+        const existing = lines[i].slice("JWT_SECRET=".length).trim();
+        if (existing) {
+          // A real configured value is present — never overwrite it.
+          return false;
+        }
+        lines[i] = `JWT_SECRET=${secret}`; // empty value: fill it in
+      } else {
+        lines.push(`JWT_SECRET=${secret}`);
+      }
+      const next = lines.join("\n");
+      if (next !== content) fs.writeFileSync(envPath, next, "utf8");
+    } else {
+      fs.writeFileSync(
+        envPath,
+        `# Auto-created by MBR on first start (HAG-22).\nJWT_SECRET=${secret}\n`,
+        "utf8",
+      );
+    }
+    return true;
+  } catch (err) {
+    console.warn(
+      `[jwt] could not persist auto-generated JWT_SECRET to .env (${err.message}); ` +
+        "using the in-memory value — tokens will be re-issued on each restart",
+    );
+    return false;
+  }
+}
+
+function getJwtSecret() {
+  const explicit = String(process.env.JWT_SECRET ?? "");
+
+  if (explicit.trim()) {
+    return explicit.trim();
+  }
+
+  // Set-but-empty ("JWT_SECRET=") is operator-intentional: keep the legacy
+  // throw so a misconfigured install fails loudly instead of silently
+  // re-issuing secrets.
+  if (explicit !== "" && explicit.trim() === "") {
     throw new Error("JWT_SECRET must be set in the environment.");
   }
 
-  return secret;
+  if (process.env.NODE_ENV === "test") {
+    throw new Error("JWT_SECRET must be set in the environment.");
+  }
+
+  if (!generatedJwtSecret.value) {
+    const crypto = require("crypto");
+    const secret = crypto.randomBytes(48).toString("hex");
+    generatedJwtSecret.value = secret;
+    generatedJwtSecret.persisted = persistJwtSecret(secret);
+    console.log(
+      "[jwt] JWT_SECRET was empty — auto-generated a secret " +
+        (generatedJwtSecret.persisted
+          ? "and saved it to .env (change it before going live)."
+          : "(in-memory only — set JWT_SECRET in .env before going live)."),
+    );
+  }
+
+  return generatedJwtSecret.value;
 }
 
 function isLocalRequest(req) {

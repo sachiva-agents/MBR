@@ -9,7 +9,12 @@ const { Server } = require("socket.io");
 const cookieParser = require("cookie-parser");
 
 const db = require("./config/db");
-const { getDbConnectionLabel } = require("./config/databaseConfig");
+const {
+  getDbConnectionLabel,
+  getDbBaseConfig,
+  getDatabaseName,
+} = require("./config/databaseConfig");
+const mysql = require("mysql2/promise");
 const { ensureSchema: ensureHotelRoomInventorySchema } = require("./models/RoomsModel");
 const { ensureSchema: ensureGuestSchema } = require("./models/GuestProfilesModel");
 const { ensureSchema: ensureGuestDocumentSchema } = require("./models/GuestIdentificationsModel");
@@ -165,11 +170,68 @@ async function ensureDefaultStaffLogins() {
   await usersModel.seedDefaults();
 }
 
+async function ensureDatabaseExists() {
+  // HAG-22: zero-config first start. The pool is bound to a specific database,
+  // so on a host where the schema has NEVER been created the first query
+  // fails and the whole bootstrap is skipped. Create it here (utf8mb4) with
+  // a dedicated, database-less connection. No-op on existing installs
+  // (IF NOT EXISTS) — the tables/seed below still make boot idempotent.
+  const conn = await mysql.createConnection(getDbBaseConfig());
+  try {
+    await conn.query(
+      `CREATE DATABASE IF NOT EXISTS \`${getDatabaseName()}\` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci`
+    );
+    if (process.env.NODE_ENV !== "test") {
+      console.log(`Database "${getDatabaseName()}" verified (auto-created if missing).`);
+    }
+  } finally {
+    await conn.end();
+  }
+}
+
+async function ensureSchemaFile() {
+  // HAG-22: apply schema-v4.sql on the start path too, not just `npm run init`.
+  // Its per-model DDL in the chain below is NOT in dependency order, so a
+  // truly blank database leaves FK-child tables uncreated unless the full
+  // schema file (81 IF NOT EXISTS tables in correct order, additive only,
+  // zero drops/alters) is applied first. On existing installs every
+  // statement is a no-op pre-check.
+  const fs = require("fs");
+  const path = require("path");
+  const schemaPath = path.join(__dirname, "..", "schema-v4.sql");
+  if (!fs.existsSync(schemaPath)) {
+    return;
+  }
+  const sql = fs.readFileSync(schemaPath, "utf8").trim();
+  if (!sql) {
+    return;
+  }
+  const conn = await mysql.createConnection({
+    ...getDbBaseConfig(),
+    database: getDatabaseName(),
+    multipleStatements: true,
+  });
+  try {
+    await conn.query(sql);
+    if (process.env.NODE_ENV !== "test") {
+      console.log("schema-v4.sql verified (applied on first start; no-op when present).");
+    }
+  } finally {
+    await conn.end();
+  }
+}
+
 async function initializeDatabase(options = {}) {
   try {
     const skipPaymentSchema =
       options.skipPaymentSchema === true ||
       String(process.env.SKIP_PAYMENT_SCHEMA_BOOTSTRAP || "").toLowerCase() === "true";
+
+    // Must precede the pool's first query: the pool is bound to the schema,
+    // which does not exist yet on a host where the DB has never been
+    // installed. (No-op on existing installs.)
+    await ensureDatabaseExists();
+    await ensureSchemaFile();
 
     await db.query("SELECT 1");
     if (process.env.NODE_ENV !== "test") {

@@ -9,10 +9,23 @@ const {
   getDbConnectionLabel,
 } = require("./src/config/databaseConfig");
 
-const requiredEnvVars = ["DB_HOST", "DB_USER", "DB_NAME", "JWT_SECRET"];
+// DB_HOST / DB_USER / DB_NAME resolve through the documented defaults in
+// src/config/databaseConfig.js, so only a completely empty DB target is
+// fatal. JWT_SECRET is no longer required here: when unset, getJwtSecret()
+// auto-generates and persists one (HAG-22 zero-config) — init only needs it
+// to exist for the seed step, and the app boot path generates it on demand.
+const requiredEnvVars = ["DB_HOST", "DB_USER", "DB_NAME"];
 
-const getMissingEnvVars = () =>
-  requiredEnvVars.filter((key) => !String(process.env[key] || "").trim());
+// Resolve through databaseConfig defaults so a fresh machine with no .env at
+// all still passes (127.0.0.1 / root / resort_management).
+const getMissingEnvVars = () => {
+  const base = getDbBaseConfig();
+  const missing = [];
+  if (!String(base.host).trim()) missing.push("DB_HOST");
+  if (!String(base.user).trim()) missing.push("DB_USER");
+  if (!String(getDatabaseName()).trim()) missing.push("DB_NAME");
+  return missing;
+};
 
 const ensureUploadsDir = () => {
   const uploadsDir = path.join(__dirname, "uploads");
