@@ -145,8 +145,27 @@ const authRateLimiter = rateLimit({
   },
 });
 
+// HAG-17: dedicated limiter for the token routes (JWT issuance + the
+// restaurant /api/token write surface). Reuses the local-request / test
+// exemptions so dev and the test suite are never throttled, while external
+// clients are kept to a separate, looser budget than the auth limiter.
+const tokenRateLimiter = rateLimit({
+  windowMs: Number(process.env.TOKEN_RATE_LIMIT_WINDOW_MS || 15 * 60 * 1000),
+  limit: Number(process.env.TOKEN_RATE_LIMIT_MAX || 120),
+  standardHeaders: "draft-8",
+  legacyHeaders: false,
+  skip: (req) =>
+    process.env.NODE_ENV === "test" ||
+    String(process.env.AUTH_RATE_LIMIT_DISABLED || "").toLowerCase() === "true" ||
+    isLocalRequest(req),
+  message: {
+    message: "Too many token requests. Please try again later.",
+  },
+});
+
 module.exports = {
   authRateLimiter,
+  tokenRateLimiter,
   getAllowedOrigins,
   getCorsOptions,
   getJwtSecret,
