@@ -18,6 +18,15 @@ server.listen(PORT, "0.0.0.0", () => {
 });
 
 initializeDatabase().then(() => {
+  // HAG-23: prime the live connector settings (DB app_settings → env → default)
+  // before the print queue / ZK scheduler start, so an admin's saved printer
+  // name / gateway / auto-sync values apply on this boot without a restart.
+  // Never throws — on any DB hiccup it falls back to the .env/default snapshot.
+  try {
+    require("./src/services/dynamicSettings").refresh().catch(() => {});
+  } catch (e) {
+    console.error("Dynamic settings init failed:", e.message);
+  }
   try {
     const { printQueue } = require("./src/services/PrintQueue");
     printQueue.start();

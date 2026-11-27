@@ -287,6 +287,12 @@ async function initializeDatabase(options = {}) {
       const { ensureBootSchema } = require("./models/BootstrapModule");
       await ensureBootSchema();
     });
+    // HAG-23: the admin connector settings table (print / WhatsApp / ZK /
+    // public base URL) auto-creates on first start, zero-config.
+    await bootstrapSchema("App settings schema init", async () => {
+      const { ensureSchema: ensureAppSettingsSchema } = require("./services/dynamicSettings");
+      await ensureAppSettingsSchema();
+    });
     await bootstrapSchema("Default staff login bootstrap", ensureDefaultStaffLogins);
   } catch (error) {
     console.error(

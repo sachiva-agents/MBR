@@ -62,7 +62,12 @@ const { URL } = require("url");
 // HAG-13: env overrides for a different/secondary gateway + key.
 // WHATSAPP_GATEWAY_URL wins over the legacy wasachiva_url pair;
 // WASACHIVA_KEY / WHATSAPP_API_KEY win over the legacy wasachiva_key.
-const DEFAULT_BASE_URL =
+//
+// HAG-23: the gateway URL + key are resolved live (DB app_settings → .env →
+// default) so an admin's in-app save takes effect without a restart. The
+// values below are only the process-start fallbacks used until the first DB
+// row is available; getGatewayConfig() is the source of truth at send time.
+const FALLBACK_GATEWAY_URL =
   (process.env.WHATSAPP_GATEWAY_URL ||
     process.env.wasachiva_url ||
     process.env.WASACHIVA_URL ||
@@ -70,12 +75,28 @@ const DEFAULT_BASE_URL =
     .replace(/\/+$/, "")
     .replace(/\?.*$/, "");
 
-const API_KEY =
+const FALLBACK_API_KEY =
   process.env.WHATSAPP_API_KEY ||
   process.env.WASACHIVA_KEY ||
   process.env.wasachiva_key ||
   "";
 const GATEWAY_TIMEOUT_MS = Number(process.env.WASACHIVA_TIMEOUT_MS) || 10000;
+
+const dynamicSettings = require("./dynamicSettings");
+
+/**
+ * Live gateway URL + API key: DB (admin's in-app value) → .env → default.
+ * Read at send time from the primed snapshot, so a settings save takes
+ * effect without a restart. Sync by design (dynamicSettings is sync).
+ */
+const getGatewayConfig = () => ({
+  baseUrl: dynamicSettings.getWhatsappGatewayUrl() || FALLBACK_GATEWAY_URL,
+  apiKey: dynamicSettings.getWhatsappApiKey() || "",
+});
+
+// Compat aliases used inside this file's log/notice payloads (fall back to the
+// process-start env so a notice before the first refresh still names a host).
+const DEFAULT_BASE_URL = FALLBACK_GATEWAY_URL;
 
 /**
  * HAG-13: log a clear line once when the gateway cannot be reached, instead
@@ -241,9 +262,12 @@ const buildMultipartBody = (fields, fileFieldName, fileBuffer, fileName) => {
 // ── Generic HTTP request (GET or POST, no body) ──────────────────────────────
 // FIX: Wasend now requires the API key in the `Authorization: Bearer <key>`
 // HEADER. Sending it as `api_key` query param (the old code) now returns 401.
+// HAG-23: resolves the live gateway URL/key (DB → env → default) before
+// opening the request, so an in-app settings save applies instantly.
 const requestGateway = (method, pathname, queryParams = {}, extraHeaders = {}) => {
-  const baseUrl = new URL(DEFAULT_BASE_URL);
-  const isHttps = baseUrl.protocol === "https:";
+  const { baseUrl, apiKey } = getGatewayConfig();
+  const target = new URL(baseUrl);
+  const isHttps = target.protocol === "https:";
   const lib = isHttps ? https : http;
 
   // Build query string from provided params (api_key/apikey are NEVER
@@ -262,16 +286,16 @@ const requestGateway = (method, pathname, queryParams = {}, extraHeaders = {}) =
 
   // Always set the Authorization: Bearer header — this is what Wasend
   // now requires. `api_key` query param no longer works.
-  if (API_KEY) {
-    headers.Authorization = `Bearer ${API_KEY}`;
+  if (apiKey) {
+    headers.Authorization = `Bearer ${apiKey}`;
   }
 
   return new Promise((resolve, reject) => {
     const req = lib.request(
       {
         method,
-        hostname: baseUrl.hostname,
-        port: baseUrl.port || (isHttps ? 443 : 80),
+        hostname: target.hostname,
+        port: target.port || (isHttps ? 443 : 80),
         path: fullPath,
         headers,
         timeout: GATEWAY_TIMEOUT_MS,
@@ -310,8 +334,10 @@ const requestGateway = (method, pathname, queryParams = {}, extraHeaders = {}) =
 // ── Multipart POST for the legacy /api/send-document fallback ───────────────
 const postMultipart = async (pathname, fields, fileBuffer, fileName) => {
   const { body, contentType } = buildMultipartBody(fields, "file", fileBuffer, fileName);
-  const baseUrl = new URL(DEFAULT_BASE_URL);
-  const isHttps = baseUrl.protocol === "https:";
+  // HAG-23: live gateway URL/key (DB → env → default).
+  const { baseUrl, apiKey } = getGatewayConfig();
+  const target = new URL(baseUrl);
+  const isHttps = target.protocol === "https:";
   const lib = isHttps ? https : http;
 
   const headers = {
@@ -319,16 +345,16 @@ const postMultipart = async (pathname, fields, fileBuffer, fileName) => {
     "Content-Type": contentType,
     "Content-Length": Buffer.byteLength(body),
   };
-  if (API_KEY) {
-    headers.Authorization = `Bearer ${API_KEY}`;
+  if (apiKey) {
+    headers.Authorization = `Bearer ${apiKey}`;
   }
 
   return new Promise((resolve, reject) => {
     const req = lib.request(
       {
         method: "POST",
-        hostname: baseUrl.hostname,
-        port: baseUrl.port || (isHttps ? 443 : 80),
+        hostname: target.hostname,
+        port: target.port || (isHttps ? 443 : 80),
         path: pathname,
         headers,
         timeout: GATEWAY_TIMEOUT_MS,
@@ -364,13 +390,91 @@ const postMultipart = async (pathname, fields, fileBuffer, fileName) => {
   });
 };
 
+/**
+ * Test the WhatsApp gateway connection from the admin Settings screen.
+ *
+ * Reaches the configured gateway (DB → env → default) with a throwaway
+ * `GET /api/send-message` request — no number, no message, so NOTHING is
+ * actually delivered. It exercises the HAG-13 circuit breaker:
+ *   - gateway down / refused / DNS → the breaker trips, `reachable:false`,
+ *     status:"unreachable", and the rate-limited admin notice fires once.
+ *   - gateway up, no/invalid key   → HTTP error status is reported,
+ *     `keyOk:false` (the gateway answered, so the connection works).
+ *   - gateway up, key accepted      → `keyOk:true`.
+ * The result is purely diagnostic; it never sends a message.
+ */
+const testGatewayConnection = async () => {
+  const { baseUrl: baseUrlRaw, apiKey } = getGatewayConfig();
+  if (!apiKey) {
+    return {
+      reachable: true,
+      configured: false,
+      keyOk: false,
+      ok: false,
+      gateway: baseUrlRaw,
+      status: "no_key",
+      detail:
+        "No API key is set (Settings → WhatsApp, or WHATSAPP_API_KEY in .env). " +
+        "Set a key, then test again.",
+    };
+  }
+
+  // Route through the HAG-13 breaker so the test behaves exactly like a real
+  // send: a down gateway trips it, and if the breaker is already open the
+  // probe short-circuits (no dead request) and reports the open state.
+  const probe = () => requestGateway("GET", "/api/send-message", {});
+  const b = await withBreaker(probe, "test-connection");
+
+  if (b.shortCircuited) {
+    return {
+      reachable: false,
+      configured: true,
+      ok: false,
+      gateway: baseUrlRaw,
+      status: "breaker_open",
+      detail:
+        "The gateway is already known to be unreachable (circuit breaker open from a recent " +
+        "failure). Wait for the cooldown, then test again once it is back.",
+    };
+  }
+
+  if (b.error) {
+    const httpError = Number.isInteger(b.error.statusCode) && b.error.statusCode >= 400;
+    return {
+      reachable: !isNetworkFailure(b.error),
+      configured: true,
+      keyOk: httpError ? false : undefined,
+      ok: false,
+      gateway: baseUrlRaw,
+      status: httpError ? "http_error" : "unreachable",
+      httpStatus: httpError ? b.error.statusCode : undefined,
+      detail: httpError
+        ? `Gateway reachable but responded ${b.error.statusCode} (check the API key).`
+        : `Gateway not reachable: ${b.error.message}. The circuit breaker is now open; retry after the gateway is back.`,
+      error: b.error.message,
+    };
+  }
+
+  return {
+    reachable: true,
+    configured: true,
+    keyOk: true, // 2xx — the gateway accepted the request (and the key).
+    ok: true,
+    gateway: baseUrlRaw,
+    status: "ok",
+    detail: "Gateway reachable and the API key was accepted.",
+    response: b.value,
+  };
+};
+
 // ── Main: send document via Wasend ──────────────────────────────────────────
 const sendWhatsAppMessage = async ({ number, message, filePath, fileName, fileUrl, type } = {}) => {
   const normalised = normalizePhoneNumber(number);
   if (!normalised) {
     return { ok: false, error: `Invalid phone number: ${number}`, number, channel: "whatsapp" };
   }
-  if (!API_KEY) {
+  // HAG-23: live key (DB → env). Empty means no gateway credential anywhere.
+  if (!getGatewayConfig().apiKey) {
     // HAG-13: key absent — degrade gracefully (one rate-limited notice),
     // never a 500 loop. Fire-and-forget so the response shape is unchanged.
     markGatewayUnconfigured().catch(() => {});
@@ -583,7 +687,7 @@ const sendSmsMessage = async ({ number, message } = {}) => {
   if (!normalised) {
     return { ok: false, error: "Invalid phone number", number, channel: "sms" };
   }
-  if (!API_KEY) {
+  if (!getGatewayConfig().apiKey) {
     markGatewayUnconfigured().catch(() => {});
     return {
       ok: false,
@@ -926,4 +1030,6 @@ module.exports = {
   sendInvoiceNotifications,
   sendBookingConfirmation,
   sendBookingCancellation,
+  // HAG-23: side-effect-free gateway reachability probe (exercises the breaker).
+  testGatewayConnection,
 };

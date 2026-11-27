@@ -31,8 +31,13 @@ const fireWhatsAppInvoice = async (bookingId) => {
     const invoice = await InvoiceModel.generateCustomerInvoice(Number(bookingId));
     if (!invoice) return;
     const pdf = await InvoicePdfService.generateInvoicePdf(invoice);
+    // HAG-23: admin's in-app Settings value (public base URL) wins, live;
+    // then .env, then the localhost fallback.
     const publicBase =
-      (process.env.PUBLIC_BASE_URL || process.env.CLIENT_URL || `http://localhost:${process.env.PORT || 5002}`).replace(/\/+$/, "");
+      (require("../services/dynamicSettings").getPublicBaseUrl() ||
+        process.env.PUBLIC_BASE_URL ||
+        process.env.CLIENT_URL ||
+        `http://localhost:${process.env.PORT || 5002}`).replace(/\/+$/, "");
     const fileUrl = `${publicBase}/uploads/invoices/${pdf.fileName}`;
     const filePath = pdf.filePath;
     const guestName = invoice.customerName || "Valued Guest";

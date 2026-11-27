@@ -868,8 +868,10 @@ exports.updateInvoicePaymentStatus = async (req, res) => {
           let filePath = null;
           try {
             const pdf = await generateInvoicePdf(invoice);
+            // HAG-23: Settings (DB) public base URL wins, live; then env.
             const publicBase =
-              (process.env.PUBLIC_BASE_URL ||
+              (require("../services/dynamicSettings").getPublicBaseUrl() ||
+                process.env.PUBLIC_BASE_URL ||
                 process.env.PUBLIC_URL ||
                 process.env.CLIENT_URL ||
                 `http://localhost:${process.env.PORT || 5002}`

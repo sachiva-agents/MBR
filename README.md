@@ -124,6 +124,24 @@ serves the API on 5002 (CORS via `CORS_ORIGINS`).
 | `WHATSAPP_GATEWAY_URL` | WhatsApp gateway URL override (wins over legacy `wasachiva_url`) |
 | `KOT_PRINTER_NAME` | Explicit KOT printer override (wins over `KITCHEN_PRINTER_NAME`) |
 | `AUTO_PRINT_ENABLED` + `PRINT_*` | Thermal printer settings (KOT, A4, restaurant) |
+| `ZK_AUTO_SYNC_DISABLED` / `ZK_AUTO_SYNC_INTERVAL_MINUTES` / `ZK_AUTO_SYNC_WINDOW_HOURS` | Biometric auto-sync scheduler |
+
+#### Connector config precedence (in-app first, then `.env`, then default)
+
+The zero-config launch model: the hotel's **admin configures the connectors in-app**
+(backend Settings screen) and never edits a file. The connector fields above are the
+in-app values' `.env` fallback. The single source of truth for the precedence is
+`Maa-Baglamkhi-Resort-Backend/src/services/dynamicSettings.js`:
+
+1. **`app_settings` DB row** (the admin's most recent in-app save) — wins when the column holds a non-NULL value.
+2. **`.env`** — the operator's file value (each key's documented override order).
+3. **Built-in default** — so a fresh install works with nothing set.
+
+Apply behaviour: printer / WhatsApp / ZK-scheduler / public-base-URL values take
+effect **live, without a restart** (the settings save re-patches the running
+process). Leaving a field blank in the UI clears it back to `.env`/default.
+Host-fixed values (DB creds, `JWT_SECRET`, `CORS_*`, ports, rate limits, upload
+dirs) are deliberately **not** in-app configurable.
 
 ### Frontend (`.env` in `Maa-Baglamkhi-Resort-frontend/`)
 

@@ -66,9 +66,16 @@ const buildWindow = (now, windowHours) => {
   return { from: stamp(new Date(now.getTime() - windowHours * 60 * 60 * 1000)), to: stamp(now) };
 };
 
+// HAG-23: live scheduler settings (DB app_settings → env → default). A saved
+// value applies on the very next tick — no restart needed.
+const dynamicSettings = require("./dynamicSettings");
+
 // One pass over every active machine. Runs sequentially per machine; a
 // device that is offline must not block or delay the rest.
 async function runOnce() {
+  const zk = dynamicSettings.getZkAutoSync();
+  if (zk.disabled) return [];
+
   const lock = readLock();
   if (lock && lock.pid !== process.pid && isProcessAlive(lock.pid)) {
     console.log("[zk-auto-sync] another process owns the lock; skipping this run");
@@ -87,7 +94,7 @@ async function runOnce() {
     );
     for (const machine of machines) {
       try {
-        const { from, to } = buildWindow(new Date(), Number(process.env.ZK_AUTO_SYNC_WINDOW_HOURS || 4));
+        const { from, to } = buildWindow(new Date(), zk.windowHours);
         const summary = await syncMachine(machine, { from, to, deleteAfter: false, actor: "zk-auto-sync" });
         results.push(summary);
         console.log(
@@ -108,28 +115,44 @@ async function runOnce() {
 
 // Idempotent: a second call returns the existing timer. pm2 cluster mode is
 // covered by the lock file; module re-require returns the same instance.
+//
+// HAG-23: the scheduler runs on a fixed 60s HEARTBEAT rather than a
+// fixed-interval timer, so the admin's in-app ZK settings (enabled, interval,
+// window) are re-read live each tick and apply without a restart. A sync runs
+// only when it's not disabled AND at least the configured interval has passed
+// since the last run.
 let timer = null;
 let started = false;
+const HEARTBEAT_MS = 60 * 1000;
+let lastSyncAt = 0;
+let firstRun = true;
 
 function start() {
   if (started) return timer;
-  if (String(process.env.ZK_AUTO_SYNC_DISABLED || "").toLowerCase() === "true") {
-    console.log("[zk-auto-sync] disabled by ZK_AUTO_SYNC_DISABLED");
-    return null;
-  }
-  const intervalMs = Number(process.env.ZK_AUTO_SYNC_INTERVAL_MINUTES || 15) * 60 * 1000;
   started = true;
-  // First run shortly after boot so punches from the last window are picked
-  // up immediately; unref() keeps a running server from blocking on the timer.
+
+  // Kick off the first run shortly after boot so punches from the last window
+  // are picked up immediately; unref() keeps a running server from blocking
+  // on the timer. runOnce() still honours the live disabled flag.
   const kickoff = setTimeout(() => { runOnce().catch(() => {}); }, 30_000);
   kickoff.unref?.();
+
   timer = setInterval(() => {
+    const zk = dynamicSettings.getZkAutoSync();
+    if (zk.disabled) return;
+    const due = firstRun || Date.now() - lastSyncAt >= zk.intervalMinutes * 60 * 1000;
+    if (!due) return;
+    firstRun = false;
+    lastSyncAt = Date.now();
     runOnce().catch(() => {});
-  }, intervalMs);
+  }, HEARTBEAT_MS);
   timer.unref?.();
+
+  const boot = dynamicSettings.getZkAutoSync();
   console.log(
-    `[zk-auto-sync] started — every ${intervalMs / 60000} min, ` +
-      `window ${Number(process.env.ZK_AUTO_SYNC_WINDOW_HOURS || 4)} h`
+    `[zk-auto-sync] started — 60s heartbeat honoring Settings (currently ` +
+      `every ${boot.intervalMinutes} min, window ${boot.windowHours} h` +
+      (boot.disabled ? ", disabled" : "") + `)`
   );
   return timer;
 }

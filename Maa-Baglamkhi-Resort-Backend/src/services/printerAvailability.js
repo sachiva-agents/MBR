@@ -20,19 +20,21 @@
 
 const { getPrinters } = require("pdf-to-printer");
 const { notifyAdmin } = require("./adminNotice");
+// HAG-23: the auto-print flag + printer name come from the live DB-backed
+// snapshot (admin editable in-app). dynamicSettings is safe to require here:
+// it depends on PrintConfig, not on printerAvailability (no cycle).
+const dynamicSettings = require("./dynamicSettings");
 
 const CACHE_TTL_MS = 60 * 1000; // re-check at most every minute
 const cache = new Map(); // printerName -> { ok, at, error }
 
 /**
- * Resolve the effective auto-print switch. AUTO_PRINT_ENABLED in .env used
- * to be dead config; it now genuinely disables the KOT auto-print path
- * (enqueue returns a skipped result, no retry, no notice spam).
+ * Resolve the effective auto-print switch. Precedence (HAG-23):
+ * app_settings.auto_print_enabled (admin's in-app choice) → AUTO_PRINT_ENABLED
+ * env → enabled. Reads the live snapshot, so a saved value applies without a
+ * restart. Genuinely disables the KOT auto-print path (skip, no retry).
  */
-const isAutoPrintEnabled = () => {
-  const v = String(process.env.AUTO_PRINT_ENABLED ?? "true").trim().toLowerCase();
-  return v !== "false" && v !== "0" && v !== "off" && v !== "no";
-};
+const isAutoPrintEnabled = () => dynamicSettings.isAutoPrintEnabled();
 
 /**
  * Is `printerName` present on this machine AND can we actually reach it?
@@ -75,15 +77,15 @@ const gateForJob = async ({ printerName, printerKey, jobLabel }) => {
   const reason = status.exists ? `printer ${printerName} unreachable: ${status.error}` : `no Windows printer named "${printerName}"`;
   console.error(
     `[PrintQueue][HAG-13] ${jobLabel} skipped — ${reason}. ` +
-    `Set ${printerKey} to a real printer name (env KITCHEN_PRINTER_NAME) or AUTO_PRINT_ENABLED=false to stop auto-printing.`,
+    `Fix in Settings → Printers (or KOT_PRINTER_NAME in .env) to a real printer, or set AUTO_PRINT_ENABLED=false.`,
   );
   await notifyAdmin({
     type: "printer_degraded",
     title: `Printer ${printerName} not available`,
     message:
       `${jobLabel} was skipped: ${reason}. Auto-print will keep skipping (no retry storm) ` +
-      `until the printer is installed/restarted or ${printerKey} (env override) points at a real one. ` +
-      `Set AUTO_PRINT_ENABLED=false to stop auto-print entirely.`,
+      `until the printer is installed/restarted or the KOT printer name is set (Settings → Printers, ` +
+      `KOT_PRINTER_NAME) to a real one. Set AUTO_PRINT_ENABLED=false to stop auto-print entirely.`,
     data: { printerKey, printerName, reason, at: new Date().toISOString() },
   });
   return { proceed: false, status, reason };

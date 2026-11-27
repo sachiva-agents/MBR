@@ -14,8 +14,13 @@ const db = require("../config/db");
 
 /**
  * Resolve the public base URL for serving PDFs.
+ * Precedence (HAG-23): admin's in-app Settings value (live, no restart) →
+ * PUBLIC_BASE_URL / PUBLIC_URL / CLIENT_URL env → localhost fallback.
  */
 const getPublicBaseUrl = () => {
+  const dbValue = require("../services/dynamicSettings").getPublicBaseUrl();
+  if (dbValue) return dbValue.replace(/\/+$/, "");
+
   const env =
     process.env.PUBLIC_BASE_URL ||
     process.env.PUBLIC_URL ||

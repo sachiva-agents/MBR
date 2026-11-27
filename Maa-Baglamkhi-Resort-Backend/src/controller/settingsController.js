@@ -1,4 +1,5 @@
 const db = require("../config/db");
+const dynamicSettings = require("../services/dynamicSettings");
 
 
 const DEFAULT_SETTINGS = {
@@ -36,6 +37,11 @@ const MIGRATED_COLUMNS = [
 ];
 
 const ensureSettingsRow = async () => {
+  // HAG-23: converge the table to the full superset (base + pay + connector
+  // columns) so the in-app connector config has its columns on every install.
+  // Idempotent + no-op on DBs that already have them.
+  await dynamicSettings.ensureSchema();
+
   await db.query(`
     CREATE TABLE IF NOT EXISTS app_settings (
       id INT NOT NULL PRIMARY KEY,
@@ -126,8 +132,25 @@ const getSettings = async () => {
       process.env.BUSINESS_CONTACT ||
       "",
     ...payFromRow(row),
+    // HAG-23: connector config (DB value → env → default, documented in
+    // services/dynamicSettings.js). Merged so GET /settings returns the fully
+    // resolved live value an admin is actually running on.
+    ...dynamicSettings.getConnectorSettings(),
     updatedAt: row.updated_at || null,
   };
+};
+
+// Connector field: js key -> { dbCol, type }. "bool" is a 0/1 flag where an
+// empty string clears it to NULL (follow env); "num" is clamped positive.
+const CONNECTOR_FIELDS = {
+  kotPrinterName: { db: "kot_printer_name", type: "text" },
+  autoPrintEnabled: { db: "auto_print_enabled", type: "bool" },
+  whatsappGatewayUrl: { db: "whatsapp_gateway_url", type: "text" },
+  whatsappApiKey: { db: "whatsapp_api_key", type: "text" },
+  zkAutoSyncDisabled: { db: "zk_auto_sync_disabled", type: "bool" },
+  zkAutoSyncIntervalMinutes: { db: "zk_auto_sync_interval_minutes", type: "num" },
+  zkAutoSyncWindowHours: { db: "zk_auto_sync_window_hours", type: "num" },
+  publicBaseUrl: { db: "public_base_url", type: "text" },
 };
 
 const updateSettings = async (patch = {}) => {
@@ -145,6 +168,32 @@ const updateSettings = async (patch = {}) => {
     absentPay: "absent_pay",
     leavePay: "leave_pay",
   };
+
+  // Merge the connector fields in (their own column + type rules).
+  // A value that looks like a redacted API-key preview ("abcd…wxyz (40 chars)")
+  // is the GET response echo, not a real key — the Settings UI PUTs the whole
+  // object, so writing it back would clobber the stored key. Skip it.
+  const REDACTED_RE = /^[A-Za-z0-9]{0,4}…[A-Za-z0-9]{0,4} \(\d+ chars\)$/;
+  for (const [key, spec] of Object.entries(CONNECTOR_FIELDS)) {
+    if (!(key in patch)) continue;
+    let value = patch[key];
+    if (value === "" || value === null || value === undefined) {
+      value = null; // clear → fall back to env/default (documented precedence)
+    } else if (spec.type === "bool") {
+      value = value === true || value === 1 || String(value).toLowerCase() === "true" ? 1 : 0;
+    } else if (spec.type === "num") {
+      const n = Number(value);
+      value = Number.isFinite(n) && n > 0 ? Math.round(n) : null;
+    } else {
+      value = String(value).trim();
+      if (REDACTED_RE.test(value)) {
+        delete patch[key]; // never write a redacted preview back to the DB
+        continue;
+      }
+    }
+    map[key] = spec.db;
+    patch[key] = value;
+  }
 
   const setParts = [];
   const values = [];
@@ -173,6 +222,11 @@ const updateSettings = async (patch = {}) => {
       `UPDATE app_settings SET ${setParts.join(", ")} WHERE id = 1`,
       values,
     );
+    // HAG-23: apply the save live (re-read the DB row + re-patch PrintConfig)
+    // so the print/WhatsApp/ZK paths use it without a restart. Awaited (it
+    // never throws) so the getSettings() below reports the just-saved values.
+    dynamicSettings.invalidate();
+    await dynamicSettings.refresh();
   }
 
   return getSettings();
@@ -252,6 +306,15 @@ exports.updateSettings = async (req, res) => {
       "businessName",
       "businessContact",
       ...PAY_KEYS,
+      // HAG-23 connector fields.
+      "kotPrinterName",
+      "autoPrintEnabled",
+      "whatsappGatewayUrl",
+      "whatsappApiKey",
+      "zkAutoSyncDisabled",
+      "zkAutoSyncIntervalMinutes",
+      "zkAutoSyncWindowHours",
+      "publicBaseUrl",
     ];
     const patch = {};
     for (const key of allowed) {
@@ -280,13 +343,58 @@ exports.updateSettings = async (req, res) => {
       patch.adminWhatsappNumber = digits;
     }
 
+    // HAG-23: light validation of the connector fields.
+    if (patch.whatsappGatewayUrl) {
+      try {
+        // eslint-disable-next-line no-new
+        new URL(String(patch.whatsappGatewayUrl));
+      } catch {
+        return res
+          .status(400)
+          .json({ error: "whatsappGatewayUrl must be a valid URL (https://… or http://…)" });
+      }
+    }
+    for (const [field, max] of [
+      ["zkAutoSyncIntervalMinutes", 1440],
+      ["zkAutoSyncWindowHours", 168],
+    ]) {
+      if (patch[field] !== "" && patch[field] != null) {
+        const n = Number(patch[field]);
+        if (!Number.isFinite(n) || n < 1 || n > max) {
+          return res.status(400).json({
+            error: `${field} must be a whole number between 1 and ${max}`,
+          });
+        }
+      }
+    }
+    if (patch.kotPrinterName && String(patch.kotPrinterName).length > 120) {
+      return res.status(400).json({ error: "kotPrinterName is too long (max 120 chars)" });
+    }
+
     const settings = await updateSettings(patch);
     payPctCache = { at: 0, value: null }; // force a fresh read on next use
     res.json({ message: "Settings updated", settings });
   } catch (err) {
     console.error("updateSettings error:", err);
-    res
-      .status(500)
-      .json({ error: err.message || "Failed to update settings" });
+    res.status(500).json({ error: err.message || "Failed to update settings" });
+  }
+};
+
+/**
+ * POST /settings/test-connection — admin-gated (settingsRoutes).
+ *
+ * Side-effect-free probe of the WhatsApp gateway using the live resolved URL +
+ * key (DB → env → default). It exercises the HAG-13 circuit breaker: a down
+ * gateway trips it and fires the one rate-limited admin notice; a live
+ * gateway with an accepted key reports ok. It never sends a message.
+ */
+exports.testConnection = async (req, res) => {
+  try {
+    const WhatsAppService = require("../services/whatsappService");
+    const result = await WhatsAppService.testGatewayConnection();
+    res.json(result);
+  } catch (err) {
+    console.error("settings test-connection error:", err);
+    res.status(500).json({ error: err.message || "Connection test failed" });
   }
 };
