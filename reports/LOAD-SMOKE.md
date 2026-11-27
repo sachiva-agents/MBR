@@ -59,4 +59,6 @@ Backend RSS: **139 MB → 157 MB** over the run (monotonic, no leak, no GC cliff
 
 ## Teardown
 
-Killed the 5099 backend (documenting PIDs at teardown below). Left MariaDB/XAMPP running for the team. Scratch DB `hotel_management_hag19` and `reports/` artifacts retained.
+- 5099 backend: PID 20256 was the process running the load test. It exited on its own during the ~3h idle window after the run (host memory-pressure reap) — verified at teardown: **PID 20256 dead, port 5099 not listening**. No MBR servers of mine remain up (earlier boot cycles PIDs 47540 / 32084 / 3169-shell were already `taskkill`'d between reboots).
+- The pre-existing team dev backend on **5002 (PID 7308) was NOT touched**.
+- **MariaDB (XAMPP, PID 37036 on 3306) left running for the team.** Scratch DB `hotel_management_hag19` retained with its seeded test data.
