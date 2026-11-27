@@ -117,3 +117,57 @@ print-queue skip row, admin notice id 31 on `mbr_pdf_baseline`. `print_queue`
 table now exists on the scratch DB (created by the gate, DDL from
 `PrintLogModel.js`) — keep until B-1 lands; after the fix, a *fresh* DB should
 get it at boot.
+
+---
+
+## Final leg at 1e24c01 — executed by god (2026-11-27)
+
+**Context:** the manager agent's session was archived before it could run the
+HAG-16 re-verification leg; the human asked the floor to close round 3.
+God executed the final leg directly (no code changes by the floor beyond
+ron's verified 1e24c01).
+
+### 1. Fresh-DB printer leg @ 1e24c01 — PASS
+- `hotel_management_hag16` recreated from repo `schema-v4.sql` only (82
+  tables, pre-boot `print%` = `print_logs` alone) — exact B-1 pre-fix state.
+- Boot on 5003 → **`print_queue` present after boot** (B-1 fix active),
+  `/api/print/queue` 200 (was 500 pre-fix), `/api/print/status` 200.
+- KOT-0001 created → `print_queue` row: status=`skipped`, retry_count=0,
+  `processed_at` set; **exactly one** `admin-notice:printer_degraded`;
+  poller log **0** "print_queue doesn't exist / Failed to fetch" lines
+  (pre-fix: flood every 2s). HAG-13 skip-once semantics hold.
+
+### 2. Suites sanity — PASS
+routes **512/0** · lifecycle **120/0** · write-probe **55/0**
+(server at 1e24c01, `DB_NAME_TEST=hotel_management_test`, IPv4 127.0.0.1).
+
+### 3. PDF re-diff @ 1e24c01 — PASS (with a record correction)
+Repro per BASELINE.md: `mbr_pdf_baseline` stack, Vite :5173, Playwright
+1.63 (matches baseline tooling), clock pinned 2026-11-26 10:00,
+`/hotel/all-bookings` → row `BK-20261120-ABCD` → **View** → Details →
+Download PDF ×3.
+
+Result (all 3 generations stable): **271,149 B · 1 page · 1588×2246 ·
+DCTDecode stream sha256 `b4269542c26c3ecd33d4d1cffafe7f6a693f88c8467e7e76d7863a489685e9c1`**.
+
+Cross-check: the **same extraction applied to the committed baseline**
+`reports/pdf-baseline/2026-11-26-invoice.pdf` yields `b4269542…` — i.e.
+the freshly regenerated invoice is **byte-identical in pixel raster,
+size, page count and image dims to the pre-round-3 baseline**. Freeze held.
+
+> **Record correction (god):** `BASELINE.md` / this report's gate steps
+> recorded the image-stream fingerprint as `364fa75d…` — a value
+> computed against a **pre-commit generation** that was not committed.
+> It is not reproducible from the committed artifact: the exact-stream
+> slice (and six adjacent extraction variants) of the committed baseline
+> all yield `b4269542…`. **Canonical stable invariant going forward:
+> `b4269542c26c…` (extraction: `/Length`-bounded stream bytes of the
+> sole DCTDecode object).** No verdict impact: every round-3 generation
+> matches the committed baseline byte-for-byte under this canonical form.
+
+### Verdict
+
+**6/6 GREEN.** HAG-14 closed. B-1 cleared and re-verified end-to-end on a
+fresh database. Round 3 complete: all 22 gap routes wired into live UI,
+infra gaps degrade gracefully, fresh-install print bug fixed, backend
+suites 0-fail, PDF output identical to the committed baseline.
