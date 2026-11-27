@@ -26,6 +26,30 @@ class PrintLogs {
   KEY \`idx_created\` (\`created_at\`)
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`)
 
+      // HAG-16: print_queue lives only in PrintLogModel.js (lazy ensureSchema,
+      // called per-write). Fresh installs lack the table at boot, so the
+      // KOT auto-print queue poller 500s. Create it here, verbatim from
+      // PrintLogModel.js, in the live boot path. IF NOT EXISTS → no-op on
+      // running installs.
+      await conn.query(`CREATE TABLE IF NOT EXISTS print_queue (
+        id INT NOT NULL AUTO_INCREMENT,
+        job_id VARCHAR(120) NOT NULL,
+        print_type VARCHAR(80) NOT NULL,
+        payload JSON NOT NULL,
+        printer_name VARCHAR(255) NOT NULL,
+        priority INT NOT NULL DEFAULT 0,
+        retry_count INT NOT NULL DEFAULT 0,
+        max_retries INT NOT NULL DEFAULT 3,
+        status VARCHAR(50) NOT NULL DEFAULT 'queued',
+        error_message TEXT DEFAULT NULL,
+        created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        processed_at DATETIME DEFAULT NULL,
+        PRIMARY KEY (id),
+        INDEX idx_job_id (job_id),
+        INDEX idx_status (status),
+        INDEX idx_priority (priority, created_at)
+      )`)
+
       await conn.commit()
     } catch (err) {
       await conn.rollback()
