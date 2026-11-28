@@ -802,10 +802,10 @@ const createInvoice = (data, callback) => {
           (
             invoice_no, date, customer_name, phone, room_no, check_in, check_out,
             price_per_day, food_charge, extra_charge, subtotal, gst, discount,
-            final_total, total_amount, payment_mode, payment_status, status,
+            total, payment_mode, payment_status, status,
             notes, items_json, booking_id, customer_id
           )
-          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         `,
         [
           data.invoiceNo,
@@ -822,7 +822,6 @@ const createInvoice = (data, callback) => {
           data.gst || data.tax || 0,
           data.discount || 0,
           data.finalTotal || data.totalAmount || 0,
-          data.totalAmount || data.finalTotal || 0,
           data.paymentMode || null,
           normalizePaymentStatus(data.paymentStatus || data.status),
           data.status || data.paymentStatus || "Pending",

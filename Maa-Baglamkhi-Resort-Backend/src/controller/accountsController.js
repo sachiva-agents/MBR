@@ -804,8 +804,12 @@ const getHotelBillingRecords = async (req, res) => {
       b.total_amount,
       b.total_amount AS totalAmount,
       b.advance_amount,
-      b.balance_amount,
-      b.balance_amount AS remainingAmount,
+      b.balance_amount AS booking_stage_balance,
+      COALESCE(b.total_amount, 0) - COALESCE((
+        SELECT COALESCE(SUM(p.amount), 0)
+          FROM payments p
+         WHERE p.booking_id = b.id AND p.status = 'completed'
+      ), 0) AS remainingAmount,
       b.created_at,
       (
         SELECT GROUP_CONCAT(r.room_number ORDER BY r.room_number SEPARATOR ', ')
@@ -851,10 +855,11 @@ const getHotelBillingRecords = async (req, res) => {
     const records = rows.map((row) => {
       const total = round2(row.total_amount);
       const paid = round2(row.paid_amount);
-      const balance = round2(row.balance_amount);
+      const bookingBalance = round2(row.booking_stage_balance || 0);
+      const remaining = round2(row.remainingAmount || total - paid);
       let paymentStatus = "Pending";
       if (normalizeText(row.status) === "cancelled") paymentStatus = "Cancelled";
-      else if (balance <= 0 && paid > 0) paymentStatus = "Paid";
+      else if (remaining <= 0 && paid > 0) paymentStatus = "Paid";
       else if (paid > 0) paymentStatus = "Partial";
 
       return {
@@ -864,8 +869,8 @@ const getHotelBillingRecords = async (req, res) => {
         paid_amount: paid,
         paidAmount: paid,
         netPaid: paid,
-        balance_amount: balance,
-        remainingAmount: balance,
+        balance_amount: bookingBalance,
+        remainingAmount: remaining,
         payment_status: paymentStatus,
         paymentStatus,
         payment_mode: row.payment_mode || null,
@@ -1307,11 +1312,11 @@ const getReconciliationItemsFromSources = async ({ from, to } = {}) => {
 };
 // Pure builder shared by the items list and the summary so both always agree.
 const buildReconciliationItems = async (filters = {}) => {
-  const { paymentMode, sourceType, matchStatus } = filters;
+  const { paymentMode, sourceType, matchStatus, from, to } = filters;
 
   const [sources, ledger] = await Promise.all([
-    getReconciliationItemsFromSources(),
-    getReconciliationLedgerRows({ paymentMode }),
+    getReconciliationItemsFromSources({ from, to }),
+    getReconciliationLedgerRows({ paymentMode, from, to }),
   ]);
 
   // Index the most recent bank movement per source.
@@ -1357,16 +1362,16 @@ const buildReconciliationItems = async (filters = {}) => {
 };
 
 const listReconciliationItems = async (req, res) => {
-  const { paymentMode, sourceType, matchStatus } = req.query;
+  const { paymentMode, sourceType, matchStatus, from, to } = req.query;
   try {
-    res.json(await buildReconciliationItems({ paymentMode, sourceType, matchStatus }));
+    res.json(await buildReconciliationItems({ paymentMode, sourceType, matchStatus, from, to }));
   } catch (error) {
     res.status(500).json({ message: "Failed to fetch reconciliation items", error: error.message });
   }
 };
 
 const getReconciliationSummary = async (req, res) => {
-  const { paymentMode, sourceType, matchStatus } = req.query;
+  const { paymentMode, sourceType, matchStatus, from, to } = req.query;
 
   try {
     const params = [];
@@ -2460,10 +2465,11 @@ const settlePendingBill = async (req, res) => {
     if (!methodId) return res.status(400).json({ message: "No payment method available for this mode." });
 
     if (type === "invoice") {
-      const invoice = await queryOne("SELECT id, total, paid_amount, balance FROM invoices WHERE id = ?", [sourceId]);
+      const invoice = await queryOne("SELECT id, total, paid_amount FROM invoices WHERE id = ?", [sourceId]);
       if (!invoice) return res.status(404).json({ message: "Invoice not found" });
 
-      const due = round2(amount > 0 ? amount : invoice.balance);
+      const computedBalance = round2(toNumber(invoice.total) - toNumber(invoice.paid_amount));
+      const due = round2(amount > 0 ? amount : computedBalance);
       if (due <= 0) return res.status(400).json({ message: "This invoice has no pending balance." });
 
       await query(
@@ -2475,8 +2481,8 @@ const settlePendingBill = async (req, res) => {
       const newPaid = round2(toNumber(invoice.paid_amount) + due);
       const newBalance = round2(toNumber(invoice.total) - newPaid);
       await query(
-        "UPDATE invoices SET paid_amount = ?, balance = ?, payment_status = CASE WHEN ? <= 0 THEN 'paid' ELSE 'partial' END, updated_at = CURRENT_TIMESTAMP WHERE id = ?",
-        [newPaid, newBalance < 0 ? 0 : newBalance, newBalance, invoice.id],
+        "UPDATE invoices SET paid_amount = ?, payment_status = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?",
+        [newPaid, newBalance <= 0 ? "paid" : "partial", invoice.id],
       );
 
       return res.json({ message: "Invoice settled", paid: newPaid, balance: newBalance < 0 ? 0 : newBalance });
