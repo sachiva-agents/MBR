@@ -89,7 +89,15 @@ async function syncMachine(machine, { from, to, deleteAfter = false, actor = nul
     console.error(`[zk sync ${machine.name}] clock check failed:`, error.message)
   }
 
-  const { rawLogs, machineTime } = await zk.pullLogs(machine, { from, to, deleteAfter })
+  const { rawLogs, machineTime } = await Promise.race([
+    zk.pullLogs(machine, { from, to, deleteAfter }),
+    new Promise((_, reject) =>
+      setTimeout(
+        () => reject(new Error(`ZK device ${machine.name} unreachable: pull timed out after 10s`)),
+        10_000,
+      ),
+    ),
+  ])
   const parsed = parseLogLines(rawLogs)
   const groups = groupByShift(parsed, shifts)
 

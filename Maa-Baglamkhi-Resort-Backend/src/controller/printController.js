@@ -56,7 +56,7 @@ exports.queuePrint = async (req, res) => {
     });
   } catch (err) {
     console.error("[Print/queue] Error:", err.message);
-    res.status(500).json({ message: "Failed to queue print job", error: err.message });
+    res.status(500).json({ message: "Failed to queue print job", error: "Internal server error" });
   }
 };
 
@@ -92,7 +92,7 @@ exports.reprint = async (req, res) => {
     }
   } catch (err) {
     console.error("[Print/reprint] Error:", err.message);
-    res.status(500).json({ message: "Reprint failed", error: err.message });
+    res.status(500).json({ message: "Reprint failed", error: "Internal server error" });
   }
 };
 
@@ -119,7 +119,7 @@ exports.getHistory = async (req, res) => {
     res.json({ history, count: history.length });
   } catch (err) {
     console.error("[Print/history] Error:", err.message);
-    res.status(500).json({ message: "Failed to fetch print history", error: err.message });
+    res.status(500).json({ message: "Failed to fetch print history", error: "Internal server error" });
   }
 };
 
@@ -144,7 +144,7 @@ exports.getPrinterStatus = async (req, res) => {
       ...status,
     });
   } catch (err) {
-    res.status(500).json({ message: "Failed to check printer status", error: err.message });
+    res.status(500).json({ message: "Failed to check printer status", error: "Internal server error" });
   }
 };
 
@@ -175,7 +175,7 @@ exports.getQueueStatus = async (req, res) => {
       recentJobs: recent,
     });
   } catch (err) {
-    res.status(500).json({ message: "Failed to get queue status", error: err.message });
+    res.status(500).json({ message: "Failed to get queue status", error: "Internal server error" });
   }
 };
 
@@ -207,7 +207,7 @@ exports.cancelQueueJob = async (req, res) => {
     res.json({ message: "Job cancelled", jobId });
   } catch (err) {
     console.error("[Print/cancel] Error:", err.message);
-    res.status(500).json({ message: "Failed to cancel job", error: err.message });
+    res.status(500).json({ message: "Failed to cancel job", error: "Internal server error" });
   }
 };
 
@@ -235,7 +235,7 @@ exports.getPrintTypes = async (req, res) => {
 
     res.json({ types, printers });
   } catch (err) {
-    res.status(500).json({ message: "Failed to get print types", error: err.message });
+    res.status(500).json({ message: "Failed to get print types", error: "Internal server error" });
   }
 };
 
@@ -294,6 +294,6 @@ exports.testPrint = async (req, res) => {
     }
   } catch (err) {
     console.error("[Print/test] Error:", err.message);
-    res.status(500).json({ message: "Test print failed", error: err.message });
+    res.status(500).json({ message: "Test print failed", error: "Internal server error" });
   }
 };

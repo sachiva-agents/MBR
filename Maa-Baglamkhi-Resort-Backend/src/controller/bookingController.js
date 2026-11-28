@@ -913,7 +913,7 @@ exports.createGuest = async (req, res) => {
     console.error("[createGuest] DB error:", err);
     res.status(500).json({
       message: "Guest creation failed",
-      error: err.message,
+      error: "Internal server error",
       code: err.code,
       sqlState: err.sqlState,
       errno: err.errno,
@@ -1079,7 +1079,7 @@ exports.updateCompany = async (req, res) => {
 
     res.status(500).json({
       message: "Company save failed",
-      error: err.message,
+      error: "Internal server error",
     });
   }
 };
@@ -1237,7 +1237,7 @@ exports.updateTariff = async (req, res) => {
     if (process.env.NODE_ENV !== "test") {
       console.error("updateTariff failed:", error);
     }
-    res.status(500).json({ message: "Tariff save failed", error: error.message });
+    res.status(500).json({ message: "Tariff save failed", error: "Internal server error" });
   }
 };
 
@@ -1335,7 +1335,7 @@ exports.getBookingWizard = async (req, res) => {
     if (process.env.NODE_ENV !== "test") {
       console.error("Booking wizard fetch failed:", error);
     }
-    res.status(500).json({ message: "Booking wizard fetch failed", error: error.message });
+    res.status(500).json({ message: "Booking wizard fetch failed", error: "Internal server error" });
   }
 };
 
@@ -1830,7 +1830,7 @@ exports.updateFullBooking = async (req, res) => {
     if (process.env.NODE_ENV !== "test") {
       console.error(error);
     }
-    res.status(500).json({ message: "Full booking update failed", error: error.message });
+    res.status(500).json({ message: "Full booking update failed", error: "Internal server error" });
   }
 };
 

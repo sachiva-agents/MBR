@@ -1343,6 +1343,45 @@ const buildBillDateFilter = (query = {}) => {
   return [conditions.length ? "WHERE " + conditions.join(" AND ") : "", params];
 };
 
+exports.getSplitBills = async (req, res) => {
+  try {
+    const [conditions, params] = buildBillDateFilter(req.query);
+    const where = conditions.replace(/WHERE 1 = 1/, "WHERE 1 = 1 AND b.split_count > 1");
+    const [rows] = await db.query(
+      `
+        SELECT
+          b.id,
+          b.table_number,
+          b.token_id AS tokenId,
+          b.entity_type,
+          b.waiter_name,
+          b.customer_name,
+          b.phone,
+          b.subtotal,
+          b.service_charge,
+          b.tax_amount AS gst,
+          b.total,
+          b.discount_amount,
+          b.payment_method,
+          b.payment_status AS invoiceStatus,
+          b.split_no,
+          b.split_count,
+          b.paid_at,
+          b.created_at
+        FROM bills b
+        LEFT JOIN tokens t ON t.id = b.token_id
+        ${where}
+        ORDER BY b.created_at DESC
+        LIMIT 200
+      `,
+      params
+    );
+    res.json(rows);
+  } catch (err) {
+    res.status(500).json({ message: "Failed to load split bills", error: "Internal server error" });
+  }
+};
+
 exports.getBills = async (req, res) => {
   try {
     const [conditions, params] = buildBillDateFilter(req.query);
@@ -1382,7 +1421,7 @@ exports.getBills = async (req, res) => {
     }
     res.json(resultRows);
   } catch (err) {
-    res.status(500).json({ message: "Failed to load bills", error: err.message });
+    res.status(500).json({ message: "Failed to load bills", error: "Internal server error" });
   }
 };
 

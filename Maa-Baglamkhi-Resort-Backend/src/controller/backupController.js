@@ -294,7 +294,7 @@ exports.getSettings = async (_req, res) => {
     res.json(await readSettings());
   } catch (err) {
     console.error("backup getSettings error:", err);
-    res.status(500).json({ error: err.message || "Failed to load backup settings" });
+    res.status(500).json({ error: "Failed to load backup settings" });
   }
 };
 
@@ -333,7 +333,7 @@ exports.updateSettings = async (req, res) => {
     res.json({ message: "Backup settings updated", settings });
   } catch (err) {
     console.error("backup updateSettings error:", err);
-    res.status(500).json({ error: err.message || "Failed to update backup settings" });
+    res.status(500).json({ error: "Failed to update backup settings" });
   }
 };
 
@@ -343,7 +343,7 @@ exports.runNow = async (_req, res) => {
     res.json({ file, sizeBytes });
   } catch (err) {
     console.error("backup run error:", err);
-    res.status(500).json({ error: err.message || "Backup failed" });
+    res.status(500).json({ error: "Backup failed" });
   }
 };
 
@@ -382,7 +382,7 @@ exports.list = async (_req, res) => {
     res.json({ destDir: s.destDir, files });
   } catch (err) {
     console.error("backup list error:", err);
-    res.status(500).json({ error: err.message || "Failed to list backups" });
+    res.status(500).json({ error: "Failed to list backups" });
   }
 };
 

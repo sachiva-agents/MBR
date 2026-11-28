@@ -737,7 +737,7 @@
     "testPath": "/api/audit-logs",
     "code": 200,
     "verdict": "PASS",
-    "body": "[{\"id\":2,\"user_id\":1,\"user_name\":null,\"user_role\":null,\"action\":\"read\",\"module\":\"unknown\",\"endpoint\":\"/api/accounts/dashboard\",\"http_method\":\"GET\",\"request_data\":\"{\\\"params\\\":{},\\\"query\\\":{},\\\"body\\\":"
+    "body": "[{\"id\":12,\"user_id\":1,\"user_name\":null,\"user_role\":null,\"action\":\"create\",\"module\":\"unknown\",\"endpoint\":\"/api/accounts/income\",\"http_method\":\"POST\",\"request_data\":\"{\\\"params\\\":{},\\\"query\\\":{},\\\"body\\\""
   },
   {
     "method": "POST",
@@ -804,7 +804,7 @@
     "testPath": "/api/backups/list",
     "code": 200,
     "verdict": "PASS",
-    "body": "{\"destDir\":\"/tmp/mbr-backups\",\"files\":[{\"name\":\"mbb_backup_20261102075810\",\"sizeBytes\":0,\"mtimeISO\":\"2026-11-28T07:27:22.029Z\",\"inDbClone\":true}]}"
+    "body": "{\"destDir\":\"/tmp/mbr-backups\",\"files\":[{\"name\":\"mbb_backup_20261102075810\",\"sizeBytes\":0,\"mtimeISO\":\"2026-11-28T09:44:08.937Z\",\"inDbClone\":true}]}"
   },
   {
     "method": "POST",
@@ -3382,7 +3382,7 @@
     "testPath": "/api/notifications",
     "code": 200,
     "verdict": "PASS",
-    "body": "[{\"id\":1,\"user_id\":null,\"user_role\":null,\"type\":\"general\",\"title\":\"\",\"message\":\"\",\"data\":null,\"is_read\":0,\"read_at\":null,\"created_at\":\"2026-11-28T07:27:28.000Z\",\"updated_at\":\"2026-11-28T07:27:28.000Z\""
+    "body": "[{\"id\":1,\"user_id\":null,\"user_role\":null,\"type\":\"general\",\"title\":\"\",\"message\":\"\",\"data\":null,\"is_read\":0,\"read_at\":null,\"created_at\":\"2026-11-28T09:44:15.000Z\",\"updated_at\":\"2026-11-28T09:44:15.000Z\""
   },
   {
     "method": "GET",
@@ -3392,7 +3392,7 @@
     "testPath": "/api/notification",
     "code": 200,
     "verdict": "PASS",
-    "body": "[{\"id\":1,\"user_id\":null,\"user_role\":null,\"type\":\"general\",\"title\":\"\",\"message\":\"\",\"data\":null,\"is_read\":0,\"read_at\":null,\"created_at\":\"2026-11-28T07:27:28.000Z\",\"updated_at\":\"2026-11-28T07:27:28.000Z\""
+    "body": "[{\"id\":1,\"user_id\":null,\"user_role\":null,\"type\":\"general\",\"title\":\"\",\"message\":\"\",\"data\":null,\"is_read\":0,\"read_at\":null,\"created_at\":\"2026-11-28T09:44:15.000Z\",\"updated_at\":\"2026-11-28T09:44:15.000Z\""
   },
   {
     "method": "POST",
@@ -4007,16 +4007,6 @@
     "body": "{\"report\":\"feedback-analytics\",\"columns\":[\"booking_id\",\"guest_profile_id\",\"guest\",\"overall_rating\",\"cleanliness_rating\",\"service_rating\",\"location_rating\",\"value_rating\",\"is_published\",\"date\",\"review_"
   },
   {
-    "method": "POST",
-    "path": "/api/restaurant/tables",
-    "file": "restaurantRoutes",
-    "raw": "/tables",
-    "testPath": "/api/restaurant/tables",
-    "code": 400,
-    "verdict": "PASS",
-    "body": "{\"message\":\"Table number required\"}"
-  },
-  {
     "method": "GET",
     "path": "/api/restaurant/tables",
     "file": "restaurantRoutes",
@@ -4025,26 +4015,6 @@
     "code": 200,
     "verdict": "PASS",
     "body": "[]"
-  },
-  {
-    "method": "PUT",
-    "path": "/api/restaurant/tables/:id",
-    "file": "restaurantRoutes",
-    "raw": "/tables/:id",
-    "testPath": "/api/restaurant/tables/999999999",
-    "code": 200,
-    "verdict": "PASS",
-    "body": "{\"message\":\"Updated\"}"
-  },
-  {
-    "method": "DELETE",
-    "path": "/api/restaurant/tables/:id",
-    "file": "restaurantRoutes",
-    "raw": "/tables/:id",
-    "testPath": "/api/restaurant/tables/999999999",
-    "code": 404,
-    "verdict": "PASS",
-    "body": "{\"message\":\"Table not found\"}"
   },
   {
     "method": "GET",
@@ -4067,46 +4037,6 @@
     "body": "[]"
   },
   {
-    "method": "POST",
-    "path": "/api/restaurant/menu",
-    "file": "restaurantRoutes",
-    "raw": "/menu",
-    "testPath": "/api/restaurant/menu",
-    "code": 400,
-    "verdict": "PASS",
-    "body": "{\"message\":\"Name and price required\"}"
-  },
-  {
-    "method": "PUT",
-    "path": "/api/restaurant/menu/:id",
-    "file": "restaurantRoutes",
-    "raw": "/menu/:id",
-    "testPath": "/api/restaurant/menu/999999999",
-    "code": 400,
-    "verdict": "PASS",
-    "body": "{\"message\":\"Name and price required\"}"
-  },
-  {
-    "method": "DELETE",
-    "path": "/api/restaurant/menu/:id",
-    "file": "restaurantRoutes",
-    "raw": "/menu/:id",
-    "testPath": "/api/restaurant/menu/999999999",
-    "code": 200,
-    "verdict": "PASS",
-    "body": "{\"message\":\"Menu item deleted\"}"
-  },
-  {
-    "method": "POST",
-    "path": "/api/restaurant/split-bills",
-    "file": "restaurantRoutes",
-    "raw": "/split-bills",
-    "testPath": "/api/restaurant/split-bills",
-    "code": 400,
-    "verdict": "PASS",
-    "body": "{\"message\":\"Missing split bill fields\"}"
-  },
-  {
     "method": "GET",
     "path": "/api/restaurant/item-action-requests",
     "file": "restaurantRoutes",
@@ -4115,36 +4045,6 @@
     "code": 200,
     "verdict": "PASS",
     "body": "[]"
-  },
-  {
-    "method": "POST",
-    "path": "/api/restaurant/item-action-requests",
-    "file": "restaurantRoutes",
-    "raw": "/item-action-requests",
-    "testPath": "/api/restaurant/item-action-requests",
-    "code": 400,
-    "verdict": "PASS",
-    "body": "{\"message\":\"Missing action request fields\"}"
-  },
-  {
-    "method": "PUT",
-    "path": "/api/restaurant/item-action-requests/:id/review",
-    "file": "restaurantRoutes",
-    "raw": "/item-action-requests/:id/review",
-    "testPath": "/api/restaurant/item-action-requests/999999999/review",
-    "code": 400,
-    "verdict": "PASS",
-    "body": "{\"message\":\"Status is required\"}"
-  },
-  {
-    "method": "POST",
-    "path": "/api/restaurant/order/add",
-    "file": "restaurantRoutes",
-    "raw": "/order/add",
-    "testPath": "/api/restaurant/order/add",
-    "code": 400,
-    "verdict": "PASS",
-    "body": "{\"message\":\"tableNumber and item required\"}"
   },
   {
     "method": "GET",
@@ -4167,26 +4067,6 @@
     "body": "{}"
   },
   {
-    "method": "PUT",
-    "path": "/api/restaurant/order/:orderId",
-    "file": "restaurantRoutes",
-    "raw": "/order/:orderId",
-    "testPath": "/api/restaurant/order/999999999",
-    "code": 404,
-    "verdict": "PASS",
-    "body": "{\"message\":\"Order not found\"}"
-  },
-  {
-    "method": "DELETE",
-    "path": "/api/restaurant/order/:orderId",
-    "file": "restaurantRoutes",
-    "raw": "/order/:orderId",
-    "testPath": "/api/restaurant/order/999999999",
-    "code": 404,
-    "verdict": "PASS",
-    "body": "{\"message\":\"Order not found\"}"
-  },
-  {
     "method": "GET",
     "path": "/api/restaurant/order-items/:orderId",
     "file": "restaurantRoutes",
@@ -4195,16 +4075,6 @@
     "code": 200,
     "verdict": "PASS",
     "body": "[]"
-  },
-  {
-    "method": "PUT",
-    "path": "/api/restaurant/order/:tableNumber/pay",
-    "file": "restaurantRoutes",
-    "raw": "/order/:tableNumber/pay",
-    "testPath": "/api/restaurant/order/999999999/pay",
-    "code": 200,
-    "verdict": "PASS",
-    "body": "{\"message\":\"Order already settled\"}"
   },
   {
     "method": "GET",
@@ -4258,13 +4128,133 @@
   },
   {
     "method": "GET",
-    "path": "/api/restaurant/split-bills",
+    "path": "/api/restaurant/bills",
     "file": "restaurantRoutes",
-    "raw": "/split-bills",
-    "testPath": "/api/restaurant/split-bills",
+    "raw": "/bills",
+    "testPath": "/api/restaurant/bills",
     "code": 200,
     "verdict": "PASS",
     "body": "[]"
+  },
+  {
+    "method": "POST",
+    "path": "/api/restaurant/tables",
+    "file": "restaurantRoutes",
+    "raw": "/tables",
+    "testPath": "/api/restaurant/tables",
+    "code": 400,
+    "verdict": "PASS",
+    "body": "{\"message\":\"Table number required\"}"
+  },
+  {
+    "method": "PUT",
+    "path": "/api/restaurant/tables/:id",
+    "file": "restaurantRoutes",
+    "raw": "/tables/:id",
+    "testPath": "/api/restaurant/tables/999999999",
+    "code": 200,
+    "verdict": "PASS",
+    "body": "{\"message\":\"Updated\"}"
+  },
+  {
+    "method": "DELETE",
+    "path": "/api/restaurant/tables/:id",
+    "file": "restaurantRoutes",
+    "raw": "/tables/:id",
+    "testPath": "/api/restaurant/tables/999999999",
+    "code": 404,
+    "verdict": "PASS",
+    "body": "{\"message\":\"Table not found\"}"
+  },
+  {
+    "method": "POST",
+    "path": "/api/restaurant/menu",
+    "file": "restaurantRoutes",
+    "raw": "/menu",
+    "testPath": "/api/restaurant/menu",
+    "code": 400,
+    "verdict": "PASS",
+    "body": "{\"message\":\"Name and price required\"}"
+  },
+  {
+    "method": "PUT",
+    "path": "/api/restaurant/menu/:id",
+    "file": "restaurantRoutes",
+    "raw": "/menu/:id",
+    "testPath": "/api/restaurant/menu/999999999",
+    "code": 400,
+    "verdict": "PASS",
+    "body": "{\"message\":\"Name and price required\"}"
+  },
+  {
+    "method": "DELETE",
+    "path": "/api/restaurant/menu/:id",
+    "file": "restaurantRoutes",
+    "raw": "/menu/:id",
+    "testPath": "/api/restaurant/menu/999999999",
+    "code": 200,
+    "verdict": "PASS",
+    "body": "{\"message\":\"Menu item deleted\"}"
+  },
+  {
+    "method": "POST",
+    "path": "/api/restaurant/item-action-requests",
+    "file": "restaurantRoutes",
+    "raw": "/item-action-requests",
+    "testPath": "/api/restaurant/item-action-requests",
+    "code": 400,
+    "verdict": "PASS",
+    "body": "{\"message\":\"Missing action request fields\"}"
+  },
+  {
+    "method": "PUT",
+    "path": "/api/restaurant/item-action-requests/:id/review",
+    "file": "restaurantRoutes",
+    "raw": "/item-action-requests/:id/review",
+    "testPath": "/api/restaurant/item-action-requests/999999999/review",
+    "code": 400,
+    "verdict": "PASS",
+    "body": "{\"message\":\"Status is required\"}"
+  },
+  {
+    "method": "POST",
+    "path": "/api/restaurant/order/add",
+    "file": "restaurantRoutes",
+    "raw": "/order/add",
+    "testPath": "/api/restaurant/order/add",
+    "code": 400,
+    "verdict": "PASS",
+    "body": "{\"message\":\"tableNumber and item required\"}"
+  },
+  {
+    "method": "PUT",
+    "path": "/api/restaurant/order/:orderId",
+    "file": "restaurantRoutes",
+    "raw": "/order/:orderId",
+    "testPath": "/api/restaurant/order/999999999",
+    "code": 404,
+    "verdict": "PASS",
+    "body": "{\"message\":\"Order not found\"}"
+  },
+  {
+    "method": "DELETE",
+    "path": "/api/restaurant/order/:orderId",
+    "file": "restaurantRoutes",
+    "raw": "/order/:orderId",
+    "testPath": "/api/restaurant/order/999999999",
+    "code": 404,
+    "verdict": "PASS",
+    "body": "{\"message\":\"Order not found\"}"
+  },
+  {
+    "method": "PUT",
+    "path": "/api/restaurant/order/:tableNumber/pay",
+    "file": "restaurantRoutes",
+    "raw": "/order/:tableNumber/pay",
+    "testPath": "/api/restaurant/order/999999999/pay",
+    "code": 200,
+    "verdict": "PASS",
+    "body": "{\"message\":\"Order already settled\"}"
   },
   {
     "method": "POST",
@@ -4318,6 +4308,16 @@
   },
   {
     "method": "POST",
+    "path": "/api/restaurant/split-bills",
+    "file": "restaurantRoutes",
+    "raw": "/split-bills",
+    "testPath": "/api/restaurant/split-bills",
+    "code": 400,
+    "verdict": "PASS",
+    "body": "{\"message\":\"Missing split bill fields\"}"
+  },
+  {
+    "method": "POST",
     "path": "/api/restaurant/split-bills/:id/charge-to-room",
     "file": "restaurantRoutes",
     "raw": "/split-bills/:id/charge-to-room",
@@ -4338,10 +4338,10 @@
   },
   {
     "method": "GET",
-    "path": "/api/restaurant/bills",
+    "path": "/api/restaurant/split-bills",
     "file": "restaurantRoutes",
-    "raw": "/bills",
-    "testPath": "/api/restaurant/bills",
+    "raw": "/split-bills",
+    "testPath": "/api/restaurant/split-bills",
     "code": 200,
     "verdict": "PASS",
     "body": "[]"
@@ -4373,7 +4373,7 @@
     "testPath": "/api/roles",
     "code": 200,
     "verdict": "PASS",
-    "body": "[{\"id\":1,\"name\":\"admin\",\"display_name\":\"Administrator\",\"description\":null,\"is_system\":0,\"created_at\":\"2026-11-28T07:27:13.000Z\",\"permission_count\":0},{\"id\":2,\"name\":\"manager\",\"display_name\":\"Manager\","
+    "body": "[{\"id\":1,\"name\":\"admin\",\"display_name\":\"Administrator\",\"description\":null,\"is_system\":0,\"created_at\":\"2026-11-28T09:43:39.000Z\",\"permission_count\":0},{\"id\":2,\"name\":\"manager\",\"display_name\":\"Manager\","
   },
   {
     "method": "POST",
@@ -4983,7 +4983,7 @@
     "testPath": "/api/users",
     "code": 200,
     "verdict": "PASS",
-    "body": "[{\"id\":1,\"name\":\"Admin User\",\"email\":\"admin@resort.com\",\"phone\":\"\",\"avatar_url\":null,\"status\":\"active\",\"last_login_at\":null,\"created_at\":\"2026-11-28T07:27:18.000Z\",\"updated_at\":\"2026-11-28T07:27:18.00"
+    "body": "[{\"id\":1,\"name\":\"Admin User\",\"email\":\"admin@resort.com\",\"phone\":\"\",\"avatar_url\":null,\"status\":\"active\",\"last_login_at\":null,\"created_at\":\"2026-11-28T09:43:46.000Z\",\"updated_at\":\"2026-11-28T09:43:46.00"
   },
   {
     "method": "GET",
@@ -5222,7 +5222,7 @@
     "method": "POST",
     "code": 200,
     "verdict": "PASS",
-    "body": "{\"file\":\"backup_20261128_125734.sql\",\"sizeBytes\":386263}",
+    "body": "{\"file\":\"backup_20261128_151424.sql\",\"sizeBytes\":386305}",
     "section": "backup"
   },
   {
@@ -5232,7 +5232,7 @@
     "method": "GET",
     "code": 200,
     "verdict": "PASS",
-    "body": "{\"destDir\":\"C:\\\\Users\\\\ADMIN\\\\AppData\\\\Local\\\\Temp\\\\mbr-backups-gate\",\"files\":[{\"name\":\"backup_20261128_125734.sql\",\"sizeBytes\":386263,\"mtimeISO\":\"2026-11-28T07:27:34.904Z\"},{\"name\":\"mbb_backup_202611",
+    "body": "{\"destDir\":\"C:\\\\Users\\\\ADMIN\\\\AppData\\\\Local\\\\Temp\\\\mbr-backups-gate\",\"files\":[{\"name\":\"backup_20261128_151424.sql\",\"sizeBytes\":386305,\"mtimeISO\":\"2026-11-28T09:44:24.939Z\"},{\"name\":\"mbb_backup_202611",
     "section": "backup"
   },
   {

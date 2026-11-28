@@ -332,17 +332,68 @@ async function ensureSchema() {
   `);
 }
 
-const listRows = (tableName, orderColumn = "created_at") =>
-  runQuery(`SELECT * FROM ${tableName} ORDER BY ${orderColumn} DESC, id DESC`);
+// Whitelist for dynamic SQL table/column names. All internal callers use
+// hardcoded values from the list below; this guard prevents any future
+// caller from passing user-controlled strings into a query.
+const SAFE_TABLES = new Set([
+  "account_bank_ledgers",
+  "petty_cash_entries",
+  "gst_return_records",
+  "vendor_payment_records",
+  "purchase_orders",
+  "payroll_records",
+  "profit_center_entries",
+  "payment_gateway_settings",
+]);
 
-const insertRow = (tableName, data) =>
-  runQuery(`INSERT INTO ${tableName} SET ?`, [data]);
+const SAFE_COLUMNS_BY_TABLE = {
+  account_bank_ledgers:  new Set(["entry_date", "created_at", "id"]),
+  petty_cash_entries:    new Set(["entry_date", "created_at", "id"]),
+  gst_return_records:    new Set(["created_at", "id"]),
+  vendor_payment_records:new Set(["payment_date", "created_at", "id"]),
+  purchase_orders:       new Set(["order_date", "created_at", "id"]),
+  payroll_records:       new Set(["created_at", "id"]),
+  profit_center_entries: new Set(["entry_date", "created_at", "id"]),
+  payment_gateway_settings: new Set(["updated_at", "created_at", "id"]),
+};
 
-const updateRow = (tableName, id, data) =>
-  runQuery(`UPDATE ${tableName} SET ? WHERE id = ?`, [data, id]);
+function assertSafeTable(name) {
+  if (!SAFE_TABLES.has(name)) {
+    const err = new Error(`table not allowed: ${name}`);
+    err.statusCode = 400;
+    throw err;
+  }
+}
 
-const deleteRow = (tableName, id) =>
-  runQuery(`DELETE FROM ${tableName} WHERE id = ?`, [id]);
+function assertSafeColumn(table, col) {
+  const allowed = SAFE_COLUMNS_BY_TABLE[table];
+  if (!allowed || !allowed.has(col)) {
+    const err = new Error(`order column not allowed for ${table}: ${col}`);
+    err.statusCode = 400;
+    throw err;
+  }
+}
+
+const listRows = (tableName, orderColumn = "created_at") => {
+  assertSafeTable(tableName);
+  assertSafeColumn(tableName, orderColumn);
+  return runQuery(`SELECT * FROM ${tableName} ORDER BY ${orderColumn} DESC, id DESC`);
+};
+
+const insertRow = (tableName, data) => {
+  assertSafeTable(tableName);
+  return runQuery(`INSERT INTO ${tableName} SET ?`, [data]);
+};
+
+const updateRow = (tableName, id, data) => {
+  assertSafeTable(tableName);
+  return runQuery(`UPDATE ${tableName} SET ? WHERE id = ?`, [data, id]);
+};
+
+const deleteRow = (tableName, id) => {
+  assertSafeTable(tableName);
+  return runQuery(`DELETE FROM ${tableName} WHERE id = ?`, [id]);
+};
 
 const getPaymentGatewaySettingById = async (id) => {
   const rows = await runQuery(

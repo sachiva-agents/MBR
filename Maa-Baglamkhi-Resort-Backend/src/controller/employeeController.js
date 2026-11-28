@@ -1,5 +1,6 @@
 const db = require("../config/db");
 const bcrypt = require("bcryptjs");
+const crypto = require("crypto");
 
 const ROLE_NAME_TO_ID = {
   admin: 1,
@@ -15,7 +16,11 @@ const ROLE_NAME_TO_ID = {
 // least-privileged real role so a mislabelled account cannot gain access.
 const STAFF_ROLE_ID = 3;
 
-const DEFAULT_PASSWORD = "password";
+function generateTempPassword() {
+  // 12-char alphanumeric (upper + lower + digits). Not returned in the API
+  // response — the employee receives it via a separate channel (SMS/email).
+  return crypto.randomBytes(9).toString("base64").replace(/[^a-zA-Z0-9]/g, "").slice(0, 12);
+}
 
 function normalizeRoleName(raw) {
   const base = String(raw == null ? "" : raw).trim().toLowerCase();
@@ -215,7 +220,7 @@ exports.createEmployee = async (req, res) => {
     }
   }
 
-  const password = body.password || DEFAULT_PASSWORD;
+  const password = body.password || generateTempPassword();
 
   // The users row only means something together with its employees row, so
   // both run on one connection inside one transaction. Anything wrong with
@@ -247,7 +252,6 @@ exports.createEmployee = async (req, res) => {
     }
     return res.status(201).json({
       message: "Employee created successfully",
-      defaultPassword: DEFAULT_PASSWORD,
       employee,
     });
   } catch (err) {
@@ -259,7 +263,7 @@ exports.createEmployee = async (req, res) => {
     console.error("createEmployee error:", err.code || "", err.message || err);
     return res.status(500).json({
       message: "Failed to create employee",
-      error: err.message,
+      error: "Internal server error",
       code: err.code || "ER_FAILED",
     });
   } finally {
@@ -299,7 +303,7 @@ exports.listEmployees = async (req, res) => {
     return res.json(rows || []);
   } catch (err) {
     console.error("listEmployees error:", err.message || err);
-    return res.status(500).json({ message: "Failed to fetch employees", error: err.message });
+    return res.status(500).json({ message: "Failed to fetch employees", error: "Internal server error" });
   }
 };
 
@@ -317,7 +321,7 @@ exports.getEmployee = async (req, res) => {
     return res.json(employee);
   } catch (err) {
     console.error("getEmployee error:", err.message || err);
-    return res.status(500).json({ message: "Failed to fetch employee", error: err.message });
+    return res.status(500).json({ message: "Failed to fetch employee", error: "Internal server error" });
   }
 };
 

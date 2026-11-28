@@ -188,7 +188,7 @@ exports.getAll = async (req, res) => {
       const results = await query("SELECT * FROM housekeeping_assignments ORDER BY created_at DESC");
       res.json(results);
     } catch (err2) {
-      res.status(500).json({ message: "Database error", error: err2 });
+      res.status(500).json({ message: "Database error", error: "Internal server error" });
     }
   }
 };
@@ -229,7 +229,7 @@ exports.getStats = async (req, res) => {
       overdue:     Number(stats.overdue    || 0),
     });
   } catch (err) {
-    res.status(500).json({ message: "Stats fetch failed", error: err });
+    res.status(500).json({ message: "Stats fetch failed", error: "Internal server error" });
   }
 };
 
@@ -340,7 +340,7 @@ exports.create = async (req, res) => {
 
     res.json({ message: "Assignment created", id, status: "pending" });
   } catch (err) {
-    res.status(500).json({ message: "Insert failed", error: err });
+    res.status(500).json({ message: "Insert failed", error: "Internal server error" });
   }
 };
 
@@ -477,7 +477,7 @@ exports.update = async (req, res) => {
 
     res.json({ message: "Assignment updated" });
   } catch (err) {
-    res.status(500).json({ message: "Update failed", error: err });
+    res.status(500).json({ message: "Update failed", error: "Internal server error" });
   }
 };
 
@@ -487,7 +487,7 @@ exports.remove = async (req, res) => {
     await query("DELETE FROM housekeeping_assignments WHERE id = ?", [req.params.id]);
     res.json({ message: "Assignment deleted" });
   } catch (err) {
-    res.status(500).json({ message: "Delete failed", error: err });
+    res.status(500).json({ message: "Delete failed", error: "Internal server error" });
   }
 };
 

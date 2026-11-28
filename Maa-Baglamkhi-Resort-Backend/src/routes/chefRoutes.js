@@ -1,10 +1,13 @@
 const express = require("express");
 const router = express.Router();
+const authMiddleware = require("../middleware/authMiddleware");
+const roleMiddleware = require("../middleware/roleMiddleware");
 const chefController = require("../controller/chefController");
 const kitchenController = require("../controller/kitchenController");
-const authMiddleware = require("../middleware/authMiddleware");
 
-router.use(authMiddleware);
+// Kitchen orders and notifications — kitchen staff, chefs, waiters, and
+// management only. Reception and accounts must not touch kitchen orders.
+router.use(authMiddleware, roleMiddleware(["admin", "manager", "kitchen", "chef", "waiter"]));
 
 // Kitchen orders
 router.get("/", chefController.getKitchenOrders);

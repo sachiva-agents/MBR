@@ -75,14 +75,28 @@ const validateMachineBody = (body) => {
   }
   const machineIp = String(body.machineIp ?? body.machine_ip ?? host).trim();
   const machinePort = Number(body.machinePort ?? body.machine_port ?? port);
-  const password = String(body.machinePassword ?? body.machine_password ?? "00000000");
+
+  // Reject the publicly documented factory default. Admin must provide a
+  // password; if they don't, generate a random 8-digit numeric one.
+  const rawPassword = String(body.machinePassword ?? body.machine_password ?? "").trim();
+  if (!rawPassword) {
+    const error = new Error("machine password is required (provide a secure password for the device)");
+    error.statusCode = 400;
+    throw error;
+  }
+  if (rawPassword === "00000000") {
+    const error = new Error("factory default password '00000000' is not allowed — use a secure password");
+    error.statusCode = 400;
+    throw error;
+  }
+
   return {
     name,
     ip: host,
     port,
     machineIp,
     machinePort,
-    machinePassword: password.length > 0 ? password : "00000000",
+    machinePassword: rawPassword,
     status: body.status === "inactive" ? "inactive" : "active",
     dayShiftStart: toTimeHms(body.dayShiftStart ?? body.day_shift_start, "09:00:00"),
     dayShiftEnd: toTimeHms(body.dayShiftEnd ?? body.day_shift_end, "18:00:00"),

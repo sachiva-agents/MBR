@@ -54,7 +54,7 @@ exports.getKitchenOrders = async (req, res) => {
     res.json(rows.map(normalizeOrder));
   } catch (err) {
     console.error("getKitchenOrders error:", err);
-    res.status(500).json({ message: "Failed to get kitchen orders", error: err.message });
+    res.status(500).json({ message: "Failed to get kitchen orders", error: "Internal server error" });
   }
 };
 
@@ -125,7 +125,7 @@ exports.updateOrderStatus = async (req, res) => {
     res.json({ message: "Order status updated", order: updatedOrder });
   } catch (err) {
     console.error("updateOrderStatus error:", err);
-    res.status(500).json({ message: "Failed to update order", error: err.message });
+    res.status(500).json({ message: "Failed to update order", error: "Internal server error" });
   }
 };
 
@@ -137,7 +137,7 @@ exports.getNotifications = async (req, res) => {
     return notificationController.listNotifications(req, res);
   } catch (err) {
     console.error("getNotifications error:", err);
-    res.status(500).json({ message: "Failed to fetch notifications", error: err.message });
+    res.status(500).json({ message: "Failed to fetch notifications", error: "Internal server error" });
   }
 };
 
@@ -147,7 +147,7 @@ exports.markNotificationRead = async (req, res) => {
     return notificationController.markAsRead(req, res);
   } catch (err) {
     console.error("markNotificationRead error:", err);
-    res.status(500).json({ message: "Failed to mark as read", error: err.message });
+    res.status(500).json({ message: "Failed to mark as read", error: "Internal server error" });
   }
 };
 
@@ -157,7 +157,7 @@ exports.markAllNotificationsRead = async (req, res) => {
     return notificationController.markAllAsRead(req, res);
   } catch (err) {
     console.error("markAllNotificationsRead error:", err);
-    res.status(500).json({ message: "Failed to mark all as read", error: err.message });
+    res.status(500).json({ message: "Failed to mark all as read", error: "Internal server error" });
   }
 };
 
@@ -167,7 +167,7 @@ exports.createKitchenNotification = async (req, res) => {
     return notificationController.createNotification(req, res);
   } catch (err) {
     console.error("createKitchenNotification error:", err);
-    res.status(500).json({ message: "Failed to create notification", error: err.message });
+    res.status(500).json({ message: "Failed to create notification", error: "Internal server error" });
   }
 };
 
@@ -177,6 +177,6 @@ exports.deleteNotification = async (req, res) => {
     return notificationController.deleteNotification(req, res);
   } catch (err) {
     console.error("deleteNotification error:", err);
-    res.status(500).json({ message: "Failed to delete", error: err.message });
+    res.status(500).json({ message: "Failed to delete", error: "Internal server error" });
   }
 };

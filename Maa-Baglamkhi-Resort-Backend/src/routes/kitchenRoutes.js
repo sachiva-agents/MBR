@@ -1,12 +1,13 @@
 // routes/kitchenRoutes.js
-// FIX: Added DELETE /orders/:id (removeKitchenOrder) - was missing, crashed Kitchen.jsx
+// Kitchen order reads, status updates, cancellations and deletes.
 const express = require("express");
-const router  = express.Router();
+const router = express.Router();
 const authMiddleware = require("../middleware/authMiddleware");
+const roleMiddleware = require("../middleware/roleMiddleware");
 const kitchenController = require("../controller/kitchenController");
 
-// Kitchen order reads, status updates, cancellations and deletes.
-router.use(authMiddleware);
+// Waiters create orders, kitchen staff update/cancel, admin/manager oversee.
+router.use(authMiddleware, roleMiddleware(["admin", "manager", "kitchen", "chef", "waiter"]));
 
 router.post("/order",           kitchenController.createOrder);
 router.get("/",                 kitchenController.getOrders);
@@ -14,7 +15,6 @@ router.get("/orders",           kitchenController.getOrders);
 router.put("/orders/:id",       kitchenController.updateOrderStatus);
 router.put("/orders/:id/save",  kitchenController.saveOrder);
 router.put("/orders/:id/cancel",kitchenController.cancelOrder);
-// FIX: was missing in original kitchenRoutes.js
 router.delete("/orders/:id",    kitchenController.removeOrder);
 
 module.exports = router;
