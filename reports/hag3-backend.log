@@ -1,0 +1,94 @@
+
+> backend@1.0.0 start
+> node index.js
+
+[dotenv@17.3.1] injecting env (36) from .env -- tip: 🛡️ auth for agents: https://vestauth.com
+[dotenv@17.3.1] injecting env (0) from .env -- tip: 🛡️ auth for agents: https://vestauth.com
+Server running on port 5002
+MySQL Connected
+[PrintQueue] Print queue processor started
+[zk-auto-sync] started — every 15 min, window 4 h
+[zk-auto-sync] another process owns the lock; skipping this run
+[KOT] Auto-print triggered for order #1 (KOT KOT-0001) → table T-5
+[PrintQueue] Job queued: JOB-1795600778721-mbzzb7 type=kot printer=kitchen
+[KOT] ✓ Queued for printing — KOT KOT-0001
+[PrintQueue] Processing job: JOB-1795600778721-mbzzb7 type=kot
+[Thermal PDF] lines=21, height=289pt
+[Print] Failed to print: Command failed: X:\agent\MBR\Maa-Baglamkhi-Resort-Backend\node_modules\pdf-to-printer\dist\SumatraPDF-3.4.6-32.exe -print-to kitchen -silent -print-settings noscale,paper=Printer 80(72.1) x 3276 mm X:\agent\MBR\Maa-Baglamkhi-Resort-Backend\src\uploads\thermal\thermal_1795600780715.pdf
+
+[PrintQueue] Job failed: JOB-1795600778721-mbzzb7 error=Command failed: X:\agent\MBR\Maa-Baglamkhi-Resort-Backend\node_modules\pdf-to-printer\dist\SumatraPDF-3.4.6-32.exe -print-to kitchen -silent -print-settings noscale,paper=Printer 80(72.1) x 3276 mm X:\agent\MBR\Maa-Baglamkhi-Resort-Backend\src\uploads\thermal\thermal_1795600780715.pdf
+
+[PrintQueue] Job re-queued for retry: JOB-1795600778721-mbzzb7 attempt=1/3
+[PrintQueue] Processing job: JOB-1795600778721-mbzzb7 type=kot
+[Thermal PDF] lines=21, height=289pt
+[Print] Failed to print: Command failed: X:\agent\MBR\Maa-Baglamkhi-Resort-Backend\node_modules\pdf-to-printer\dist\SumatraPDF-3.4.6-32.exe -print-to kitchen -silent -print-settings noscale,paper=Printer 80(72.1) x 3276 mm X:\agent\MBR\Maa-Baglamkhi-Resort-Backend\src\uploads\thermal\thermal_1795600782718.pdf
+
+[PrintQueue] Job failed: JOB-1795600778721-mbzzb7 error=Command failed: X:\agent\MBR\Maa-Baglamkhi-Resort-Backend\node_modules\pdf-to-printer\dist\SumatraPDF-3.4.6-32.exe -print-to kitchen -silent -print-settings noscale,paper=Printer 80(72.1) x 3276 mm X:\agent\MBR\Maa-Baglamkhi-Resort-Backend\src\uploads\thermal\thermal_1795600782718.pdf
+
+[PrintQueue] Job re-queued for retry: JOB-1795600778721-mbzzb7 attempt=2/3
+[PrintQueue] Processing job: JOB-1795600778721-mbzzb7 type=kot
+[Thermal PDF] lines=21, height=289pt
+[Print] Failed to print: Command failed: X:\agent\MBR\Maa-Baglamkhi-Resort-Backend\node_modules\pdf-to-printer\dist\SumatraPDF-3.4.6-32.exe -print-to kitchen -silent -print-settings noscale,paper=Printer 80(72.1) x 3276 mm X:\agent\MBR\Maa-Baglamkhi-Resort-Backend\src\uploads\thermal\thermal_1795600784726.pdf
+
+[PrintQueue] Job failed: JOB-1795600778721-mbzzb7 error=Command failed: X:\agent\MBR\Maa-Baglamkhi-Resort-Backend\node_modules\pdf-to-printer\dist\SumatraPDF-3.4.6-32.exe -print-to kitchen -silent -print-settings noscale,paper=Printer 80(72.1) x 3276 mm X:\agent\MBR\Maa-Baglamkhi-Resort-Backend\src\uploads\thermal\thermal_1795600784726.pdf
+
+[Wasend Error] 500: {"status":"error","message":"Failed to send message"}
+[Wasend Error] 500: {"status":"error","message":"Failed to send message"}
+[auto-confirm] booking 1 — customer FAILED (Document send failed: unknown. Text fallback also failed: Wasend responded 500: {"status":"error","message":"Failed to send message"}), admin FAILED (Document send failed: unknown. Text fallback also failed: Wasend responded 500: {"status":"error","message":"Failed to send message"})
+[PrintQueue] Failed to fetch next job: connect ECONNREFUSED 127.0.0.1:3306
+[PrintQueue] Failed to fetch next job: connect ECONNREFUSED 127.0.0.1:3306
+[PrintQueue] Failed to fetch next job: connect ECONNREFUSED 127.0.0.1:3306
+[PrintQueue] Failed to fetch next job: connect ECONNREFUSED 127.0.0.1:3306
+[PrintQueue] Failed to fetch next job: connect ECONNREFUSED 127.0.0.1:3306
+[PrintQueue] Failed to fetch next job: connect ECONNREFUSED 127.0.0.1:3306
+[PrintQueue] Failed to fetch next job: connect ECONNREFUSED 127.0.0.1:3306
+[PrintQueue] Failed to fetch next job: connect ECONNREFUSED 127.0.0.1:3306
+[PrintQueue] Failed to fetch next job: connect ECONNREFUSED 127.0.0.1:3306
+[PrintQueue] Failed to fetch next job: connect ECONNREFUSED 127.0.0.1:3306
+[PrintQueue] Failed to fetch next job: connect ECONNREFUSED 127.0.0.1:3306
+[PrintQueue] Failed to fetch next job: connect ECONNREFUSED 127.0.0.1:3306
+[PrintQueue] Failed to fetch next job: connect ECONNREFUSED 127.0.0.1:3306
+[PrintQueue] Failed to fetch next job: connect ECONNREFUSED 127.0.0.1:3306
+[PrintQueue] Failed to fetch next job: connect ECONNREFUSED 127.0.0.1:3306
+[PrintQueue] Failed to fetch next job: connect ECONNREFUSED 127.0.0.1:3306
+[PrintQueue] Failed to fetch next job: connect ECONNREFUSED 127.0.0.1:3306
+[PrintQueue] Failed to fetch next job: connect ECONNREFUSED 127.0.0.1:3306
+[PrintQueue] Failed to fetch next job: connect ECONNREFUSED 127.0.0.1:3306
+[PrintQueue] Failed to fetch next job: connect ECONNREFUSED 127.0.0.1:3306
+[backupScheduler] connect ECONNREFUSED 127.0.0.1:3306
+[PrintQueue] Failed to fetch next job: connect ECONNREFUSED 127.0.0.1:3306
+[PrintQueue] Failed to fetch next job: connect ECONNREFUSED 127.0.0.1:3306
+[PrintQueue] Failed to fetch next job: connect ECONNREFUSED 127.0.0.1:3306
+[PrintQueue] Failed to fetch next job: connect ECONNREFUSED 127.0.0.1:3306
+[PrintQueue] Failed to fetch next job: connect ECONNREFUSED 127.0.0.1:3306
+[PrintQueue] Failed to fetch next job: connect ECONNREFUSED 127.0.0.1:3306
+[PrintQueue] Failed to fetch next job: connect ECONNREFUSED 127.0.0.1:3306
+[PrintQueue] Failed to fetch next job: connect ECONNREFUSED 127.0.0.1:3306
+[PrintQueue] Failed to fetch next job: connect ECONNREFUSED 127.0.0.1:3306
+[PrintQueue] Failed to fetch next job: connect ECONNREFUSED 127.0.0.1:3306
+[PrintQueue] Failed to fetch next job: connect ECONNREFUSED 127.0.0.1:3306
+[PrintQueue] Failed to fetch next job: connect ECONNREFUSED 127.0.0.1:3306
+[PrintQueue] Failed to fetch next job: connect ECONNREFUSED 127.0.0.1:3306
+[PrintQueue] Failed to fetch next job: connect ECONNREFUSED 127.0.0.1:3306
+[PrintQueue] Failed to fetch next job: connect ECONNREFUSED 127.0.0.1:3306
+[PrintQueue] Failed to fetch next job: connect ECONNREFUSED 127.0.0.1:3306
+[PrintQueue] Failed to fetch next job: connect ECONNREFUSED 127.0.0.1:3306
+[PrintQueue] Failed to fetch next job: connect ECONNREFUSED 127.0.0.1:3306
+[PrintQueue] Failed to fetch next job: connect ECONNREFUSED 127.0.0.1:3306
+[PrintQueue] Failed to fetch next job: connect ECONNREFUSED 127.0.0.1:3306
+[PrintQueue] Failed to fetch next job: connect ECONNREFUSED 127.0.0.1:3306
+[PrintQueue] Failed to fetch next job: connect ECONNREFUSED 127.0.0.1:3306
+[PrintQueue] Failed to fetch next job: connect ECONNREFUSED 127.0.0.1:3306
+[PrintQueue] Failed to fetch next job: connect ECONNREFUSED 127.0.0.1:3306
+[PrintQueue] Failed to fetch next job: connect ECONNREFUSED 127.0.0.1:3306
+[PrintQueue] Failed to fetch next job: connect ECONNREFUSED 127.0.0.1:3306
+[PrintQueue] Failed to fetch next job: connect ECONNREFUSED 127.0.0.1:3306
+[PrintQueue] Failed to fetch next job: connect ECONNREFUSED 127.0.0.1:3306
+[PrintQueue] Failed to fetch next job: connect ECONNREFUSED 127.0.0.1:3306
+[backupScheduler] connect ECONNREFUSED 127.0.0.1:3306
+[PrintQueue] Failed to fetch next job: connect ECONNREFUSED 127.0.0.1:3306
+[PrintQueue] Failed to fetch next job: connect ECONNREFUSED 127.0.0.1:3306
+[PrintQueue] Failed to fetch next job: connect ECONNREFUSED 127.0.0.1:3306
+[PrintQueue] Failed to fetch next job: connect ECONNREFUSED 127.0.0.1:3306
+[PrintQueue] Failed to fetch next job: connect ECONNREFUSED 127.0.0.1:3306
+[PrintQueue] Failed to fetch next job: connect ECONNREFUSED 127.0.0.1:3306

@@ -1,24 +1,17 @@
-const mysql = require("mysql2/promise");
-const { getDatabaseName, getDbBaseConfig } = require("../config/databaseConfig");
-
-const pool = mysql.createPool({
-  host: getDbBaseConfig().host,
-  port: Number(getDbBaseConfig().port || 3306),
-  user: getDbBaseConfig().user,
-  password: getDbBaseConfig().password,
-  database: getDatabaseName(),
-  waitForConnections: true,
-  connectionLimit: Number(process.env.DB_CONNECTION_LIMIT || 10),
-  queueLimit: 0,
-});
-
 /**
- * Promise-based getConnection wrapper (compatibility layer).
- * mysql2/promise pool.getConnection() already returns a Promise,
- * but models were written to call await getConnection().
+ * Re-export the single shared mysql2 pool from src/config/db.js.
+ *
+ * All 80+ models require this file, so consolidating here means every
+ * query/transaction goes through one pool with the DB_CONNECTION_LIMIT cap.
+ *
+ * HAG-24: previously this module created its own pool (limit 10) while
+ * controllers used src/config/db.js (limit 50) — effective ceiling 60.
+ * Now a single pool with configurable limit (default 50) and queueLimit (200).
  */
-const getConnection = () => pool.getConnection();
+const db = require("../config/db");
 
-const runQuery = (sql, params = []) => pool.query(sql, params);
+const pool = db;
+const getConnection = () => db.getConnection();
+const runQuery = (sql, params = []) => db.query(sql, params);
 
 module.exports = { pool, getConnection, runQuery };

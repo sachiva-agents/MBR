@@ -1,4 +1,5 @@
 const mysql = require("mysql2/promise");
+require("dotenv").config({ quiet: process.env.NODE_ENV === "test" });
 const { getDatabaseName, getDbBaseConfig } = require("../config/databaseConfig");
 
 const pool = mysql.createPool({
@@ -9,7 +10,7 @@ const pool = mysql.createPool({
   database: getDatabaseName(),
   waitForConnections: true,
   connectionLimit: Number(process.env.DB_CONNECTION_LIMIT || 50),
-  queueLimit: 200,
+  queueLimit: Number(process.env.DB_QUEUE_LIMIT || 200),
 });
 
 /**
