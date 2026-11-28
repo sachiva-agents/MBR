@@ -1,8 +1,9 @@
 const router = require("express").Router();
 const authMiddleware = require("../middleware/authMiddleware");
+const roleMiddleware = require("../middleware/roleMiddleware");
 
 // Invoice create/read/update and payment status are financial records.
-router.use(authMiddleware);
+router.use(authMiddleware, roleMiddleware(["admin", "manager", "reception", "accounts"]));
 
 const {
   createInvoice,

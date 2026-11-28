@@ -12,25 +12,12 @@ const runQuery = (sql, params = []) =>
   });
 
 // ─── Schema bootstrap ──────────────────────────────────────────────────────
-const ensureSchema = async () => {
-  await runQuery(`
-    CREATE TABLE IF NOT EXISTS hotel_folio_entries (
-      id          INT AUTO_INCREMENT PRIMARY KEY,
-      booking_id  INT NOT NULL,
-      entry_date  DATE NOT NULL,
-      entry_type  ENUM(
-                    'Room Charge','Extra Charge',
-                    'Discount','Payment','Refund','Adjustment'
-                  ) NOT NULL DEFAULT 'Extra Charge',
-      category    VARCHAR(100) DEFAULT 'Miscellaneous',
-      description VARCHAR(255) NOT NULL,
-      amount      DECIMAL(10,2) NOT NULL DEFAULT 0,
-      created_by  VARCHAR(100) DEFAULT 'Front Desk',
-      created_at  TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-      FOREIGN KEY (booking_id) REFERENCES guests(id) ON DELETE CASCADE
-    )
-  `);
-};
+// The canonical DDL lives in folioController.ensureSchema (FK → bookings(id)).
+// This file's DDL referenced guests(id), which is wrong — the folio is
+// per-booking. Delegate to the controller so whichever caller runs first
+// always gets the correct FK.
+const folioController = require("../controller/folioController");
+const ensureSchema = folioController.ensureSchema;
 
 // ─── Get all folio entries for a booking ──────────────────────────────────
 const getFolioByBooking = async (bookingId) => {
@@ -107,7 +94,7 @@ const getFolioTotals = async (bookingId) => {
     discounts,
     payments,
     refunds,
-    netBalance: charges - discounts - payments + refunds,
+    netBalance: charges - discounts - payments - refunds,
   };
 };
 

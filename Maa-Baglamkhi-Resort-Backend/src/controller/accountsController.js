@@ -471,18 +471,18 @@ const getSummary = async (req, res) => {
       params,
     );
 
-    // Operational payments (money actually collected) — the real operational
-    // money table in v4. Refunds are money going OUT, so they must not be
-    // summed as if they were receipts. Bills carry duplicate payment rows
-    // (bill 1 has 36 identical ones), so one row per bill is summed.
+    // Operational payments (money actually collected) — the authoritative
+    // income figure. Bills carry duplicate payment rows (bill 1 has 36
+    // identical ones), so one row per bill is deduped. Standalone payments
+    // (advance at booking, walk-in) have bill_id NULL and must be included
+    // too — they represent money collected outside any bill context.
     const payments = await queryOne(
       `SELECT COALESCE(SUM(amount), 0) AS total
          FROM (
            SELECT MAX(id) AS last_id FROM payments
            WHERE status = 'completed'
              AND payment_type <> 'refund'
-             AND bill_id IS NOT NULL
-           GROUP BY bill_id
+           GROUP BY bill_id HAVING bill_id IS NOT NULL
            UNION ALL
            SELECT id FROM payments
            WHERE status = 'completed'
@@ -499,18 +499,17 @@ const getSummary = async (req, res) => {
         WHERE status = 'completed' AND payment_type = 'refund'`,
     );
 
-    // GST payable derived from issued invoices' tax_amount that has not yet
-    // been fully settled (balance > 0).
+    // GST payable from invoices whose tax is not yet fully settled.
+    // v4 invoices have payment_status (unpaid/partial/paid/overdue/refunded)
+    // but not a reliable balance column, so use status to identify unsettled.
     const gst = await queryOne(
       `SELECT COALESCE(SUM(tax_amount), 0) AS gst_payable
          FROM invoices
         WHERE tax_amount > 0
-          AND COALESCE(balance, 0) > 0`,
+          AND payment_status NOT IN ('paid', 'refunded')`,
     );
 
-    const income = round2(
-      toNumber(ledger?.[0]?.revenue) + toNumber(payments?.total),
-    );
+    const income = round2(toNumber(payments?.total));
     const expense = round2(toNumber(ledger?.[0]?.expense));
     const net = round2(income - expense);
 
@@ -1258,9 +1257,22 @@ const getReconciliationLedgerRows = async (filters = {}) => {
   return await queryRows(sql, params);
 };
 
-const getReconciliationItemsFromSources = async () => {
+const getReconciliationItemsFromSources = async ({ from, to } = {}) => {
   // Source rows = operational money already recorded against invoices / bills,
-  // joined to any bank movement that references them.
+  // joined to any bank movement that references them. Date filters are
+  // applied here so the source side matches the ledger side (BUG-10 fix).
+  const invoiceWhere = [];
+  const invoiceParams = [];
+  if (from) { invoiceWhere.push("i.invoice_date >= ?"); invoiceParams.push(normalizeDateInput(from)); }
+  if (to)   { invoiceWhere.push("i.invoice_date <= ?"); invoiceParams.push(normalizeDateInput(to)); }
+  const invoiceFilter = invoiceWhere.length ? "WHERE " + invoiceWhere.join(" AND ") : "";
+
+  const billWhere = [];
+  const billParams = [];
+  if (from) { billWhere.push("b.created_at >= ?"); billParams.push(normalizeDateInput(from)); }
+  if (to)   { billWhere.push("b.created_at <= ?"); billParams.push(normalizeDateInput(to)); }
+  const billFilter = billWhere.length ? "WHERE " + billWhere.join(" AND ") : "";
+
   const [invoiceRows] = await query(`
     SELECT
       'invoice' AS source_type,
@@ -1268,12 +1280,13 @@ const getReconciliationItemsFromSources = async () => {
       COALESCE(NULLIF(i.invoice_no, ''), CONCAT('Invoice #', i.id)) AS source_reference,
       COALESCE(NULLIF(i.customer_name, ''), 'Walk-in Guest') AS party_name,
       COALESCE(NULLIF(i.room_no, ''), '-') AS source_label,
-      COALESCE(NULLIF(i.payment_mode, ''), 'Unknown') AS payment_mode,
+      COALESCE(i.payment_mode, 'Unknown') AS payment_mode,
       COALESCE(i.total, 0) AS source_amount,
       COALESCE(i.payment_status, 'unpaid') AS source_status,
       i.invoice_date AS source_date
     FROM invoices i
-  `);
+    ${invoiceFilter}
+  `, invoiceParams);
 
   const [billRows] = await query(`
     SELECT
@@ -1282,16 +1295,16 @@ const getReconciliationItemsFromSources = async () => {
       CONCAT('BILL-', b.id) AS source_reference,
       COALESCE(NULLIF(b.customer_name, ''), 'Walk-in') AS party_name,
       COALESCE(NULLIF(b.table_number, ''), '-') AS source_label,
-      COALESCE(NULLIF(b.payment_method, ''), 'Cash') AS payment_mode,
+      COALESCE(b.payment_method, 'Cash') AS payment_mode,
       COALESCE(b.total, 0) AS source_amount,
       COALESCE(b.payment_status, 'unpaid') AS source_status,
       DATE(b.created_at) AS source_date
     FROM bills b
-  `);
+    ${billFilter}
+  `, billParams);
 
   return [...safeArray(invoiceRows), ...safeArray(billRows)];
 };
-
 // Pure builder shared by the items list and the summary so both always agree.
 const buildReconciliationItems = async (filters = {}) => {
   const { paymentMode, sourceType, matchStatus } = filters;

@@ -51,7 +51,7 @@ exports.login = async (req, res) => {
 
     const [userRows] = await db.query(
       `SELECT u.id, u.name, u.email, u.password_hash, u.role_id,
-              COALESCE(r.name, 'staff') AS role_name
+              COALESCE(r.name, 'reception') AS role_name
        FROM users u
        LEFT JOIN roles r ON r.id = u.role_id
        WHERE LOWER(u.email) = LOWER(?) AND u.status = 'active'

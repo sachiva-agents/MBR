@@ -650,13 +650,12 @@ const buildInvoicePayload = async (customerId) => {
   const folioPayments   = roundMoney(Number(folioData.payments || 0));
   const folioRefunds    = roundMoney(Number(folioData.refunds  || 0));
 
-  // Payments recorded against the booking live in TWO places: the folio ledger
-  // and the payments table (advance taken at booking time). They are not
-  // additive — they describe overlapping views of money received — so take the
-  // larger of the two. Omitting the advance made the invoice overstate what the
-  // guest still owed.
+  // Folio payments (hotel_folio_entries entry_type=Payment) and advance
+  // payments (payments table) are separate tables recording different events:
+  // folio = charges settled at the desk, advance = captured at booking time.
+  // They are additive, not overlapping — take the sum.
   const advancePaid = await getAdvancePaid(customerId);
-  const totalPayments = roundMoney(Math.max(folioPayments, advancePaid));
+  const totalPayments = roundMoney(folioPayments + advancePaid);
   const totalRefunds  = folioRefunds;
 
   // CANONICAL FOLIO MONEY CONTRACT — refunds SUBTRACT. A refund reverses money

@@ -19,9 +19,10 @@
 const db = require("../config/db");
 
 const SYSTEM_ROLES = [
-  // The seven production role names that roleMiddleware + every role-gated
-  // route actually use. Do NOT use RolesModel.seed() names (front_desk,
-  // staff, accountant) — no route resolves those.
+  // The production role names that roleMiddleware + every role-gated
+  // route actually use. 'staff' is included as a real 8th role so the
+  // COALESCE fallback in auth/employee/payroll queries always resolves
+  // to a role that exists in the roles table (HAG-26 BUG-7).
   ["admin", "Administrator"],
   ["manager", "Manager"],
   ["reception", "Reception"],
@@ -29,6 +30,7 @@ const SYSTEM_ROLES = [
   ["housekeeping", "Housekeeping"],
   ["waiter", "Waiter"],
   ["kitchen", "Kitchen"],
+  ["staff", "Staff"],
 ];
 
 const tableExists = async (name) => {

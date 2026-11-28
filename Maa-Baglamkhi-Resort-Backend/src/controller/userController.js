@@ -13,7 +13,7 @@ function sanitizeUser(user) {
     id: user.id,
     name: user.name,
     email: user.email,
-    role: user.role_id || user.role,
+    role: user.role_name || user.role || user.role_id,
     avatar_url: user.avatar_url || null,
   };
 }
@@ -165,7 +165,7 @@ exports.getUsers = async (req, res) => {
   try {
     const [rows] = await db.query(
       `SELECT u.id, u.name, u.email, u.phone, u.avatar_url, u.status, u.last_login_at, u.created_at, u.updated_at,
-              COALESCE(r.name, 'staff') AS role
+              COALESCE(r.name, 'reception') AS role
        FROM users u
        LEFT JOIN roles r ON r.id = u.role_id`
     );

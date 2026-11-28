@@ -26,8 +26,8 @@ router.get("/holidays", authMiddleware, attendanceController.getHolidayCalendar)
 router.delete("/holidays/:date", authMiddleware, roleMiddleware(["admin"]), attendanceController.deleteHolidayCalendarEntry);
 
 // Edit / delete a record.
-router.put("/:id", authMiddleware, attendanceController.updateAttendanceRecord);
-router.patch("/:id", authMiddleware, attendanceController.updateAttendanceRecord);
+router.put("/:id", authMiddleware, roleMiddleware(["admin"]), attendanceController.updateAttendanceRecord);
+router.patch("/:id", authMiddleware, roleMiddleware(["admin"]), attendanceController.updateAttendanceRecord);
 router.delete("/:id", authMiddleware, roleMiddleware(["admin"]), attendanceController.deleteAttendanceRecord);
 
 module.exports = router;

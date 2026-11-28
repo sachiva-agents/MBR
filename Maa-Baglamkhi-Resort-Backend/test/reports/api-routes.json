@@ -467,7 +467,7 @@
     "testPath": "/api/accounts/payment-settings",
     "code": 200,
     "verdict": "PASS",
-    "body": "[{\"id\":1,\"payment_mode\":\"Cash\",\"code\":\"cash\",\"department\":\"Hotel\",\"provider_name\":\"Cash\",\"upi_id\":null,\"account_holder_name\":null,\"bank_name\":null,\"qr_image_url\":null,\"is_active\":1,\"notes\":null}]"
+    "body": "[{\"id\":1,\"payment_mode\":\"Cash\",\"code\":\"cash\",\"department\":\"Hotel\",\"provider_name\":\"Cash\",\"upi_id\":null,\"account_holder_name\":null,\"bank_name\":null,\"qr_image_url\":null,\"is_active\":1,\"notes\":null},{\"id\""
   },
   {
     "method": "GET",
@@ -677,7 +677,7 @@
     "testPath": "/api/attendance/mark-holiday",
     "code": 200,
     "verdict": "PASS",
-    "body": "{\"message\":\"Holiday marked for 2026-11-25\",\"date\":\"2026-11-25\",\"activeEmployees\":0,\"created\":0,\"reMarked\":0,\"kept\":0,\"keptNote\":null}"
+    "body": "{\"message\":\"Holiday marked for 2026-11-28\",\"date\":\"2026-11-28\",\"activeEmployees\":0,\"created\":0,\"reMarked\":0,\"kept\":0,\"keptNote\":null}"
   },
   {
     "method": "GET",
@@ -737,7 +737,7 @@
     "testPath": "/api/audit-logs",
     "code": 200,
     "verdict": "PASS",
-    "body": "[{\"id\":14,\"user_id\":1,\"user_name\":null,\"user_role\":null,\"action\":\"create\",\"module\":\"unknown\",\"endpoint\":\"/api/accounts/expense\",\"http_method\":\"POST\",\"request_data\":\"{\\\"params\\\":{},\\\"query\\\":{},\\\"body\\"
+    "body": "[{\"id\":2,\"user_id\":1,\"user_name\":null,\"user_role\":null,\"action\":\"read\",\"module\":\"unknown\",\"endpoint\":\"/api/accounts/dashboard\",\"http_method\":\"GET\",\"request_data\":\"{\\\"params\\\":{},\\\"query\\\":{},\\\"body\\\":"
   },
   {
     "method": "POST",
@@ -804,7 +804,7 @@
     "testPath": "/api/backups/list",
     "code": 200,
     "verdict": "PASS",
-    "body": "{\"destDir\":\"/tmp/mbr-backups\",\"files\":[{\"name\":\"mbb_backup_20261102075810\",\"sizeBytes\":0,\"mtimeISO\":\"2026-11-25T12:42:16.028Z\",\"inDbClone\":true}]}"
+    "body": "{\"destDir\":\"/tmp/mbr-backups\",\"files\":[{\"name\":\"mbb_backup_20261102075810\",\"sizeBytes\":0,\"mtimeISO\":\"2026-11-28T07:27:22.029Z\",\"inDbClone\":true}]}"
   },
   {
     "method": "POST",
@@ -2002,7 +2002,7 @@
     "testPath": "/api/web/dining/availability",
     "code": 200,
     "verdict": "PASS",
-    "body": "{\"success\":true,\"data\":{\"date\":\"2026-11-25\",\"guestCount\":1,\"tables\":[]}}"
+    "body": "{\"success\":true,\"data\":{\"date\":\"2026-11-28\",\"guestCount\":1,\"tables\":[]}}"
   },
   {
     "method": "GET",
@@ -2012,7 +2012,7 @@
     "testPath": "/api/dining/availability",
     "code": 200,
     "verdict": "PASS",
-    "body": "{\"success\":true,\"data\":{\"date\":\"2026-11-25\",\"guestCount\":1,\"tables\":[]}}"
+    "body": "{\"success\":true,\"data\":{\"date\":\"2026-11-28\",\"guestCount\":1,\"tables\":[]}}"
   },
   {
     "method": "POST",
@@ -3382,7 +3382,7 @@
     "testPath": "/api/notifications",
     "code": 200,
     "verdict": "PASS",
-    "body": "[{\"id\":1,\"user_id\":null,\"user_role\":null,\"type\":\"general\",\"title\":\"\",\"message\":\"\",\"data\":null,\"is_read\":0,\"read_at\":null,\"created_at\":\"2026-11-25T12:42:22.000Z\",\"updated_at\":\"2026-11-25T12:42:22.000Z\""
+    "body": "[{\"id\":1,\"user_id\":null,\"user_role\":null,\"type\":\"general\",\"title\":\"\",\"message\":\"\",\"data\":null,\"is_read\":0,\"read_at\":null,\"created_at\":\"2026-11-28T07:27:28.000Z\",\"updated_at\":\"2026-11-28T07:27:28.000Z\""
   },
   {
     "method": "GET",
@@ -3392,7 +3392,7 @@
     "testPath": "/api/notification",
     "code": 200,
     "verdict": "PASS",
-    "body": "[{\"id\":1,\"user_id\":null,\"user_role\":null,\"type\":\"general\",\"title\":\"\",\"message\":\"\",\"data\":null,\"is_read\":0,\"read_at\":null,\"created_at\":\"2026-11-25T12:42:22.000Z\",\"updated_at\":\"2026-11-25T12:42:22.000Z\""
+    "body": "[{\"id\":1,\"user_id\":null,\"user_role\":null,\"type\":\"general\",\"title\":\"\",\"message\":\"\",\"data\":null,\"is_read\":0,\"read_at\":null,\"created_at\":\"2026-11-28T07:27:28.000Z\",\"updated_at\":\"2026-11-28T07:27:28.000Z\""
   },
   {
     "method": "POST",
@@ -3694,7 +3694,7 @@
     "testPath": "/api/reports-suite/invoice-register",
     "code": 200,
     "verdict": "PASS",
-    "body": "{\"report\":\"invoice-register\",\"columns\":[\"source\",\"reference\",\"date\",\"status\",\"paymentStatus\",\"paymentMode\",\"total\",\"paid\",\"balance\",\"notes\"],\"rows\":[],\"summary\":{\"from\":\"2026-10-27\",\"to\":\"2026-11-25\","
+    "body": "{\"report\":\"invoice-register\",\"columns\":[\"source\",\"reference\",\"date\",\"status\",\"paymentStatus\",\"paymentMode\",\"total\",\"paid\",\"balance\",\"notes\"],\"rows\":[],\"summary\":{\"from\":\"2026-10-30\",\"to\":\"2026-11-28\","
   },
   {
     "method": "GET",
@@ -3714,7 +3714,7 @@
     "testPath": "/api/reports-suite/room-occupancy",
     "code": 200,
     "verdict": "PASS",
-    "body": "{\"report\":\"room-occupancy\",\"columns\":[\"room_number\",\"nights\",\"occupancy_pct\",\"revenue\"],\"rows\":[],\"summary\":{\"from\":\"2026-10-27\",\"to\":\"2026-11-25\",\"occupied_rooms\":0,\"total_rooms\":0,\"avg_occupancy_pct"
+    "body": "{\"report\":\"room-occupancy\",\"columns\":[\"room_number\",\"nights\",\"occupancy_pct\",\"revenue\"],\"rows\":[],\"summary\":{\"from\":\"2026-10-30\",\"to\":\"2026-11-28\",\"occupied_rooms\":0,\"total_rooms\":0,\"avg_occupancy_pct"
   },
   {
     "method": "GET",
@@ -3724,7 +3724,7 @@
     "testPath": "/api/reports-suite/rooms-all",
     "code": 200,
     "verdict": "PASS",
-    "body": "{\"report\":\"rooms-all\",\"columns\":[\"room_number\",\"category\",\"status\",\"in_house\"],\"rows\":[],\"summary\":{\"date\":\"2026-11-25\",\"by_status\":\"{}\"}}"
+    "body": "{\"report\":\"rooms-all\",\"columns\":[\"room_number\",\"category\",\"status\",\"in_house\"],\"rows\":[],\"summary\":{\"date\":\"2026-11-28\",\"by_status\":\"{}\"}}"
   },
   {
     "method": "GET",
@@ -3734,7 +3734,7 @@
     "testPath": "/api/reports-suite/rooms-checkin",
     "code": 200,
     "verdict": "PASS",
-    "body": "{\"report\":\"rooms-checkin\",\"columns\":[\"checkin_date\",\"booking_code\",\"status\",\"guests\",\"total_amount\",\"advance_amount\",\"rooms\"],\"rows\":[],\"summary\":{\"from\":\"2026-10-27\",\"to\":\"2026-11-25\",\"count\":0,\"by_s"
+    "body": "{\"report\":\"rooms-checkin\",\"columns\":[\"checkin_date\",\"booking_code\",\"status\",\"guests\",\"total_amount\",\"advance_amount\",\"rooms\"],\"rows\":[],\"summary\":{\"from\":\"2026-10-30\",\"to\":\"2026-11-28\",\"count\":0,\"by_s"
   },
   {
     "method": "GET",
@@ -3744,7 +3744,7 @@
     "testPath": "/api/reports-suite/rooms-checkout",
     "code": 200,
     "verdict": "PASS",
-    "body": "{\"report\":\"rooms-checkout\",\"columns\":[\"checkout_date\",\"booking_code\",\"status\",\"total_amount\",\"paid\",\"balance\",\"rooms\"],\"rows\":[],\"summary\":{\"from\":\"2026-10-27\",\"to\":\"2026-11-25\",\"count\":0,\"by_status\":"
+    "body": "{\"report\":\"rooms-checkout\",\"columns\":[\"checkout_date\",\"booking_code\",\"status\",\"total_amount\",\"paid\",\"balance\",\"rooms\"],\"rows\":[],\"summary\":{\"from\":\"2026-10-30\",\"to\":\"2026-11-28\",\"count\":0,\"by_status\":"
   },
   {
     "method": "GET",
@@ -3754,7 +3754,7 @@
     "testPath": "/api/reports-suite/company-ledger",
     "code": 200,
     "verdict": "PASS",
-    "body": "{\"report\":\"company-ledger\",\"columns\":[\"transaction_no\",\"date\",\"description\",\"reference_type\",\"reference_id\",\"account_id\",\"entry_type\",\"amount\"],\"rows\":[],\"summary\":{\"from\":\"2026-10-27\",\"to\":\"2026-11-2"
+    "body": "{\"report\":\"company-ledger\",\"columns\":[\"transaction_no\",\"date\",\"description\",\"reference_type\",\"reference_id\",\"account_id\",\"entry_type\",\"amount\"],\"rows\":[],\"summary\":{\"from\":\"2026-10-30\",\"to\":\"2026-11-2"
   },
   {
     "method": "GET",
@@ -3764,7 +3764,7 @@
     "testPath": "/api/reports-suite/room-history",
     "code": 200,
     "verdict": "PASS",
-    "body": "{\"report\":\"room-history\",\"columns\":[\"checkin\",\"checkout\",\"booking_code\",\"status\",\"room_number\",\"guest\"],\"rows\":[],\"summary\":{\"from\":\"2026-10-27\",\"to\":\"2026-11-25\",\"count\":0}}"
+    "body": "{\"report\":\"room-history\",\"columns\":[\"checkin\",\"checkout\",\"booking_code\",\"status\",\"room_number\",\"guest\"],\"rows\":[],\"summary\":{\"from\":\"2026-10-30\",\"to\":\"2026-11-28\",\"count\":0}}"
   },
   {
     "method": "GET",
@@ -3774,7 +3774,7 @@
     "testPath": "/api/reports-suite/room-performance",
     "code": 200,
     "verdict": "PASS",
-    "body": "{\"report\":\"room-performance\",\"columns\":[\"room_number\",\"stays\",\"revenue\",\"longest_nights\",\"avg_rate_per_night\"],\"rows\":[],\"summary\":{\"from\":\"2026-10-27\",\"to\":\"2026-11-25\",\"total_revenue\":0,\"top_room\":n"
+    "body": "{\"report\":\"room-performance\",\"columns\":[\"room_number\",\"stays\",\"revenue\",\"longest_nights\",\"avg_rate_per_night\"],\"rows\":[],\"summary\":{\"from\":\"2026-10-30\",\"to\":\"2026-11-28\",\"total_revenue\":0,\"top_room\":n"
   },
   {
     "method": "GET",
@@ -3794,7 +3794,7 @@
     "testPath": "/api/reports-suite/housekeeping-history",
     "code": 200,
     "verdict": "PASS",
-    "body": "{\"report\":\"housekeeping-history\",\"columns\":[\"source\",\"room_number\",\"status\",\"assignee\",\"completed_at\",\"notes\"],\"rows\":[],\"summary\":{\"from\":\"2026-10-27\",\"to\":\"2026-11-25\",\"count\":0}}"
+    "body": "{\"report\":\"housekeeping-history\",\"columns\":[\"source\",\"room_number\",\"status\",\"assignee\",\"completed_at\",\"notes\"],\"rows\":[],\"summary\":{\"from\":\"2026-10-30\",\"to\":\"2026-11-28\",\"count\":0}}"
   },
   {
     "method": "GET",
@@ -3804,7 +3804,7 @@
     "testPath": "/api/reports-suite/maintenance-history",
     "code": 200,
     "verdict": "PASS",
-    "body": "{\"report\":\"maintenance-history\",\"columns\":[\"room_number\",\"request_type\",\"priority\",\"status\",\"description\",\"opened\",\"resolved_at\",\"cost\"],\"rows\":[],\"summary\":{\"from\":\"2026-10-27\",\"to\":\"2026-11-25\",\"cou"
+    "body": "{\"report\":\"maintenance-history\",\"columns\":[\"room_number\",\"request_type\",\"priority\",\"status\",\"description\",\"opened\",\"resolved_at\",\"cost\"],\"rows\":[],\"summary\":{\"from\":\"2026-10-30\",\"to\":\"2026-11-28\",\"cou"
   },
   {
     "method": "GET",
@@ -3824,7 +3824,7 @@
     "testPath": "/api/reports-suite/cashbook-summary",
     "code": 200,
     "verdict": "PASS",
-    "body": "{\"report\":\"cashbook-summary\",\"columns\":[\"date\",\"channel\",\"payment_type\",\"status\",\"amount\",\"count\"],\"rows\":[],\"summary\":{\"from\":\"2026-10-27\",\"to\":\"2026-11-25\",\"total\":0}}"
+    "body": "{\"report\":\"cashbook-summary\",\"columns\":[\"date\",\"channel\",\"payment_type\",\"status\",\"amount\",\"count\"],\"rows\":[],\"summary\":{\"from\":\"2026-10-30\",\"to\":\"2026-11-28\",\"total\":0}}"
   },
   {
     "method": "GET",
@@ -3844,7 +3844,7 @@
     "testPath": "/api/reports-suite/cash-summary",
     "code": 200,
     "verdict": "PASS",
-    "body": "{\"report\":\"cash-summary\",\"columns\":[\"source\",\"date\",\"description\",\"type\",\"amount\"],\"rows\":[],\"summary\":{\"from\":\"2026-10-27\",\"to\":\"2026-11-25\",\"petty_in\":0,\"petty_out\":0,\"cash_in\":0,\"cash_out\":0,\"net_c"
+    "body": "{\"report\":\"cash-summary\",\"columns\":[\"source\",\"date\",\"description\",\"type\",\"amount\"],\"rows\":[],\"summary\":{\"from\":\"2026-10-30\",\"to\":\"2026-11-28\",\"petty_in\":0,\"petty_out\":0,\"cash_in\":0,\"cash_out\":0,\"net_c"
   },
   {
     "method": "GET",
@@ -3874,7 +3874,7 @@
     "testPath": "/api/reports-suite/collection-report",
     "code": 200,
     "verdict": "PASS",
-    "body": "{\"report\":\"collection-report\",\"columns\":[\"date\",\"channel\",\"payment_type\",\"count\",\"total\"],\"rows\":[],\"summary\":{\"from\":\"2026-10-27\",\"to\":\"2026-11-25\",\"total\":0,\"count\":0,\"note\":\"\"}}"
+    "body": "{\"report\":\"collection-report\",\"columns\":[\"date\",\"channel\",\"payment_type\",\"count\",\"total\"],\"rows\":[],\"summary\":{\"from\":\"2026-10-30\",\"to\":\"2026-11-28\",\"total\":0,\"count\":0,\"note\":\"\"}}"
   },
   {
     "method": "GET",
@@ -3884,7 +3884,7 @@
     "testPath": "/api/reports-suite/item-wise",
     "code": 200,
     "verdict": "PASS",
-    "body": "{\"report\":\"item-wise\",\"columns\":[\"source\",\"item\",\"quantity\",\"value\"],\"rows\":[],\"summary\":{\"from\":\"2026-10-27\",\"to\":\"2026-11-25\",\"items\":0,\"total_value\":0,\"note\":\"\"}}"
+    "body": "{\"report\":\"item-wise\",\"columns\":[\"source\",\"item\",\"quantity\",\"value\"],\"rows\":[],\"summary\":{\"from\":\"2026-10-30\",\"to\":\"2026-11-28\",\"items\":0,\"total_value\":0,\"note\":\"\"}}"
   },
   {
     "method": "GET",
@@ -3894,7 +3894,7 @@
     "testPath": "/api/reports-suite/invoice-group-wise",
     "code": 200,
     "verdict": "PASS",
-    "body": "{\"report\":\"invoice-group-wise\",\"columns\":[\"invoice_no\",\"date\",\"customer_name\",\"payment_status\",\"total\",\"paid\",\"balance\"],\"rows\":[],\"summary\":{\"from\":\"2026-10-27\",\"to\":\"2026-11-25\",\"invoices\":0,\"billed"
+    "body": "{\"report\":\"invoice-group-wise\",\"columns\":[\"invoice_no\",\"date\",\"customer_name\",\"payment_status\",\"total\",\"paid\",\"balance\"],\"rows\":[],\"summary\":{\"from\":\"2026-10-30\",\"to\":\"2026-11-28\",\"invoices\":0,\"billed"
   },
   {
     "method": "GET",
@@ -3904,7 +3904,7 @@
     "testPath": "/api/reports-suite/sales-by-guest",
     "code": 200,
     "verdict": "PASS",
-    "body": "{\"report\":\"sales-by-guest\",\"columns\":[\"booking_code\",\"room_number\",\"guest_name\",\"guests\",\"room_charges\",\"extras\",\"balance\"],\"rows\":[],\"summary\":{\"from\":\"2026-10-27\",\"to\":\"2026-11-25\",\"guests\":0,\"room_"
+    "body": "{\"report\":\"sales-by-guest\",\"columns\":[\"booking_code\",\"room_number\",\"guest_name\",\"guests\",\"room_charges\",\"extras\",\"balance\"],\"rows\":[],\"summary\":{\"from\":\"2026-10-30\",\"to\":\"2026-11-28\",\"guests\":0,\"room_"
   },
   {
     "method": "GET",
@@ -3914,7 +3914,7 @@
     "testPath": "/api/reports-suite/sales-by-order-type",
     "code": 200,
     "verdict": "PASS",
-    "body": "{\"report\":\"sales-by-order-type\",\"columns\":[\"order_type\",\"count\",\"value\"],\"rows\":[],\"summary\":{\"from\":\"2026-10-27\",\"to\":\"2026-11-25\",\"total\":0,\"note\":\"\"}}"
+    "body": "{\"report\":\"sales-by-order-type\",\"columns\":[\"order_type\",\"count\",\"value\"],\"rows\":[],\"summary\":{\"from\":\"2026-10-30\",\"to\":\"2026-11-28\",\"total\":0,\"note\":\"\"}}"
   },
   {
     "method": "GET",
@@ -3924,7 +3924,7 @@
     "testPath": "/api/reports-suite/due-list",
     "code": 200,
     "verdict": "PASS",
-    "body": "{\"report\":\"due-list\",\"columns\":[\"source\",\"ref_id\",\"reference\",\"party\",\"total\",\"paid\",\"due\"],\"rows\":[],\"summary\":{\"as_of\":\"2026-11-25\",\"open_items\":0,\"total_due\":0,\"note\":\"live open balances, not a per"
+    "body": "{\"report\":\"due-list\",\"columns\":[\"source\",\"ref_id\",\"reference\",\"party\",\"total\",\"paid\",\"due\"],\"rows\":[],\"summary\":{\"as_of\":\"2026-11-28\",\"open_items\":0,\"total_due\":0,\"note\":\"live open balances, not a per"
   },
   {
     "method": "GET",
@@ -3934,7 +3934,7 @@
     "testPath": "/api/reports-suite/table-wise",
     "code": 200,
     "verdict": "PASS",
-    "body": "{\"report\":\"table-wise\",\"columns\":[\"table_number\",\"bills\",\"value\",\"paid\",\"balance\"],\"rows\":[],\"summary\":{\"from\":\"2026-10-27\",\"to\":\"2026-11-25\",\"tables\":0,\"total\":0,\"note\":\"\"}}"
+    "body": "{\"report\":\"table-wise\",\"columns\":[\"table_number\",\"bills\",\"value\",\"paid\",\"balance\"],\"rows\":[],\"summary\":{\"from\":\"2026-10-30\",\"to\":\"2026-11-28\",\"tables\":0,\"total\":0,\"note\":\"\"}}"
   },
   {
     "method": "GET",
@@ -3944,7 +3944,7 @@
     "testPath": "/api/reports-suite/nc-sales",
     "code": 200,
     "verdict": "PASS",
-    "body": "{\"report\":\"nc-sales\",\"columns\":[\"channel\",\"payment_type\",\"count\",\"value\"],\"rows\":[],\"summary\":{\"from\":\"2026-10-27\",\"to\":\"2026-11-25\",\"total\":0,\"note\":\"non-cash completed receipts (card / UPI / netbank"
+    "body": "{\"report\":\"nc-sales\",\"columns\":[\"channel\",\"payment_type\",\"count\",\"value\"],\"rows\":[],\"summary\":{\"from\":\"2026-10-30\",\"to\":\"2026-11-28\",\"total\":0,\"note\":\"non-cash completed receipts (card / UPI / netbank"
   },
   {
     "method": "GET",
@@ -3954,7 +3954,7 @@
     "testPath": "/api/reports-suite/parcel-sales",
     "code": 200,
     "verdict": "PASS",
-    "body": "{\"report\":\"parcel-sales\",\"columns\":[\"source\",\"source_type\",\"reference\",\"status\",\"waiter_name\",\"created_at\",\"value\"],\"rows\":[],\"summary\":{\"from\":\"2026-10-27\",\"to\":\"2026-11-25\",\"orders\":0,\"total\":0,\"not"
+    "body": "{\"report\":\"parcel-sales\",\"columns\":[\"source\",\"source_type\",\"reference\",\"status\",\"waiter_name\",\"created_at\",\"value\"],\"rows\":[],\"summary\":{\"from\":\"2026-10-30\",\"to\":\"2026-11-28\",\"orders\":0,\"total\":0,\"not"
   },
   {
     "method": "GET",
@@ -3964,7 +3964,7 @@
     "testPath": "/api/reports-suite/void-kot-history",
     "code": 200,
     "verdict": "PASS",
-    "body": "{\"report\":\"void-kot-history\",\"columns\":[\"kind\",\"ref_id\",\"table_number\",\"token_item_id\",\"action_type\",\"reason\",\"requested_by\",\"status\",\"created_at\"],\"rows\":[],\"summary\":{\"from\":\"2026-10-27\",\"to\":\"2026-"
+    "body": "{\"report\":\"void-kot-history\",\"columns\":[\"kind\",\"ref_id\",\"table_number\",\"token_item_id\",\"action_type\",\"reason\",\"requested_by\",\"status\",\"created_at\"],\"rows\":[],\"summary\":{\"from\":\"2026-10-30\",\"to\":\"2026-"
   },
   {
     "method": "GET",
@@ -3974,7 +3974,7 @@
     "testPath": "/api/reports-suite/refund-item-summary",
     "code": 200,
     "verdict": "PASS",
-    "body": "{\"report\":\"refund-item-summary\",\"columns\":[\"reference_no\",\"booking_id\",\"payment_type\",\"status\",\"date\",\"refund_amount\",\"transaction_details\"],\"rows\":[],\"summary\":{\"from\":\"2026-10-27\",\"to\":\"2026-11-25\","
+    "body": "{\"report\":\"refund-item-summary\",\"columns\":[\"reference_no\",\"booking_id\",\"payment_type\",\"status\",\"date\",\"refund_amount\",\"transaction_details\"],\"rows\":[],\"summary\":{\"from\":\"2026-10-30\",\"to\":\"2026-11-28\","
   },
   {
     "method": "GET",
@@ -3984,7 +3984,7 @@
     "testPath": "/api/reports-suite/pax",
     "code": 200,
     "verdict": "PASS",
-    "body": "{\"report\":\"pax\",\"columns\":[\"booking_id\",\"booking_code\",\"room_number\",\"adults\",\"children\",\"infants\",\"total_pax\",\"meal_plan\",\"source\"],\"rows\":[],\"summary\":{\"from\":\"2026-10-27\",\"to\":\"2026-11-25\",\"total_p"
+    "body": "{\"report\":\"pax\",\"columns\":[\"booking_id\",\"booking_code\",\"room_number\",\"adults\",\"children\",\"infants\",\"total_pax\",\"meal_plan\",\"source\"],\"rows\":[],\"summary\":{\"from\":\"2026-10-30\",\"to\":\"2026-11-28\",\"total_p"
   },
   {
     "method": "GET",
@@ -3994,7 +3994,7 @@
     "testPath": "/api/reports-suite/day-end-summary",
     "code": 200,
     "verdict": "PASS",
-    "body": "{\"report\":\"day-end-summary\",\"columns\":[\"date\",\"hotel\",\"restaurant\",\"banquet\",\"receipts\",\"refunds\",\"day_total\"],\"rows\":[],\"summary\":{\"from\":\"2026-10-27\",\"to\":\"2026-11-25\",\"days\":0,\"grand_total\":0}}"
+    "body": "{\"report\":\"day-end-summary\",\"columns\":[\"date\",\"hotel\",\"restaurant\",\"banquet\",\"receipts\",\"refunds\",\"day_total\"],\"rows\":[],\"summary\":{\"from\":\"2026-10-30\",\"to\":\"2026-11-28\",\"days\":0,\"grand_total\":0}}"
   },
   {
     "method": "GET",
@@ -4373,7 +4373,7 @@
     "testPath": "/api/roles",
     "code": 200,
     "verdict": "PASS",
-    "body": "[{\"id\":1,\"name\":\"admin\",\"display_name\":\"Administrator\",\"description\":null,\"is_system\":0,\"created_at\":\"2026-11-25T12:40:04.000Z\",\"permission_count\":0},{\"id\":2,\"name\":\"manager\",\"display_name\":\"Manager\","
+    "body": "[{\"id\":1,\"name\":\"admin\",\"display_name\":\"Administrator\",\"description\":null,\"is_system\":0,\"created_at\":\"2026-11-28T07:27:13.000Z\",\"permission_count\":0},{\"id\":2,\"name\":\"manager\",\"display_name\":\"Manager\","
   },
   {
     "method": "POST",
@@ -4837,6 +4837,16 @@
   },
   {
     "method": "POST",
+    "path": "/api/settings/test-connection",
+    "file": "settingsRoutes",
+    "raw": "/test-connection",
+    "testPath": "/api/settings/test-connection",
+    "code": 200,
+    "verdict": "PASS",
+    "body": "{\"reachable\":true,\"configured\":true,\"keyOk\":false,\"ok\":false,\"gateway\":\"https://wasend.sachiva.cloud\",\"status\":\"http_error\",\"httpStatus\":400,\"detail\":\"Gateway reachable but responded 400 (check the AP"
+  },
+  {
+    "method": "POST",
     "path": "/api/token/create",
     "file": "tokenRoutes",
     "raw": "/create",
@@ -4973,7 +4983,7 @@
     "testPath": "/api/users",
     "code": 200,
     "verdict": "PASS",
-    "body": "[{\"id\":1,\"name\":\"Admin User\",\"email\":\"admin@resort.com\",\"phone\":\"\",\"avatar_url\":null,\"status\":\"active\",\"last_login_at\":null,\"created_at\":\"2026-11-25T12:40:10.000Z\",\"updated_at\":\"2026-11-25T12:40:10.00"
+    "body": "[{\"id\":1,\"name\":\"Admin User\",\"email\":\"admin@resort.com\",\"phone\":\"\",\"avatar_url\":null,\"status\":\"active\",\"last_login_at\":null,\"created_at\":\"2026-11-28T07:27:18.000Z\",\"updated_at\":\"2026-11-28T07:27:18.00"
   },
   {
     "method": "GET",
@@ -5212,7 +5222,7 @@
     "method": "POST",
     "code": 200,
     "verdict": "PASS",
-    "body": "{\"file\":\"backup_20261125_181230.sql\",\"sizeBytes\":380309}",
+    "body": "{\"file\":\"backup_20261128_125734.sql\",\"sizeBytes\":386263}",
     "section": "backup"
   },
   {
@@ -5222,7 +5232,7 @@
     "method": "GET",
     "code": 200,
     "verdict": "PASS",
-    "body": "{\"destDir\":\"C:\\\\Users\\\\ADMIN\\\\AppData\\\\Local\\\\Temp\\\\mbr-backups-gate\",\"files\":[{\"name\":\"backup_20261125_181230.sql\",\"sizeBytes\":380309,\"mtimeISO\":\"2026-11-25T12:42:31.811Z\"},{\"name\":\"mbb_backup_202611",
+    "body": "{\"destDir\":\"C:\\\\Users\\\\ADMIN\\\\AppData\\\\Local\\\\Temp\\\\mbr-backups-gate\",\"files\":[{\"name\":\"backup_20261128_125734.sql\",\"sizeBytes\":386263,\"mtimeISO\":\"2026-11-28T07:27:34.904Z\"},{\"name\":\"mbb_backup_202611",
     "section": "backup"
   },
   {
